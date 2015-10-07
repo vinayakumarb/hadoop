@@ -5676,6 +5676,11 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
     return haContext;
   }
 
+  @Override
+  public ReentrantReadWriteLock getLockImplementation() {
+    return fsLock.coarseLock;
+  }
+
   @Override  // NameNodeMXBean
   public String getCorruptFiles() {
     List<String> list = new ArrayList<String>();

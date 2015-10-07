@@ -22,6 +22,8 @@ import org.apache.hadoop.hdfs.server.blockmanagement.BlockCollection;
 import org.apache.hadoop.hdfs.server.namenode.ha.HAContext;
 import org.apache.hadoop.hdfs.util.RwLock;
 
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
 /** Namesystem operations. */
 @InterfaceAudience.Private
 public interface Namesystem extends RwLock, SafeMode {
@@ -43,4 +45,6 @@ public interface Namesystem extends RwLock, SafeMode {
    *         middle of the starting active services.
    */
   boolean inTransitionToActive();
+
+  ReentrantReadWriteLock getLockImplementation();
 }

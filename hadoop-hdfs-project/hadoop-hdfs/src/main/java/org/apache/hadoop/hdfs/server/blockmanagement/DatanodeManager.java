@@ -568,7 +568,7 @@ public class DatanodeManager {
    * @param nodeInfo datanode descriptor.
    */
   private void removeDatanode(DatanodeDescriptor nodeInfo) {
-    assert namesystem.hasWriteLock();
+    assert blockManager.hasWriteLock();
     heartbeatManager.removeDatanode(nodeInfo);
     blockManager.removeBlocksAssociatedTo(nodeInfo);
     networktopology.remove(nodeInfo);
@@ -587,7 +587,7 @@ public class DatanodeManager {
    */
   public void removeDatanode(final DatanodeID node)
       throws UnregisteredNodeException {
-    namesystem.writeLock();
+    blockManager.writeLock();
     try {
       final DatanodeDescriptor descriptor = getDatanode(node);
       if (descriptor != null) {
@@ -597,7 +597,7 @@ public class DatanodeManager {
                                      + node + " does not exist");
       }
     } finally {
-      namesystem.writeUnlock();
+      blockManager.writeUnlock();
     }
   }
 
@@ -1023,12 +1023,12 @@ public class DatanodeManager {
    */
   public void refreshNodes(final Configuration conf) throws IOException {
     refreshHostsReader(conf);
-    namesystem.writeLock();
+    blockManager.writeLock();
     try {
       refreshDatanodes();
       countSoftwareVersions();
     } finally {
-      namesystem.writeUnlock();
+      blockManager.writeUnlock();
     }
   }
 
