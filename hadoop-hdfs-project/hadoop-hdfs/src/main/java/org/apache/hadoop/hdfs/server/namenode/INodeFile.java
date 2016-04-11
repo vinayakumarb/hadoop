@@ -49,6 +49,7 @@ import org.apache.hadoop.hdfs.server.namenode.snapshot.FileDiffList;
 import org.apache.hadoop.hdfs.server.namenode.snapshot.FileWithSnapshotFeature;
 import org.apache.hadoop.hdfs.server.namenode.snapshot.Snapshot;
 import org.apache.hadoop.hdfs.util.LongBitFormat;
+import org.apache.hadoop.hdfs.util.LongCache;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
@@ -171,7 +172,7 @@ public class INodeFile extends INodeWithAdditionalFields
 
   }
 
-  private long header = 0L;
+  private Long header = 0L;
 
   private BlockInfo[] blocks;
 
@@ -186,8 +187,8 @@ public class INodeFile extends INodeWithAdditionalFields
       long atime, BlockInfo[] blklist, short replication,
       long preferredBlockSize, byte storagePolicyID, boolean isStriped) {
     super(id, name, permissions, mtime, atime);
-    header = HeaderFormat.toLong(preferredBlockSize, replication, isStriped,
-        storagePolicyID);
+    header = LongCache.get(HeaderFormat.toLong(preferredBlockSize, replication,
+        isStriped, storagePolicyID));
     if (blklist != null && blklist.length > 0) {
       for (BlockInfo b : blklist) {
         Preconditions.checkArgument(b.isStriped() == isStriped);
@@ -432,7 +433,7 @@ public class INodeFile extends INodeWithAdditionalFields
     if (snapshot != CURRENT_STATE_ID) {
       return getSnapshotINode(snapshot).getFileReplication();
     }
-    return HeaderFormat.getReplication(header);
+    return HeaderFormat.getReplication(header.longValue());
   }
 
   /**
@@ -466,11 +467,11 @@ public class INodeFile extends INodeWithAdditionalFields
   /** Set the replication factor of this file. */
   private void setFileReplication(short replication) {
     long layoutRedundancy =
-        HeaderFormat.BLOCK_LAYOUT_AND_REDUNDANCY.BITS.retrieve(header);
+        HeaderFormat.BLOCK_LAYOUT_AND_REDUNDANCY.BITS.retrieve(header.longValue());
     layoutRedundancy = (layoutRedundancy &
         ~HeaderFormat.MAX_REDUNDANCY) | replication;
-    header = HeaderFormat.BLOCK_LAYOUT_AND_REDUNDANCY.BITS.
-        combine(layoutRedundancy, header);
+    header = LongCache.get(HeaderFormat.BLOCK_LAYOUT_AND_REDUNDANCY.BITS
+        .combine(layoutRedundancy, header.longValue()));
   }
 
   /** Set the replication factor of this file. */
@@ -503,8 +504,8 @@ public class INodeFile extends INodeWithAdditionalFields
   }
 
   private void setStoragePolicyID(byte storagePolicyId) {
-    header = HeaderFormat.STORAGE_POLICY_ID.BITS.combine(storagePolicyId,
-        header);
+    header = LongCache.get(HeaderFormat.STORAGE_POLICY_ID.BITS
+        .combine(storagePolicyId, header.longValue()));
   }
 
   public final void setStoragePolicyID(byte storagePolicyId,
@@ -522,7 +523,7 @@ public class INodeFile extends INodeWithAdditionalFields
   @Override
   public byte getErasureCodingPolicyID() {
     if (isStriped()) {
-      return HeaderFormat.getECPolicyID(header);
+      return HeaderFormat.getECPolicyID(header.longValue());
     }
     return -1;
   }
@@ -533,12 +534,12 @@ public class INodeFile extends INodeWithAdditionalFields
   @VisibleForTesting
   @Override
   public boolean isStriped() {
-    return HeaderFormat.isStriped(header);
+    return HeaderFormat.isStriped(header.longValue());
   }
 
   @Override // INodeFileAttributes
   public long getHeaderLong() {
-    return header;
+    return header.longValue();
   }
 
   /** @return the blocks of the file. */

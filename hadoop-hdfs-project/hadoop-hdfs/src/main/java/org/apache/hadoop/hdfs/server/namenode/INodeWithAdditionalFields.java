@@ -22,6 +22,7 @@ import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.fs.permission.PermissionStatus;
 import org.apache.hadoop.hdfs.server.namenode.snapshot.Snapshot;
 import org.apache.hadoop.hdfs.util.LongBitFormat;
+import org.apache.hadoop.hdfs.util.LongCache;
 import org.apache.hadoop.util.LightWeightGSet.LinkedElement;
 
 import com.google.common.base.Preconditions;
@@ -89,7 +90,7 @@ public abstract class INodeWithAdditionalFields extends INode
    * and {@link #updatePermissionStatus(PermissionStatusFormat, long)}
    * should not modify it.
    */
-  private long permission = 0L;
+  private Long permission = 0L;
   /** The last modification time*/
   private long modificationTime = 0L;
   /** The last access time*/
@@ -102,7 +103,7 @@ public abstract class INodeWithAdditionalFields extends INode
   protected Feature[] features = EMPTY_FEATURE;
 
   private INodeWithAdditionalFields(INode parent, long id, byte[] name,
-      long permission, long modificationTime, long accessTime) {
+      Long permission, long modificationTime, long accessTime) {
     super(parent);
     this.id = id;
     this.name = name;
@@ -113,7 +114,8 @@ public abstract class INodeWithAdditionalFields extends INode
 
   INodeWithAdditionalFields(long id, byte[] name, PermissionStatus permissions,
       long modificationTime, long accessTime) {
-    this(null, id, name, PermissionStatusFormat.toLong(permissions),
+    this(null, id, name,
+        LongCache.get(PermissionStatusFormat.toLong(permissions)),
         modificationTime, accessTime);
   }
   
@@ -162,7 +164,7 @@ public abstract class INodeWithAdditionalFields extends INode
   }
 
   private final void updatePermissionStatus(PermissionStatusFormat f, long n) {
-    this.permission = f.BITS.combine(n, permission);
+    this.permission = LongCache.get(f.BITS.combine(n, permission.longValue()));
   }
 
   @Override
@@ -170,7 +172,7 @@ public abstract class INodeWithAdditionalFields extends INode
     if (snapshotId != Snapshot.CURRENT_STATE_ID) {
       return getSnapshotINode(snapshotId).getUserName();
     }
-    return PermissionStatusFormat.getUser(permission);
+    return PermissionStatusFormat.getUser(permission.longValue());
   }
 
   @Override
@@ -184,7 +186,7 @@ public abstract class INodeWithAdditionalFields extends INode
     if (snapshotId != Snapshot.CURRENT_STATE_ID) {
       return getSnapshotINode(snapshotId).getGroupName();
     }
-    return PermissionStatusFormat.getGroup(permission);
+    return PermissionStatusFormat.getGroup(permission.longValue());
   }
 
   @Override
@@ -204,7 +206,7 @@ public abstract class INodeWithAdditionalFields extends INode
 
   @Override
   public final short getFsPermissionShort() {
-    return PermissionStatusFormat.getMode(permission);
+    return PermissionStatusFormat.getMode(permission.longValue());
   }
   @Override
   void setPermission(FsPermission permission) {
@@ -214,7 +216,7 @@ public abstract class INodeWithAdditionalFields extends INode
 
   @Override
   public long getPermissionLong() {
-    return permission;
+    return permission.longValue();
   }
 
   @Override
