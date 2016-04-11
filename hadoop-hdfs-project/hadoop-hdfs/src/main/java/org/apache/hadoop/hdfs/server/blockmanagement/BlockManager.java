@@ -4193,7 +4193,7 @@ public class BlockManager implements RwLock, BlockStatsMXBean {
           : datanodeManager.getDatanodeListForReport(DatanodeReportType.ALL)) {
         for (DatanodeStorageInfo storage : node.getStorageInfos()) {
           try {
-            namesystem.readLock();
+            readLock();
             double ratio = storage.treeSetFillRatio();
             if (ratio < storageInfoDefragmentRatio) {
               datanodesAndStorages.add(node.getDatanodeUuid());
@@ -4204,13 +4204,13 @@ public class BlockManager implements RwLock, BlockStatsMXBean {
                      (ratio < storageInfoDefragmentRatio)
                      ? " (queued for defragmentation)" : "");
           } finally {
-            namesystem.readUnlock();
+            readUnlock();
           }
         }
       }
       if (!datanodesAndStorages.isEmpty()) {
         for (int i = 0; i < datanodesAndStorages.size(); i += 2) {
-          namesystem.writeLock();
+          writeLock();
           try {
             DatanodeStorageInfo storage = datanodeManager.
                 getDatanode(datanodesAndStorages.get(i)).
@@ -4228,7 +4228,7 @@ public class BlockManager implements RwLock, BlockStatsMXBean {
                        aborted ? " (aborted)" : "");
             }
           } finally {
-            namesystem.writeUnlock();
+            writeUnlock();
           }
           // Wait between each iteration
           Thread.sleep(1000);
@@ -4475,7 +4475,7 @@ public class BlockManager implements RwLock, BlockStatsMXBean {
           // batch as many operations in the write lock until the queue
           // runs dry, or the max lock hold is reached.
           int processed = 0;
-          namesystem.writeLock();
+          writeLock();
           metrics.setBlockOpsQueued(queue.size() + 1);
           try {
             long start = Time.monotonicNow();
@@ -4488,7 +4488,7 @@ public class BlockManager implements RwLock, BlockStatsMXBean {
               action = queue.poll();
             } while (action != null);
           } finally {
-            namesystem.writeUnlock();
+            writeUnlock();
             metrics.addBlockOpsBatched(processed - 1);
           }
         } catch (InterruptedException e) {
