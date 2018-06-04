@@ -34,7 +34,6 @@
     <module>hadoop-auth-examples</module>
     <module>hadoop-common</module>
     <module>hadoop-annotations</module>
-    <module>hadoop-nfs</module>
     <module>hadoop-minikdc</module>
     <module>hadoop-kms</module>
   </modules>
