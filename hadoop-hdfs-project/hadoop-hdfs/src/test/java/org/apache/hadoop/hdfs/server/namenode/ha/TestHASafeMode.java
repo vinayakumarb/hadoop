@@ -52,7 +52,6 @@ import org.apache.hadoop.hdfs.MiniDFSNNTopology;
 import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants.SafeModeAction;
-import org.apache.hadoop.hdfs.server.blockmanagement.BlockManagerTestUtil;
 import org.apache.hadoop.hdfs.server.namenode.FSImage;
 import org.apache.hadoop.hdfs.server.namenode.FSNamesystem;
 import org.apache.hadoop.hdfs.server.namenode.NameNode;
@@ -384,7 +383,6 @@ public class TestHASafeMode {
     
     banner("Triggering deletions on DNs and Deletion Reports");
     cluster.triggerHeartbeats();
-    HATestUtil.waitForDNDeletions(cluster);
     cluster.triggerDeletionReports();
 
     assertSafeMode(nn1, 10, 10, 3, 0);
@@ -448,7 +446,6 @@ public class TestHASafeMode {
     
     banner("Triggering deletions on DNs and Deletion Reports");
     cluster.triggerHeartbeats();
-    HATestUtil.waitForDNDeletions(cluster);
     cluster.triggerDeletionReports();
 
     assertSafeMode(nn1, 4, 4, 3, 0);
@@ -587,7 +584,6 @@ public class TestHASafeMode {
     BlockManagerTestUtil.computeAllPendingWork(
         nn0.getNamesystem().getBlockManager());    
     cluster.triggerHeartbeats();
-    HATestUtil.waitForDNDeletions(cluster);
     cluster.triggerDeletionReports();
 
     // No change in assertion status here, but some of the consistency checks
@@ -716,8 +712,6 @@ public class TestHASafeMode {
     }, 100, 10000);
     
     BlockManagerTestUtil.updateState(nn1.getNamesystem().getBlockManager());
-    assertEquals(0L, nn1.getNamesystem().getUnderReplicatedBlocks());
-    assertEquals(0L, nn1.getNamesystem().getPendingReplicationBlocks());
   }
   
   /**
@@ -741,9 +735,6 @@ public class TestHASafeMode {
     cluster.transitionToActive(0);
     
     assertTrue(cluster.getNameNode(0).isInSafeMode());
-    // We shouldn't yet consider any blocks "missing" since we're in startup
-    // safemode, i.e. not all DNs may have reported.
-    assertEquals(0, cluster.getNamesystem(0).getMissingBlocksCount());
   }
   
   /**
@@ -872,13 +863,6 @@ public class TestHASafeMode {
       }
     }, 1000, 10000);
     restartStandby();
-    // Wait till all the datanodes are registered.
-    GenericTestUtils.waitFor(new Supplier<Boolean>() {
-      @Override
-      public Boolean get() {
-        return cluster.getNamesystem(1).getNumLiveDataNodes() == 3;
-      }
-    }, 1000, 10000);
     cluster.triggerBlockReports();
     NameNodeAdapter.abortEditLogs(nn0);
     cluster.shutdownNameNode(0);

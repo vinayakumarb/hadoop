@@ -25,10 +25,6 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.apache.hadoop.hdfs.MiniDFSNNTopology;
-import org.apache.hadoop.hdfs.server.blockmanagement.BlockManagerTestUtil;
-import org.apache.hadoop.hdfs.server.datanode.DataNode;
-import org.apache.hadoop.hdfs.server.datanode.DataNodeTestUtils;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
 import org.apache.hadoop.test.MultithreadedTestUtil.RepeatingTestThread;
 import org.apache.hadoop.test.MultithreadedTestUtil.TestContext;
 
@@ -80,31 +76,6 @@ public class HAStressTestHarness {
    */
   public FileSystem getFailoverFs() throws IOException, URISyntaxException {
     return HATestUtil.configureFailoverFs(cluster, conf);
-  }
-
-  /**
-   * Add a thread which periodically triggers deletion reports,
-   * heartbeats, and NN-side block work.
-   * @param interval millisecond period on which to run
-   */
-  public void addReplicationTriggerThread(final int interval) {
-
-    testCtx.addThread(new RepeatingTestThread(testCtx) {
-      
-      @Override
-      public void doAnAction() throws Exception {
-        for (DataNode dn : cluster.getDataNodes()) {
-          DataNodeTestUtils.triggerDeletionReport(dn);
-          DataNodeTestUtils.triggerHeartbeat(dn);
-        }
-        for (int i = 0; i < 2; i++) {
-          NameNode nn = cluster.getNameNode(i);
-          BlockManagerTestUtil.computeAllPendingWork(
-              nn.getNamesystem().getBlockManager());
-        }
-        Thread.sleep(interval);
-      }
-    });
   }
 
   /**

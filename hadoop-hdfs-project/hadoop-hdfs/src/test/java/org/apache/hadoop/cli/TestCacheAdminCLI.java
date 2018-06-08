@@ -35,7 +35,6 @@ import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.hadoop.hdfs.HDFSPolicyProvider;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
-import org.apache.hadoop.hdfs.tools.CacheAdmin;
 import org.apache.hadoop.security.authorize.PolicyProvider;
 import org.junit.After;
 import org.junit.Before;

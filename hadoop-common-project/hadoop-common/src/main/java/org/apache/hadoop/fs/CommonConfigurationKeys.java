@@ -203,9 +203,6 @@ public class CommonConfigurationKeys extends CommonConfigurationKeysPublic {
   HADOOP_SECURITY_SERVICE_AUTHORIZATION_TRACING =
       "security.trace.protocol.acl";
   public static final String
-      HADOOP_SECURITY_SERVICE_AUTHORIZATION_DATANODE_LIFELINE =
-          "security.datanode.lifeline.protocol.acl";
-  public static final String
       HADOOP_SECURITY_SERVICE_AUTHORIZATION_RECONFIGURATION =
       "security.reconfiguration.protocol.acl";
   public static final String 
@@ -214,12 +211,6 @@ public class CommonConfigurationKeys extends CommonConfigurationKeysPublic {
   SECURITY_ZKFC_PROTOCOL_ACL = "security.zkfc.protocol.acl";
   public static final String
   SECURITY_CLIENT_PROTOCOL_ACL = "security.client.protocol.acl";
-  public static final String SECURITY_CLIENT_DATANODE_PROTOCOL_ACL =
-      "security.client.datanode.protocol.acl";
-  public static final String
-  SECURITY_DATANODE_PROTOCOL_ACL = "security.datanode.protocol.acl";
-  public static final String
-  SECURITY_INTER_DATANODE_PROTOCOL_ACL = "security.inter.datanode.protocol.acl";
   public static final String
   SECURITY_NAMENODE_PROTOCOL_ACL = "security.namenode.protocol.acl";
   public static final String SECURITY_QJOURNAL_SERVICE_PROTOCOL_ACL =

@@ -590,11 +590,7 @@ class FSImageLoader {
         map.put("pathSuffix",
             printSuffix ? inode.getName().toStringUtf8() : "");
         map.put("permission", toString(p.getPermission()));
-        if (f.hasErasureCodingPolicyID()) {
-          map.put("replication", INodeFile.DEFAULT_REPL_FOR_STRIPED_BLOCKS);
-        } else {
-          map.put("replication", f.getReplication());
-        }
+        map.put("replication", f.getReplication());
         map.put("type", inode.getType());
         map.put("fileId", inode.getId());
         map.put("childrenNum", 0);

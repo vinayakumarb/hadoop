@@ -22,8 +22,6 @@ import java.io.IOException;
 
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
-import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
-import org.apache.hadoop.hdfs.security.token.block.ExportedBlockKeys;
 import org.apache.hadoop.hdfs.server.namenode.CheckpointSignature;
 import org.apache.hadoop.io.retry.AtMostOnce;
 import org.apache.hadoop.io.retry.Idempotent;
@@ -65,31 +63,6 @@ public interface NamenodeProtocol {
   public final static int ACT_CHECKPOINT = 51;   // do checkpoint
 
   /**
-   * Get a list of blocks belonging to <code>datanode</code>
-   * whose total size equals <code>size</code>.
-   *
-   * @see org.apache.hadoop.hdfs.server.balancer.Balancer
-   * @param datanode  a data node
-   * @param size      requested size
-   * @param minBlockSize each block should be of this minimum Block Size
-   * @return          a list of blocks & their locations
-   * @throws IOException if size is less than or equal to 0 or
-  datanode does not exist
-   */
-  @Idempotent
-  BlocksWithLocations getBlocks(DatanodeInfo datanode, long size, long
-      minBlockSize) throws IOException;
-
-  /**
-   * Get the current block keys
-   * 
-   * @return ExportedBlockKeys containing current block keys
-   * @throws IOException 
-   */
-  @Idempotent
-  public ExportedBlockKeys getBlockKeys() throws IOException;
-
-  /**
    * @return The most recent transaction ID that has been synced to
    * persistent storage, or applied from persistent storage in the
    * case of a non-active node.
@@ -122,31 +95,6 @@ public interface NamenodeProtocol {
    */
   @Idempotent
   public NamespaceInfo versionRequest() throws IOException;
-
-  /**
-   * Report to the active name-node an error occurred on a subordinate node.
-   * Depending on the error code the active node may decide to unregister the
-   * reporting node.
-   * 
-   * @param registration requesting node.
-   * @param errorCode indicates the error
-   * @param msg free text description of the error
-   * @throws IOException
-   */
-  @Idempotent
-  public void errorReport(NamenodeRegistration registration,
-                          int errorCode, 
-                          String msg) throws IOException;
-
-  /** 
-   * Register a subordinate name-node like backup node.
-   *
-   * @return  {@link NamenodeRegistration} of the node,
-   *          which this node has just registered with.
-   */
-  @Idempotent
-  public NamenodeRegistration registerSubordinateNamenode(
-      NamenodeRegistration registration) throws IOException;
 
   /**
    * A request to the active name-node to start a checkpoint.

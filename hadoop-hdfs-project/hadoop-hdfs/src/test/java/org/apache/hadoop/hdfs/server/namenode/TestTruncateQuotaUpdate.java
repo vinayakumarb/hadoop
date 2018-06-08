@@ -21,7 +21,6 @@ import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.fs.permission.PermissionStatus;
 import org.apache.hadoop.hdfs.protocol.Block;
 import org.apache.hadoop.hdfs.server.blockmanagement.BlockInfo;
-import org.apache.hadoop.hdfs.server.blockmanagement.BlockInfoContiguous;
 import org.apache.hadoop.hdfs.server.namenode.snapshot.DiffList;
 import org.apache.hadoop.hdfs.server.namenode.snapshot.DiffListByArrayList;
 import org.apache.hadoop.hdfs.server.namenode.snapshot.FileDiff;
@@ -151,7 +150,7 @@ public class TestTruncateQuotaUpdate {
 
   private BlockInfo newBlock(long size, short replication) {
     Block b = new Block(++nextMockBlockId, size, ++nextMockGenstamp);
-    return new BlockInfoContiguous(b, replication);
+    return new BlockInfo(b, replication);
   }
 
   private static void addSnapshotFeature(INodeFile file, BlockInfo[] blocks) {

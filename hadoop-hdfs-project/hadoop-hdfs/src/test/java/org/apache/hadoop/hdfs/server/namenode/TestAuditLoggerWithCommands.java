@@ -29,9 +29,6 @@ import org.apache.hadoop.hdfs.DFSTestUtil;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
-import org.apache.hadoop.hdfs.protocol.CacheDirectiveInfo;
-import org.apache.hadoop.hdfs.protocol.CachePoolEntry;
-import org.apache.hadoop.hdfs.protocol.CachePoolInfo;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants;
 import org.apache.hadoop.hdfs.server.protocol.DatanodeStorageReport;
 import org.apache.hadoop.hdfs.server.protocol.NamenodeProtocols;
@@ -309,100 +306,6 @@ public class TestAuditLoggerWithCommands {
   }
 
   @Test
-  public void testAddCacheDirective() throws Exception {
-    removeExistingCachePools(null);
-    proto.addCachePool(new CachePoolInfo("pool1").
-        setMode(new FsPermission((short) 0)));
-    CacheDirectiveInfo alpha = new CacheDirectiveInfo.Builder().
-        setPath(new Path(System.getProperty("user.dir"), "/alpha")).
-        setPool("pool1").
-        build();
-    fileSys = DFSTestUtil.getFileSystemAs(user1, conf);
-    try {
-      ((DistributedFileSystem)fileSys).addCacheDirective(alpha);
-      fail("The operation should have failed with AccessControlException");
-    } catch (AccessControlException ace) {
-    }
-    String aceAddCachePattern =
-        ".*allowed=false.*ugi=theDoctor.*cmd=addCache.*";
-    int length = verifyAuditLogs(aceAddCachePattern);
-    try {
-      fileSys.close();
-      ((DistributedFileSystem)fileSys).addCacheDirective(alpha);
-      fail("The operation should have failed with IOException");
-    } catch (IOException e) {
-    }
-    assertTrue("Unexpected log!",
-        length == auditlog.getOutput().split("\n").length);
-  }
-
-  @Test
-  public void testModifyCacheDirective() throws Exception {
-    removeExistingCachePools(null);
-    proto.addCachePool(new CachePoolInfo("pool1").
-        setMode(new FsPermission((short) 0)));
-    CacheDirectiveInfo alpha = new CacheDirectiveInfo.Builder().
-        setPath(new Path("/alpha")).
-        setPool("pool1").
-        build();
-    fileSys = DFSTestUtil.getFileSystemAs(user1, conf);
-    Long id =
-        ((DistributedFileSystem)fs).addCacheDirective(alpha);
-    try {
-      ((DistributedFileSystem)fileSys).modifyCacheDirective(
-          new CacheDirectiveInfo.Builder().
-              setId(id).
-              setReplication((short) 1).
-              build());
-      fail("The operation should have failed with AccessControlException");
-    } catch (AccessControlException ace) {
-    }
-    String aceModifyCachePattern =
-        ".*allowed=false.*ugi=theDoctor.*cmd=modifyCache.*";
-    verifyAuditLogs(aceModifyCachePattern);
-    fileSys.close();
-    try {
-      ((DistributedFileSystem)fileSys).modifyCacheDirective(
-          new CacheDirectiveInfo.Builder().
-              setId(id).
-              setReplication((short) 1).
-              build());
-      fail("The operation should have failed with IOException");
-    } catch (IOException e) {
-    }
-  }
-
-  @Test
-  public void testRemoveCacheDirective() throws Exception {
-    removeExistingCachePools(null);
-    proto.addCachePool(new CachePoolInfo("pool1").
-        setMode(new FsPermission((short) 0)));
-    CacheDirectiveInfo alpha = new CacheDirectiveInfo.Builder().
-        setPath(new Path("/alpha")).
-        setPool("pool1").
-        build();
-    String aceRemoveCachePattern =
-        ".*allowed=false.*ugi=theDoctor.*cmd=removeCache.*";
-    int length = -1;
-        Long id =((DistributedFileSystem)fs).addCacheDirective(alpha);
-    fileSys = DFSTestUtil.getFileSystemAs(user1, conf);
-    try {
-      ((DistributedFileSystem) fileSys).removeCacheDirective(id);
-      fail("It should have failed with an AccessControlException");
-    } catch (AccessControlException ace) {
-      length = verifyAuditLogs(aceRemoveCachePattern);
-    }
-    try {
-      fileSys.close();
-      ((DistributedFileSystem)fileSys).removeCacheDirective(id);
-      fail("The operation should have failed with IOException");
-    } catch (IOException e) {
-    }
-    assertTrue("Unexpected log!",
-        length == auditlog.getOutput().split("\n").length);
-  }
-
-  @Test
   public void testGetSnapshotDiffReport() throws Exception {
     Path snapshotDirPath = new Path("/test");
     fs.mkdirs(snapshotDirPath, new FsPermission((short) 0));
@@ -447,82 +350,6 @@ public class TestAuditLoggerWithCommands {
     fileSys.close();
     try {
       fileSys.getQuotaUsage(path);
-      fail("The operation should have failed with IOException");
-    } catch (IOException e) {
-    }
-    assertTrue("Unexpected log!",
-        length == auditlog.getOutput().split("\n").length);
-  }
-
-  @Test
-  public void testAddCachePool() throws Exception {
-    removeExistingCachePools(null);
-    CachePoolInfo cacheInfo = new CachePoolInfo("pool1").
-        setMode(new FsPermission((short) 0));
-    fileSys = DFSTestUtil.getFileSystemAs(user1, conf);
-    try {
-      ((DistributedFileSystem) fileSys).addCachePool(cacheInfo);
-      fail("The operation should have failed with AccessControlException");
-    } catch (AccessControlException ace) {
-    }
-    String aceAddCachePoolPattern =
-        ".*allowed=false.*ugi=theDoctor.*cmd=addCachePool.*";
-    int length = verifyAuditLogs(aceAddCachePoolPattern);
-    try {
-      fileSys.close();
-      ((DistributedFileSystem) fileSys).addCachePool(cacheInfo);
-      fail("The operation should have failed with IOException");
-    } catch (IOException e) {
-    }
-    assertTrue("Unexpected log!",
-        length == auditlog.getOutput().split("\n").length);
-  }
-
-  @Test
-  public void testModifyCachePool() throws Exception {
-    removeExistingCachePools(null);
-    CachePoolInfo cacheInfo = new CachePoolInfo("pool1").
-        setMode(new FsPermission((short) 0));
-      ((DistributedFileSystem) fs).addCachePool(cacheInfo);
-    fileSys = DFSTestUtil.getFileSystemAs(user1, conf);
-    try {
-      ((DistributedFileSystem) fileSys).modifyCachePool(cacheInfo);
-      fail("The operation should have failed with AccessControlException");
-    } catch (AccessControlException ace) {
-    }
-    String aceModifyCachePoolPattern =
-        ".*allowed=false.*ugi=theDoctor.*cmd=modifyCachePool.*";
-    int length = verifyAuditLogs(aceModifyCachePoolPattern);
-    try {
-      fileSys.close();
-      ((DistributedFileSystem) fileSys).modifyCachePool(cacheInfo);
-      fail("The operation should have failed with IOException");
-    } catch (IOException e) {
-    }
-    assertTrue("Unexpected log!",
-        length == auditlog.getOutput().split("\n").length);
-  }
-
-  @Test
-  public void testRemoveCachePool() throws Exception {
-    removeExistingCachePools(null);
-    CachePoolInfo cacheInfo = new CachePoolInfo("pool1").
-        setMode(new FsPermission((short) 0));
-    ((DistributedFileSystem) fs).addCachePool(cacheInfo);
-    fileSys = DFSTestUtil.getFileSystemAs(user1, conf);
-    try {
-      ((DistributedFileSystem) fileSys).removeCachePool("pool1");
-      fail("The operation should have failed with AccessControlException");
-    } catch (AccessControlException ace) {
-    }
-    String aceRemoveCachePoolPattern =
-        ".*allowed=false.*ugi=theDoctor.*cmd=removeCachePool.*";
-    int length = verifyAuditLogs(aceRemoveCachePoolPattern);
-    assertTrue("Unexpected log!",
-        length == auditlog.getOutput().split("\n").length);
-    try {
-      fileSys.close();
-      ((DistributedFileSystem) fileSys).removeCachePool("pool1");
       fail("The operation should have failed with IOException");
     } catch (IOException e) {
     }
@@ -1011,36 +838,6 @@ public class TestAuditLoggerWithCommands {
   }
 
   @Test
-  public void testSetBalancerBandwidth() throws Exception {
-    String auditLogString =
-        ".*allowed=true.*cmd=setBalancerBandwidth.*";
-    FSNamesystem fsNamesystem = spy(cluster.getNamesystem());
-    when(fsNamesystem.isExternalInvocation()).thenReturn(true);
-    Server.Call call = spy(new Server.Call(
-        1, 1, null, null, RPC.RpcKind.RPC_BUILTIN, new byte[] {1, 2, 3}));
-    when(call.getRemoteUser()).thenReturn(
-        UserGroupInformation.createRemoteUser(System.getProperty("user.name")));
-    Server.getCurCall().set(call);
-    try {
-      fsNamesystem.setBalancerBandwidth(10);
-      verifyAuditLogs(auditLogString);
-    } catch (Exception e) {
-      fail("setBalancerBandwidth threw exception!");
-    }
-    when(call.getRemoteUser()).thenReturn(
-        UserGroupInformation.createRemoteUser("theDoctor"));
-    try {
-      fsNamesystem.setBalancerBandwidth(10);
-      fail(
-          "setBalancerBandwidth should have thrown AccessControlException!");
-    } catch (AccessControlException ace) {
-      auditLogString =
-          ".*allowed=false.*cmd=setBalancerBandwidth.*";
-      verifyAuditLogs(auditLogString);
-    }
-  }
-
-  @Test
   public void testRefreshNodes() throws Exception {
     String auditLogString =
         ".*allowed=true.*cmd=refreshNodes.*";
@@ -1130,36 +927,6 @@ public class TestAuditLoggerWithCommands {
   }
 
   @Test
-  public void testDatanodeReport() throws Exception {
-    String auditLogString =
-        ".*allowed=true.*cmd=datanodeReport.*";
-    FSNamesystem fsNamesystem = spy(cluster.getNamesystem());
-    when(fsNamesystem.isExternalInvocation()).thenReturn(true);
-    Server.Call call = spy(new Server.Call(
-        1, 1, null, null, RPC.RpcKind.RPC_BUILTIN, new byte[] {1, 2, 3}));
-    when(call.getRemoteUser()).thenReturn(
-        UserGroupInformation.createRemoteUser(System.getProperty("user.name")));
-    Server.getCurCall().set(call);
-    try {
-      fsNamesystem.datanodeReport(HdfsConstants.DatanodeReportType.ALL);
-      verifyAuditLogs(auditLogString);
-    } catch (Exception e) {
-      fail("datanodeReport threw Exception");
-    }
-    when(call.getRemoteUser()).thenReturn(
-        UserGroupInformation.createRemoteUser("theDoctor"));
-    try {
-      fsNamesystem.datanodeReport(HdfsConstants.DatanodeReportType.ALL);
-      fail(
-          "datanodeReport should have thrown an AccessControlException!");
-    } catch (AccessControlException ace) {
-      auditLogString =
-          ".*allowed=false.*cmd=datanodeReport.*";
-      verifyAuditLogs(auditLogString);
-    }
-  }
-
-  @Test
   public void testRestoreFailedStorage() throws Exception {
     FSNamesystem fsNamesystem = spy(cluster.getNamesystem());
     when(fsNamesystem.isExternalInvocation()).thenReturn(true);
@@ -1176,33 +943,6 @@ public class TestAuditLoggerWithCommands {
     verifyAuditRestoreFailedStorageACE(fsNamesystem, "check");
     verifyAuditRestoreFailedStorageACE(fsNamesystem, "true");
     verifyAuditRestoreFailedStorageACE(fsNamesystem, "false");
-  }
-
-  @Test
-  public void testGetDatanodeStorageReport() throws Exception {
-    FSNamesystem fsNamesystem = spy(cluster.getNamesystem());
-    when(fsNamesystem.isExternalInvocation()).thenReturn(true);
-    Server.Call call = spy(new Server.Call(
-        1, 1, null, null, RPC.RpcKind.RPC_BUILTIN, new byte[] {1, 2, 3}));
-    when(call.getRemoteUser()).thenReturn(
-        UserGroupInformation.createRemoteUser(System.getProperty("user.name")));
-    Server.getCurCall().set(call);
-    DatanodeStorageReport[] reports  = fsNamesystem.getDatanodeStorageReport(
-        HdfsConstants.DatanodeReportType.ALL);
-    String auditLogString =
-        ".*allowed=true.*cmd=" + "getDatanodeStorageReport" + ".*";
-    verifyAuditLogs(auditLogString);
-    when(call.getRemoteUser()).thenReturn(
-        UserGroupInformation.createRemoteUser("theDoctor"));
-    auditLogString =
-        ".*allowed=false.*cmd=" + "getDatanodeStorageReport" + ".*";
-    try {
-      fsNamesystem.getDatanodeStorageReport(
-          HdfsConstants.DatanodeReportType.ALL);
-      fail("Should have thrown an AccessControlException!");
-    } catch (AccessControlException ace) {
-      verifyAuditLogs(auditLogString);
-    }
   }
 
   private void verifyAuditRestoreFailedStorageACE(
@@ -1269,13 +1009,5 @@ public class TestAuditLoggerWithCommands {
         .split(System.lineSeparator())[length - 1];
     assertTrue("Unexpected log!", lastAudit.matches(pattern));
     return length;
-  }
-
-  private void removeExistingCachePools(String prevPool) throws Exception {
-    BatchedRemoteIterator.BatchedEntries<CachePoolEntry> entries =
-        proto.listCachePools(prevPool);
-    for(int i =0;i < entries.size();i++) {
-      proto.removeCachePool(entries.get(i).getInfo().getPoolName());
-    }
   }
 }

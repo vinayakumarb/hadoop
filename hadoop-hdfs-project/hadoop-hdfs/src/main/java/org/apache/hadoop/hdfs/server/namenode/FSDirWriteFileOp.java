@@ -18,10 +18,9 @@
 package org.apache.hadoop.hdfs.server.namenode;
 
 import com.google.common.base.Preconditions;
-import org.apache.commons.lang.StringUtils;
+
 import org.apache.hadoop.HadoopIllegalArgumentException;
 import org.apache.hadoop.fs.XAttrSetFlag;
-import org.apache.hadoop.hdfs.AddBlockFlag;
 import org.apache.hadoop.fs.CreateFlag;
 import org.apache.hadoop.fs.FileAlreadyExistsException;
 import org.apache.hadoop.fs.FileEncryptionInfo;
@@ -34,39 +33,25 @@ import org.apache.hadoop.hdfs.DFSUtil;
 import org.apache.hadoop.hdfs.protocol.Block;
 import org.apache.hadoop.hdfs.protocol.BlockStoragePolicy;
 import org.apache.hadoop.hdfs.protocol.ClientProtocol;
-import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
-import org.apache.hadoop.hdfs.protocol.ErasureCodingPolicy;
 import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
 import org.apache.hadoop.hdfs.protocol.FSLimitException;
 import org.apache.hadoop.hdfs.protocol.HdfsFileStatus;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.protocol.QuotaExceededException;
-import org.apache.hadoop.hdfs.security.token.block.BlockTokenIdentifier;
 import org.apache.hadoop.hdfs.server.blockmanagement.BlockInfo;
-import org.apache.hadoop.hdfs.server.blockmanagement.BlockInfoContiguous;
-import org.apache.hadoop.hdfs.server.blockmanagement.BlockInfoStriped;
 
 import org.apache.hadoop.hdfs.server.blockmanagement.BlockManager;
 import org.apache.hadoop.hdfs.protocol.BlockType;
 import org.apache.hadoop.hdfs.server.blockmanagement.BlockUnderConstructionFeature;
-import org.apache.hadoop.hdfs.server.blockmanagement.DatanodeStorageInfo;
 import org.apache.hadoop.hdfs.server.common.HdfsServerConstants;
 import org.apache.hadoop.hdfs.server.namenode.FSDirectory.DirOp;
 import org.apache.hadoop.hdfs.server.namenode.snapshot.Snapshot;
-import org.apache.hadoop.io.erasurecode.ErasureCodeConstants;
-import org.apache.hadoop.net.Node;
-import org.apache.hadoop.net.NodeBase;
 import org.apache.hadoop.util.ChunkedArrayList;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.EnumSet;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import static org.apache.hadoop.hdfs.server.namenode.snapshot.Snapshot.CURRENT_STATE_ID;
 import static org.apache.hadoop.util.Time.now;
@@ -81,10 +66,6 @@ class FSDirWriteFileOp {
     BlockInfo uc = fileNode.removeLastBlock(block);
     if (uc == null) {
       return false;
-    }
-    if (uc.getUnderConstructionFeature() != null) {
-      DatanodeStorageInfo.decrementBlocksScheduled(uc
-          .getUnderConstructionFeature().getExpectedStorageLocations());
     }
     fsd.getBlockManager().removeBlockFromMap(uc);
 
@@ -171,9 +152,9 @@ class FSDirWriteFileOp {
     INodesInPath iip = fsn.dir.resolvePath(pc, src, fileId);
     FileState fileState = analyzeFileState(fsn, iip, fileId, clientName,
                                            previous, onRetryBlock);
-    if (onRetryBlock[0] != null && onRetryBlock[0].getLocations().length > 0) {
+    if (onRetryBlock[0] != null) {
       // This is a retry. No need to generate new locations.
-      // Use the last block if it has locations.
+      // Use the last block.
       return null;
     }
 
@@ -191,26 +172,16 @@ class FSDirWriteFileOp {
     clientMachine = pendingFile.getFileUnderConstructionFeature()
         .getClientMachine();
     blockType = pendingFile.getBlockType();
-    ErasureCodingPolicy ecPolicy = null;
-    if (blockType == BlockType.STRIPED) {
-      ecPolicy =
-          FSDirErasureCodingOp.unprotectedGetErasureCodingPolicy(fsn, iip);
-      numTargets = (short) (ecPolicy.getSchema().getNumDataUnits()
-          + ecPolicy.getSchema().getNumParityUnits());
-    } else {
-      numTargets = pendingFile.getFileReplication();
-    }
+    numTargets = pendingFile.getFileReplication();
     storagePolicyID = pendingFile.getStoragePolicyID();
     return new ValidateAddBlockResult(blockSize, numTargets, storagePolicyID,
-                                      clientMachine, blockType, ecPolicy);
+                                      clientMachine, blockType);
   }
 
   static LocatedBlock makeLocatedBlock(FSNamesystem fsn, BlockInfo blk,
-      DatanodeStorageInfo[] locs, long offset) throws IOException {
-    LocatedBlock lBlk = BlockManager.newLocatedBlock(
-        fsn.getExtendedBlock(new Block(blk)), blk, locs, offset);
-    fsn.getBlockManager().setBlockToken(lBlk,
-        BlockTokenIdentifier.AccessMode.WRITE);
+      long offset) throws IOException {
+    LocatedBlock lBlk = BlockManager
+        .newLocatedBlock(fsn.getExtendedBlock(new Block(blk)), offset);
     return lBlk;
   }
 
@@ -222,8 +193,7 @@ class FSDirWriteFileOp {
    * the new targets, add it to the INode and to the BlocksMap.
    */
   static LocatedBlock storeAllocatedBlock(FSNamesystem fsn, String src,
-      long fileId, String clientName, ExtendedBlock previous,
-      DatanodeStorageInfo[] targets) throws IOException {
+      long fileId, String clientName, ExtendedBlock previous) throws IOException {
     long offset;
     // Run the full analysis again, since things could have changed
     // while chooseTarget() was executing.
@@ -235,17 +205,8 @@ class FSDirWriteFileOp {
     src = fileState.path;
 
     if (onRetryBlock[0] != null) {
-      if (onRetryBlock[0].getLocations().length > 0) {
-        // This is a retry. Just return the last block if having locations.
-        return onRetryBlock[0];
-      } else {
-        // add new chosen targets to already allocated block and return
-        BlockInfo lastBlockInFile = pendingFile.getLastBlock();
-        lastBlockInFile.getUnderConstructionFeature().setExpectedLocations(
-            lastBlockInFile, targets, pendingFile.getBlockType());
-        offset = pendingFile.computeFileSize();
-        return makeLocatedBlock(fsn, lastBlockInFile, targets, offset);
-      }
+      // This is a retry. Just return the last block if having locations.
+      return onRetryBlock[0];
     }
 
     // commit the last block and complete it if it has minimum replicas
@@ -255,57 +216,15 @@ class FSDirWriteFileOp {
     // allocate new block, record block locations in INode.
     final BlockType blockType = pendingFile.getBlockType();
     // allocate new block, record block locations in INode.
-    Block newBlock = fsn.createNewBlock(blockType);
+    Block newBlock = fsn.createNewBlock();
     INodesInPath inodesInPath = INodesInPath.fromINode(pendingFile);
-    saveAllocatedBlock(fsn, src, inodesInPath, newBlock, targets, blockType);
+    saveAllocatedBlock(fsn, src, inodesInPath, newBlock, blockType);
 
     persistNewBlock(fsn, src, pendingFile);
     offset = pendingFile.computeFileSize();
 
     // Return located block
-    return makeLocatedBlock(fsn, fsn.getStoredBlock(newBlock), targets, offset);
-  }
-
-  static DatanodeStorageInfo[] chooseTargetForNewBlock(
-      BlockManager bm, String src, DatanodeInfo[] excludedNodes,
-      String[] favoredNodes, EnumSet<AddBlockFlag> flags,
-      ValidateAddBlockResult r) throws IOException {
-    Node clientNode = bm.getDatanodeManager()
-        .getDatanodeByHost(r.clientMachine);
-    if (clientNode == null) {
-      clientNode = getClientNode(bm, r.clientMachine);
-    }
-
-    Set<Node> excludedNodesSet = null;
-    if (excludedNodes != null) {
-      excludedNodesSet = new HashSet<>(excludedNodes.length);
-      Collections.addAll(excludedNodesSet, excludedNodes);
-    }
-    List<String> favoredNodesList = (favoredNodes == null) ? null
-        : Arrays.asList(favoredNodes);
-    // choose targets for the new block to be allocated.
-    return bm.chooseTarget4NewBlock(src, r.numTargets, clientNode,
-                                    excludedNodesSet, r.blockSize,
-                                    favoredNodesList, r.storagePolicyID,
-                                    r.blockType, r.ecPolicy, flags);
-  }
-
-  /**
-   * Resolve clientmachine address to get a network location path
-   */
-  static Node getClientNode(BlockManager bm, String clientMachine) {
-    List<String> hosts = new ArrayList<>(1);
-    hosts.add(clientMachine);
-    List<String> rName = bm.getDatanodeManager()
-        .resolveNetworkLocation(hosts);
-    Node clientNode = null;
-    if (rName != null) {
-      // Able to resolve clientMachine mapping.
-      // Create a temp node to findout the rack local nodes
-      clientNode = new NodeBase(rName.get(0) + NodeBase.PATH_SEPARATOR_STR
-          + clientMachine);
-    }
-    return clientNode;
+    return makeLocatedBlock(fsn, fsn.getStoredBlock(newBlock), offset);
   }
 
   static INodesInPath resolvePathForStartFile(FSDirectory dir,
@@ -348,13 +267,11 @@ class FSDirWriteFileOp {
    * For description of parameters and exceptions thrown see
    * {@link ClientProtocol#create}
    */
-  static HdfsFileStatus startFile(
-      FSNamesystem fsn, INodesInPath iip,
+  static HdfsFileStatus startFile(FSNamesystem fsn, INodesInPath iip,
       PermissionStatus permissions, String holder, String clientMachine,
-      EnumSet<CreateFlag> flag, boolean createParent,
-      short replication, long blockSize,
+      EnumSet<CreateFlag> flag, boolean createParent, short replication, long blockSize,
       FileEncryptionInfo feInfo, INode.BlocksMapUpdateInfo toRemoveBlocks,
-      boolean shouldReplicate, String ecPolicyName, boolean logRetryEntry)
+      boolean logRetryEntry)
       throws IOException {
     assert fsn.hasWriteLock();
     boolean overwrite = flag.contains(CreateFlag.OVERWRITE);
@@ -388,8 +305,7 @@ class FSDirWriteFileOp {
         FSDirMkdirOp.createAncestorDirectories(fsd, iip, permissions);
     if (parent != null) {
       iip = addFile(fsd, parent, iip.getLastLocalName(), permissions,
-          replication, blockSize, holder, clientMachine, shouldReplicate,
-          ecPolicyName);
+          replication, blockSize, holder, clientMachine);
       newNode = iip != null ? iip.getLastINode().asFile() : null;
     }
     if (newNode == null) {
@@ -421,31 +337,16 @@ class FSDirWriteFileOp {
     Preconditions.checkNotNull(existing);
     assert fsd.hasWriteLock();
     try {
-      // check if the file has an EC policy
-      boolean isStriped =
-          ecPolicyID != ErasureCodeConstants.REPLICATION_POLICY_ID;
-      ErasureCodingPolicy ecPolicy = null;
-      if (isStriped) {
-        ecPolicy = fsd.getFSNamesystem().getErasureCodingPolicyManager()
-          .getByID(ecPolicyID);
-        if (ecPolicy == null) {
-          throw new IOException(String.format(
-              "Cannot find erasure coding policy for new file %s/%s, " +
-                  "ecPolicyID=%d",
-              existing.getPath(), Arrays.toString(localName), ecPolicyID));
-        }
-      }
-      final BlockType blockType = isStriped ?
-          BlockType.STRIPED : BlockType.CONTIGUOUS;
-      final Short replicationFactor = (!isStriped ? replication : null);
+      final BlockType blockType = BlockType.CONTIGUOUS;
+      final Short replicationFactor = replication;
       if (underConstruction) {
         newNode = newINodeFile(id, permissions, modificationTime,
-            modificationTime, replicationFactor, ecPolicyID, preferredBlockSize,
+            modificationTime, replicationFactor, preferredBlockSize,
             storagePolicyId, blockType);
         newNode.toUnderConstruction(clientName, clientMachine);
       } else {
         newNode = newINodeFile(id, permissions, modificationTime, atime,
-            replicationFactor, ecPolicyID, preferredBlockSize,
+            replicationFactor, preferredBlockSize,
             storagePolicyId, blockType);
       }
       newNode.setLocalName(localName);
@@ -477,8 +378,8 @@ class FSDirWriteFileOp {
    * Add a block to the file. Returns a reference to the added block.
    */
   private static BlockInfo addBlock(FSDirectory fsd, String path,
-      INodesInPath inodesInPath, Block block, DatanodeStorageInfo[] targets,
-      BlockType blockType) throws IOException {
+      INodesInPath inodesInPath, Block block, BlockType blockType)
+      throws IOException {
     fsd.writeLock();
     try {
       final INodeFile fileINode = inodesInPath.getLastINode().asFile();
@@ -486,30 +387,14 @@ class FSDirWriteFileOp {
 
       // associate new last block for the file
       final BlockInfo blockInfo;
-      if (blockType == BlockType.STRIPED) {
-        ErasureCodingPolicy ecPolicy =
-            FSDirErasureCodingOp.unprotectedGetErasureCodingPolicy(
-                fsd.getFSNamesystem(), inodesInPath);
-        short numDataUnits = (short) ecPolicy.getNumDataUnits();
-        short numParityUnits = (short) ecPolicy.getNumParityUnits();
-        short numLocations = (short) (numDataUnits + numParityUnits);
+      // check quota limits and updated space consumed
+      fsd.updateCount(inodesInPath, 0, fileINode.getPreferredBlockSize(),
+          fileINode.getFileReplication(), true);
 
-        // check quota limits and updated space consumed
-        fsd.updateCount(inodesInPath, 0, fileINode.getPreferredBlockSize(),
-            numLocations, true);
-        blockInfo = new BlockInfoStriped(block, ecPolicy);
-        blockInfo.convertToBlockUnderConstruction(
-            HdfsServerConstants.BlockUCState.UNDER_CONSTRUCTION, targets);
-      } else {
-        // check quota limits and updated space consumed
-        fsd.updateCount(inodesInPath, 0, fileINode.getPreferredBlockSize(),
-            fileINode.getFileReplication(), true);
-
-        short numLocations = fileINode.getFileReplication();
-        blockInfo = new BlockInfoContiguous(block, numLocations);
-        blockInfo.convertToBlockUnderConstruction(
-            HdfsServerConstants.BlockUCState.UNDER_CONSTRUCTION, targets);
-      }
+      short numLocations = fileINode.getFileReplication();
+      blockInfo = new BlockInfo(block, numLocations);
+      blockInfo.convertToBlockUnderConstruction(
+          HdfsServerConstants.BlockUCState.UNDER_CONSTRUCTION);
       fsd.getBlockManager().addBlockCollection(blockInfo, fileINode);
       fileINode.addBlock(blockInfo);
 
@@ -529,37 +414,20 @@ class FSDirWriteFileOp {
    * Add the given filename to the fs.
    * @return the new INodesInPath instance that contains the new INode
    */
-  private static INodesInPath addFile(
-      FSDirectory fsd, INodesInPath existing, byte[] localName,
-      PermissionStatus permissions, short replication, long preferredBlockSize,
-      String clientName, String clientMachine, boolean shouldReplicate,
-      String ecPolicyName) throws IOException {
+  private static INodesInPath addFile(FSDirectory fsd, INodesInPath existing,
+      byte[] localName, PermissionStatus permissions, short replication,
+      long preferredBlockSize, String clientName, String clientMachine)
+      throws IOException {
 
     Preconditions.checkNotNull(existing);
     long modTime = now();
     INodesInPath newiip;
     fsd.writeLock();
     try {
-      boolean isStriped = false;
-      ErasureCodingPolicy ecPolicy = null;
-      if (!shouldReplicate) {
-        if (!StringUtils.isEmpty(ecPolicyName)) {
-          ecPolicy = FSDirErasureCodingOp.getErasureCodingPolicyByName(
-              fsd.getFSNamesystem(), ecPolicyName);
-        } else {
-          ecPolicy = FSDirErasureCodingOp.unprotectedGetErasureCodingPolicy(
-              fsd.getFSNamesystem(), existing);
-        }
-        if (ecPolicy != null && (!ecPolicy.isReplicationPolicy())) {
-          isStriped = true;
-        }
-      }
-      final BlockType blockType = isStriped ?
-          BlockType.STRIPED : BlockType.CONTIGUOUS;
-      final Short replicationFactor = (!isStriped ? replication : null);
-      final Byte ecPolicyID = (isStriped ? ecPolicy.getId() : null);
+      final BlockType blockType = BlockType.CONTIGUOUS;
+      final Short replicationFactor = replication;
       INodeFile newNode = newINodeFile(fsd.allocateNewInodeId(), permissions,
-          modTime, modTime, replicationFactor, ecPolicyID, preferredBlockSize,
+          modTime, modTime, replicationFactor, preferredBlockSize,
           blockType);
       newNode.setLocalName(localName);
       newNode.toUnderConstruction(clientName, clientMachine);
@@ -651,8 +519,7 @@ class FSDirWriteFileOp {
         long offset = file.computeFileSize();
         BlockUnderConstructionFeature uc =
             lastBlockInFile.getUnderConstructionFeature();
-        onRetryBlock[0] = makeLocatedBlock(fsn, lastBlockInFile,
-            uc.getExpectedStorageLocations(), offset);
+        onRetryBlock[0] = makeLocatedBlock(fsn, lastBlockInFile, offset);
         return new FileState(file, src, iip);
       } else {
         // Case 3
@@ -722,26 +589,22 @@ class FSDirWriteFileOp {
       return false;
     }
 
-    fsn.addCommittedBlocksToPending(pendingFile);
-
     fsn.finalizeINodeFileUnderConstruction(src, pendingFile,
         Snapshot.CURRENT_STATE_ID, true);
     return true;
   }
 
-  private static INodeFile newINodeFile(
-      long id, PermissionStatus permissions, long mtime, long atime,
-      Short replication, Byte ecPolicyID, long preferredBlockSize,
-      byte storagePolicyId, BlockType blockType) {
+  private static INodeFile newINodeFile(long id, PermissionStatus permissions,
+      long mtime, long atime, Short replication, long preferredBlockSize, byte storagePolicyId, BlockType blockType) {
     return new INodeFile(id, null, permissions, mtime, atime,
-        BlockInfo.EMPTY_ARRAY, replication, ecPolicyID, preferredBlockSize,
-        storagePolicyId, blockType);
+        BlockInfo.EMPTY_ARRAY, replication, preferredBlockSize,
+        storagePolicyId);
   }
 
   private static INodeFile newINodeFile(long id, PermissionStatus permissions,
-      long mtime, long atime, Short replication, Byte ecPolicyID,
-      long preferredBlockSize, BlockType blockType) {
-    return newINodeFile(id, permissions, mtime, atime, replication, ecPolicyID,
+      long mtime, long atime, Short replication, long preferredBlockSize,
+      BlockType blockType) {
+    return newINodeFile(id, permissions, mtime, atime, replication,
         preferredBlockSize, (byte)0, blockType);
   }
 
@@ -767,17 +630,13 @@ class FSDirWriteFileOp {
    * @param inodesInPath representing each of the components of src.
    *                     The last INode is the INode for {@code src} file.
    * @param newBlock newly allocated block to be save
-   * @param targets target datanodes where replicas of the new block is placed
    * @throws QuotaExceededException If addition of block exceeds space quota
    */
   private static void saveAllocatedBlock(FSNamesystem fsn, String src,
-      INodesInPath inodesInPath, Block newBlock, DatanodeStorageInfo[] targets,
-      BlockType blockType) throws IOException {
+      INodesInPath inodesInPath, Block newBlock, BlockType blockType) throws IOException {
     assert fsn.hasWriteLock();
-    BlockInfo b = addBlock(fsn.dir, src, inodesInPath, newBlock, targets,
-        blockType);
+    BlockInfo b = addBlock(fsn.dir, src, inodesInPath, newBlock, blockType);
     logAllocatedBlock(src, b);
-    DatanodeStorageInfo.incrementBlocksScheduled(targets);
   }
 
   private static void logAllocatedBlock(String src, BlockInfo b) {
@@ -789,9 +648,6 @@ class FSDirWriteFileOp {
     b.appendStringTo(sb);
     sb.append(", ");
     BlockUnderConstructionFeature uc = b.getUnderConstructionFeature();
-    if (uc != null) {
-      uc.appendUCPartsConcise(sb);
-    }
     sb.append(" for " + src);
     NameNode.stateChangeLog.info(sb.toString());
   }
@@ -843,23 +699,14 @@ class FSDirWriteFileOp {
     private final byte storagePolicyID;
     private final String clientMachine;
     private final BlockType blockType;
-    private final ErasureCodingPolicy ecPolicy;
 
-    ValidateAddBlockResult(
-        long blockSize, int numTargets, byte storagePolicyID,
-        String clientMachine, BlockType blockType,
-        ErasureCodingPolicy ecPolicy) {
+    ValidateAddBlockResult(long blockSize, int numTargets, byte storagePolicyID,
+        String clientMachine, BlockType blockType) {
       this.blockSize = blockSize;
       this.numTargets = numTargets;
       this.storagePolicyID = storagePolicyID;
       this.clientMachine = clientMachine;
       this.blockType = blockType;
-      this.ecPolicy = ecPolicy;
-
-      if (blockType == BlockType.STRIPED) {
-        Preconditions.checkArgument(ecPolicy != null,
-            "ecPolicy is not specified for striped block");
-      }
     }
   }
 }

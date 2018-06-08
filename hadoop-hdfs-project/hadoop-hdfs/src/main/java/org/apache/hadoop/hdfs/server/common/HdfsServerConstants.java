@@ -26,7 +26,6 @@ import java.util.regex.Pattern;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.hdfs.DFSUtil;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants;
-import org.apache.hadoop.hdfs.server.datanode.DataNodeLayoutVersion;
 import org.apache.hadoop.hdfs.server.namenode.FSDirectory;
 import org.apache.hadoop.hdfs.server.namenode.MetaRecoveryContext;
 
@@ -60,12 +59,6 @@ public interface HdfsServerConstants {
    */
   int NAMENODE_LAYOUT_VERSION
       = NameNodeLayoutVersion.CURRENT_LAYOUT_VERSION;
-  /**
-   * Current layout version for DataNode.
-   * Please see {@link DataNodeLayoutVersion.Feature} on adding new layout version.
-   */
-  int DATANODE_LAYOUT_VERSION
-      = DataNodeLayoutVersion.CURRENT_LAYOUT_VERSION;
   /**
    * Path components that are reserved in HDFS.
    * <p>
@@ -137,8 +130,6 @@ public interface HdfsServerConstants {
     CLUSTERID ("-clusterid"),
     GENCLUSTERID ("-genclusterid"),
     REGULAR ("-regular"),
-    BACKUP  ("-backup"),
-    CHECKPOINT("-checkpoint"),
     UPGRADE ("-upgrade"),
     ROLLBACK("-rollback"),
     ROLLINGUPGRADE("-rollingUpgrade"),
@@ -180,10 +171,6 @@ public interface HdfsServerConstants {
     public String getName() {return name;}
     public NamenodeRole toNodeRole() {
       switch(this) {
-      case BACKUP: 
-        return NamenodeRole.BACKUP;
-      case CHECKPOINT: 
-        return NamenodeRole.CHECKPOINT;
       default:
         return NamenodeRole.NAMENODE;
       }
@@ -263,9 +250,7 @@ public interface HdfsServerConstants {
    * Defines the NameNode role.
    */
   enum NamenodeRole {
-    NAMENODE  ("NameNode"),
-    BACKUP    ("Backup Node"),
-    CHECKPOINT("Checkpoint Node");
+    NAMENODE  ("NameNode");
 
     private String description = null;
     NamenodeRole(String arg) {this.description = arg;}

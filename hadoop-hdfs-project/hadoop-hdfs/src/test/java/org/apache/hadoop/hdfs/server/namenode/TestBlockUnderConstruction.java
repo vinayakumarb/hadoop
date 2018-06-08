@@ -215,16 +215,6 @@ public class TestBlockUnderConstruction {
     BlockUnderConstructionFeature uc = bm.getStoredBlock(b).
         getUnderConstructionFeature();
     uc.initializeBlockRecovery(null, blockRecoveryId, false);
-
-    try {
-      String[] storages = { "invalid-storage-id1" };
-      fsn.commitBlockSynchronization(lastLB.getBlock(), blockRecoveryId, 256L,
-          true, false, lastLB.getLocations(), storages);
-    } catch (java.lang.IllegalStateException ise) {
-       // Although a failure is expected as of now, future commit policy
-       // changes may make it not fail. This is not critical to the test.
-    }
-
     // Invalid storage should not trigger an exception.
     lbs = namenode.getBlockLocations(src, 0, 256);
   }

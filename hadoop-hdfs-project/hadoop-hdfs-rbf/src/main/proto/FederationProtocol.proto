@@ -31,20 +31,10 @@ import "hdfs.proto";
 message NamenodeMembershipStatsRecordProto {
   optional uint64 totalSpace = 1;
   optional uint64 availableSpace = 2;
-  optional uint64 providedSpace = 3;
 
   optional uint64 numOfFiles = 10;
   optional uint64 numOfBlocks = 11;
-  optional uint64 numOfBlocksMissing = 12;
-  optional uint64 numOfBlocksPendingReplication = 13;
-  optional uint64 numOfBlocksUnderReplicated = 14;
   optional uint64 numOfBlocksPendingDeletion = 15;
-
-  optional uint32 numOfActiveDatanodes = 20;
-  optional uint32 numOfDeadDatanodes = 21;
-  optional uint32 numOfDecommissioningDatanodes = 22;
-  optional uint32 numOfDecomActiveDatanodes = 23;
-  optional uint32 numOfDecomDeadDatanodes = 24;
 }
 
 message NamenodeMembershipRecordProto {

@@ -85,12 +85,7 @@ public class TestFileStatus {
       cluster.shutdown();
     }
   }
-  
-  private void checkFile(FileSystem fileSys, Path name, int repl)
-      throws IOException, InterruptedException, TimeoutException {
-    DFSTestUtil.waitReplication(fileSys, name, (short) repl);
-  }
-  
+
   /** Test calling getFileInfo directly on the client */
   @Test
   public void testGetFileInfo() throws IOException {
@@ -128,7 +123,6 @@ public class TestFileStatus {
   /** Test the FileStatus obtained calling getFileStatus on a file */  
   @Test
   public void testGetFileStatusOnFile() throws Exception {
-    checkFile(fs, file1, 1);
     // test getFileStatus on a file
     FileStatus status = fs.getFileStatus(file1);
     assertFalse(file1 + " should be a file", status.isDirectory());
@@ -224,8 +218,7 @@ public class TestFileStatus {
     Path file2 = new Path(dir, "filestatus2.dat");
     DFSTestUtil.createFile(fs, file2, blockSize/4, blockSize/4, blockSize,
         (short) 1, seed);
-    checkFile(fs, file2, 1);
-    
+
     // verify file attributes
     status = fs.getFileStatus(file2);
     assertEquals(blockSize, status.getBlockSize());
@@ -237,7 +230,6 @@ public class TestFileStatus {
     Path file3 = new Path(dir, "filestatus3.dat");
     DFSTestUtil.createFile(fs, file3, blockSize/4, blockSize/4, blockSize,
         (short) 1, seed);
-    checkFile(fs, file3, 1);
     file3 = fs.makeQualified(file3);
 
     // Verify that the size of the directory increased by the size 

@@ -17,11 +17,7 @@
  */
 package org.apache.hadoop.hdfs.tools;
 
-import java.io.BufferedOutputStream;
 import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -34,19 +30,14 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import com.google.common.util.concurrent.Uninterruptibles;
-import org.apache.hadoop.HadoopIllegalArgumentException;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Options;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hdfs.DFSUtilClient;
-import org.apache.hadoop.hdfs.client.impl.DfsClientConf;
 import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.hadoop.hdfs.server.datanode.BlockMetadataHeader;
-import org.apache.hadoop.hdfs.server.datanode.fsdataset.impl.FsDatasetUtil;
 import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.util.DataChecksum;
 import org.apache.hadoop.util.StringUtils;
@@ -66,7 +57,6 @@ public class DebugAdmin extends Configured implements Tool {
    */
   private DebugCommand DEBUG_COMMANDS[] = {
       new VerifyMetaCommand(),
-      new ComputeMetaCommand(),
       new RecoverLeaseCommand(),
       new HelpCommand()
   };
@@ -202,91 +192,6 @@ public class DebugAdmin extends Configured implements Tool {
         return 0;
       } finally {
         IOUtils.cleanup(null, metaStream, dataStream, checksumStream);
-      }
-    }
-  }
-
-  /**
-   * The command for verifying a block metadata file and possibly block file.
-   */
-  private class ComputeMetaCommand extends DebugCommand {
-    ComputeMetaCommand() {
-      super("computeMeta",
-          "computeMeta -block <block-file> -out <output-metadata-file>",
-          "  Compute HDFS metadata from the specified block file, and save it"
-              + " to" + System.lineSeparator()
-              + "  the specified output metadata file."
-              + System.lineSeparator() + System.lineSeparator()
-              + "**NOTE: Use at your own risk!" + System.lineSeparator()
-              + " If the block file is corrupt"
-              + " and you overwrite it's meta file, " + System.lineSeparator()
-              + " it will show up"
-              + " as good in HDFS, but you can't read the data."
-              + System.lineSeparator()
-              + " Only use as a last measure, and when you are 100% certain"
-              + " the block file is good.");
-    }
-
-    private DataChecksum createChecksum(Options.ChecksumOpt opt) {
-      DataChecksum dataChecksum = DataChecksum
-          .newDataChecksum(opt.getChecksumType(), opt.getBytesPerChecksum());
-      if (dataChecksum == null) {
-        throw new HadoopIllegalArgumentException(
-            "Invalid checksum type: userOpt=" + opt + ", default=" + opt
-                + ", effective=null");
-      }
-      return dataChecksum;
-    }
-
-    int run(List<String> args) throws IOException {
-      if (args.size() == 0) {
-        System.out.println(usageText);
-        System.out.println(helpText + System.lineSeparator());
-        return 1;
-      }
-      final String name = StringUtils.popOptionWithArgument("-block", args);
-      if (name == null) {
-        System.err.println("You must specify a block file with -block");
-        return 2;
-      }
-      final File blockFile = new File(name);
-      if (!blockFile.exists() || !blockFile.isFile()) {
-        System.err.println("Block file <" + name + "> does not exist "
-            + "or is not a file");
-        return 3;
-      }
-      final String outFile = StringUtils.popOptionWithArgument("-out", args);
-      if (outFile == null) {
-        System.err.println("You must specify a output file with -out");
-        return 4;
-      }
-      final File srcMeta = new File(outFile);
-      if (srcMeta.exists()) {
-        System.err.println("output file already exists!");
-        return 5;
-      }
-
-      DataOutputStream metaOut = null;
-      try {
-        final Configuration conf = new Configuration();
-        final Options.ChecksumOpt checksumOpt =
-            DfsClientConf.getChecksumOptFromConf(conf);
-        final DataChecksum checksum = createChecksum(checksumOpt);
-
-        final int smallBufferSize = DFSUtilClient.getSmallBufferSize(conf);
-        metaOut = new DataOutputStream(
-            new BufferedOutputStream(new FileOutputStream(srcMeta),
-                smallBufferSize));
-        BlockMetadataHeader.writeHeader(metaOut, checksum);
-        metaOut.close();
-        FsDatasetUtil.computeChecksum(
-            srcMeta, srcMeta, blockFile, smallBufferSize, conf);
-        System.out.println(
-            "Checksum calculation succeeded on block file " + name
-                + " saved metadata to meta file " + outFile);
-        return 0;
-      } finally {
-        IOUtils.cleanup(null, metaOut);
       }
     }
   }

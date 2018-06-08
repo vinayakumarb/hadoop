@@ -27,7 +27,6 @@ import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.TimeoutException;
 
 import com.google.common.base.Function;
 import com.google.common.base.Joiner;
@@ -42,8 +41,6 @@ import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.apache.hadoop.hdfs.client.HdfsClientConfigKeys;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants;
-import org.apache.hadoop.hdfs.server.datanode.DataNode;
-import org.apache.hadoop.hdfs.server.datanode.DataNodeTestUtils;
 import org.apache.hadoop.hdfs.server.namenode.FSImageTestUtil;
 import org.apache.hadoop.hdfs.server.namenode.NameNode;
 import org.apache.hadoop.test.GenericTestUtils;
@@ -90,26 +87,6 @@ public abstract class HATestUtil {
     throw new CouldNotCatchUpException("Standby did not catch up to txid " +
         activeTxId + " (currently at " +
         standby.getNamesystem().getFSImage().getLastAppliedTxId() + ")");
-  }
-
-  /**
-   * Wait for the datanodes in the cluster to process any block
-   * deletions that have already been asynchronously queued.
-   */
-  public static void waitForDNDeletions(final MiniDFSCluster cluster)
-      throws TimeoutException, InterruptedException {
-    GenericTestUtils.waitFor(new Supplier<Boolean>() {
-      @Override
-      public Boolean get() {
-        for (DataNode dn : cluster.getDataNodes()) {
-          if (cluster.getFsDatasetTestUtils(dn).getPendingAsyncDeletions() > 0) {
-            return false;
-          }
-        }
-        return true;
-      }
-    }, 1000, 10000);
-    
   }
 
   /**

@@ -89,32 +89,4 @@ public class TestSecureNameNode extends SaslDataTransferTestCase {
       }
     }
   }
-
-  /**
-   * Verify the following scenario.
-   * 1. Kerberos is enabled.
-   * 2. HDFS block tokens are not enabled.
-   * 3. Start the NN.
-   * 4. NN should throw an IOException and abort
-   * @throws Exception
-   */
-  @Test
-  public void testKerberosHdfsBlockTokenInconsistencyNNStartup() throws Exception {
-    MiniDFSCluster dfsCluster = null;
-    HdfsConfiguration conf = createSecureConfig(
-        "authentication,privacy");
-    try {
-      conf.setBoolean(DFSConfigKeys.DFS_BLOCK_ACCESS_TOKEN_ENABLE_KEY, false);
-      exception.expect(IOException.class);
-      exception.expectMessage("Security is enabled but block access tokens");
-      dfsCluster = new MiniDFSCluster.Builder(conf).numDataNodes(1).build();
-      dfsCluster.waitActive();
-    } finally {
-      if (dfsCluster != null) {
-        dfsCluster.shutdown();
-      }
-    }
-    return;
-  }
-
 }

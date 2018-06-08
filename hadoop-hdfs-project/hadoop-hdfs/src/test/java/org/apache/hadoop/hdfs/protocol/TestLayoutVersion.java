@@ -32,7 +32,6 @@ import java.util.SortedSet;
 import org.apache.hadoop.hdfs.protocol.LayoutVersion.Feature;
 import org.apache.hadoop.hdfs.protocol.LayoutVersion.FeatureInfo;
 import org.apache.hadoop.hdfs.protocol.LayoutVersion.LayoutFeature;
-import org.apache.hadoop.hdfs.server.datanode.DataNodeLayoutVersion;
 import org.apache.hadoop.hdfs.server.namenode.NameNodeLayoutVersion;
 import org.junit.Test;
 
@@ -93,18 +92,6 @@ public class TestLayoutVersion {
   public void testNameNodeFeature() {
     final LayoutFeature first = NameNodeLayoutVersion.Feature.ROLLING_UPGRADE; 
     assertTrue(NameNodeLayoutVersion.supports(LAST_NON_RESERVED_COMMON_FEATURE,
-        first.getInfo().getLayoutVersion()));
-    assertEquals(LAST_COMMON_FEATURE.getInfo().getLayoutVersion() - 1,
-        first.getInfo().getLayoutVersion());
-  }
-  
-  /**
-   * Test to make sure DataNode.Feature support previous features
-   */
-  @Test
-  public void testDataNodeFeature() {
-    final LayoutFeature first = DataNodeLayoutVersion.Feature.FIRST_LAYOUT; 
-    assertTrue(DataNodeLayoutVersion.supports(LAST_NON_RESERVED_COMMON_FEATURE,
         first.getInfo().getLayoutVersion()));
     assertEquals(LAST_COMMON_FEATURE.getInfo().getLayoutVersion() - 1,
         first.getInfo().getLayoutVersion());

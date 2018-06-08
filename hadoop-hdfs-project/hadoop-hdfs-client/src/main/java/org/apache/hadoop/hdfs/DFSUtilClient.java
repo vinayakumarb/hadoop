@@ -31,7 +31,6 @@ import org.apache.hadoop.hdfs.client.HdfsClientConfigKeys;
 import org.apache.hadoop.hdfs.net.BasicInetPeer;
 import org.apache.hadoop.hdfs.net.NioInetPeer;
 import org.apache.hadoop.hdfs.net.Peer;
-import org.apache.hadoop.hdfs.protocol.ClientDatanodeProtocol;
 import org.apache.hadoop.hdfs.protocol.DatanodeID;
 import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
@@ -42,14 +41,12 @@ import org.apache.hadoop.hdfs.protocol.datatransfer.IOStreamPair;
 import org.apache.hadoop.hdfs.protocol.ReconfigurationProtocol;
 import org.apache.hadoop.hdfs.protocol.datatransfer.sasl.DataEncryptionKeyFactory;
 import org.apache.hadoop.hdfs.protocol.datatransfer.sasl.SaslDataTransferClient;
-import org.apache.hadoop.hdfs.protocolPB.ClientDatanodeProtocolTranslatorPB;
 import org.apache.hadoop.hdfs.protocolPB.ReconfigurationProtocolTranslatorPB;
 import org.apache.hadoop.hdfs.security.token.block.BlockTokenIdentifier;
 import org.apache.hadoop.hdfs.util.IOUtilsClient;
 import org.apache.hadoop.hdfs.web.WebHdfsConstants;
 import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.net.NetUtils;
-import org.apache.hadoop.net.NodeBase;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.util.Daemon;
@@ -283,29 +280,8 @@ public class DFSUtilClient {
     int idx = 0;
     for (LocatedBlock blk : blocks) {
       assert idx < nrBlocks : "Incorrect index";
-      DatanodeInfo[] locations = blk.getLocations();
-      String[] hosts = new String[locations.length];
-      String[] xferAddrs = new String[locations.length];
-      String[] racks = new String[locations.length];
-      for (int hCnt = 0; hCnt < locations.length; hCnt++) {
-        hosts[hCnt] = locations[hCnt].getHostName();
-        xferAddrs[hCnt] = locations[hCnt].getXferAddr();
-        NodeBase node = new NodeBase(xferAddrs[hCnt],
-                                     locations[hCnt].getNetworkLocation());
-        racks[hCnt] = node.toString();
-      }
-      DatanodeInfo[] cachedLocations = blk.getCachedLocations();
-      String[] cachedHosts = new String[cachedLocations.length];
-      for (int i=0; i<cachedLocations.length; i++) {
-        cachedHosts[i] = cachedLocations[i].getHostName();
-      }
-      blkLocations[idx] = new BlockLocation(xferAddrs, hosts, cachedHosts,
-                                            racks,
-                                            blk.getStorageIDs(),
-                                            blk.getStorageTypes(),
-                                            blk.getStartOffset(),
-                                            blk.getBlockSize(),
-                                            blk.isCorrupt());
+      blkLocations[idx] = new BlockLocation(null, null, null, null, null, null,
+          blk.getStartOffset(), blk.getBlockSize(), false);
       idx++;
     }
     return blkLocations;
@@ -567,29 +543,6 @@ public class DFSUtilClient {
     LOG.trace("Address {} is {} local", targetAddr, (local ? "" : "not"));
     localAddrMap.put(addr.getHostAddress(), local);
     return local;
-  }
-
-  /** Create a {@link ClientDatanodeProtocol} proxy */
-  public static ClientDatanodeProtocol createClientDatanodeProtocolProxy(
-      DatanodeID datanodeid, Configuration conf, int socketTimeout,
-      boolean connectToDnViaHostname, LocatedBlock locatedBlock) throws IOException {
-    return new ClientDatanodeProtocolTranslatorPB(datanodeid, conf, socketTimeout,
-        connectToDnViaHostname, locatedBlock);
-  }
-
-  /** Create {@link ClientDatanodeProtocol} proxy using kerberos ticket */
-  public static ClientDatanodeProtocol createClientDatanodeProtocolProxy(
-      DatanodeID datanodeid, Configuration conf, int socketTimeout,
-      boolean connectToDnViaHostname) throws IOException {
-    return new ClientDatanodeProtocolTranslatorPB(
-        datanodeid, conf, socketTimeout, connectToDnViaHostname);
-  }
-
-  /** Create a {@link ClientDatanodeProtocol} proxy */
-  public static ClientDatanodeProtocol createClientDatanodeProtocolProxy(
-      InetSocketAddress addr, UserGroupInformation ticket, Configuration conf,
-      SocketFactory factory) throws IOException {
-    return new ClientDatanodeProtocolTranslatorPB(addr, ticket, conf, factory);
   }
 
   public static ReconfigurationProtocol createReconfigurationProtocolProxy(

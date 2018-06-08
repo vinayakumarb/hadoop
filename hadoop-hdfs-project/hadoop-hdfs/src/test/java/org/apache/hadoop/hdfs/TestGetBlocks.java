@@ -40,9 +40,6 @@ import org.apache.hadoop.hdfs.protocol.HdfsConstants.DatanodeReportType;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
 import org.apache.hadoop.hdfs.server.blockmanagement.BlockInfo;
-import org.apache.hadoop.hdfs.server.blockmanagement.BlockManagerTestUtil;
-import org.apache.hadoop.hdfs.server.blockmanagement.DatanodeDescriptor;
-import org.apache.hadoop.hdfs.server.blockmanagement.DatanodeStorageInfo;
 import org.apache.hadoop.hdfs.server.datanode.DataNode;
 import org.apache.hadoop.hdfs.server.datanode.DataNodeTestUtils;
 import org.apache.hadoop.hdfs.server.namenode.FSNamesystem;
@@ -79,102 +76,6 @@ public class TestGetBlocks {
     return null;
   }
 
-  /**
-   * Test if the datanodes returned by
-   * {@link ClientProtocol#getBlockLocations(String, long, long)} is correct
-   * when stale nodes checking is enabled. Also test during the scenario when 1)
-   * stale nodes checking is enabled, 2) a writing is going on, 3) a datanode
-   * becomes stale happen simultaneously
-   * 
-   * @throws Exception
-   */
-  @Test
-  public void testReadSelectNonStaleDatanode() throws Exception {
-    HdfsConfiguration conf = new HdfsConfiguration();
-    conf.setBoolean(DFSConfigKeys.DFS_NAMENODE_AVOID_STALE_DATANODE_FOR_READ_KEY, true);
-    long staleInterval = 30 * 1000 * 60;
-    conf.setLong(DFSConfigKeys.DFS_NAMENODE_STALE_DATANODE_INTERVAL_KEY,
-        staleInterval);
-    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
-        .numDataNodes(numDatanodes).racks(racks).build();
-
-    cluster.waitActive();
-    InetSocketAddress addr = new InetSocketAddress("localhost",
-        cluster.getNameNodePort());
-    DFSClient client = new DFSClient(addr, conf);
-    List<DatanodeDescriptor> nodeInfoList = cluster.getNameNode()
-        .getNamesystem().getBlockManager().getDatanodeManager()
-        .getDatanodeListForReport(DatanodeReportType.LIVE);
-    assertEquals("Unexpected number of datanodes", numDatanodes,
-        nodeInfoList.size());
-    FileSystem fileSys = cluster.getFileSystem();
-    FSDataOutputStream stm = null;
-    try {
-      // do the writing but do not close the FSDataOutputStream
-      // in order to mimic the ongoing writing
-      final Path fileName = new Path("/file1");
-      stm = fileSys.create(fileName, true,
-          fileSys.getConf().getInt(
-              CommonConfigurationKeys.IO_FILE_BUFFER_SIZE_KEY, 4096),
-          (short) 3, blockSize);
-      stm.write(new byte[(blockSize * 3) / 2]);
-      // We do not close the stream so that
-      // the writing seems to be still ongoing
-      stm.hflush();
-
-      LocatedBlocks blocks = client.getNamenode().getBlockLocations(
-          fileName.toString(), 0, blockSize);
-      DatanodeInfo[] nodes = blocks.get(0).getLocations();
-      assertEquals(nodes.length, 3);
-      DataNode staleNode = null;
-      DatanodeDescriptor staleNodeInfo = null;
-      // stop the heartbeat of the first node
-      staleNode = this.stopDataNodeHeartbeat(cluster, nodes[0].getHostName());
-      assertNotNull(staleNode);
-      // set the first node as stale
-      staleNodeInfo = cluster.getNameNode().getNamesystem().getBlockManager()
-          .getDatanodeManager()
-          .getDatanode(staleNode.getDatanodeId());
-      DFSTestUtil.resetLastUpdatesWithOffset(staleNodeInfo,
-          -(staleInterval + 1));
-
-      LocatedBlocks blocksAfterStale = client.getNamenode().getBlockLocations(
-          fileName.toString(), 0, blockSize);
-      DatanodeInfo[] nodesAfterStale = blocksAfterStale.get(0).getLocations();
-      assertEquals(nodesAfterStale.length, 3);
-      assertEquals(nodesAfterStale[2].getHostName(), nodes[0].getHostName());
-
-      // restart the staleNode's heartbeat
-      DataNodeTestUtils.setHeartbeatsDisabledForTests(staleNode, false);
-      // reset the first node as non-stale, so as to avoid two stale nodes
-      DFSTestUtil.resetLastUpdatesWithOffset(staleNodeInfo, 0);
-      LocatedBlock lastBlock = client.getLocatedBlocks(fileName.toString(), 0,
-          Long.MAX_VALUE).getLastLocatedBlock();
-      nodes = lastBlock.getLocations();
-      assertEquals(nodes.length, 3);
-      // stop the heartbeat of the first node for the last block
-      staleNode = this.stopDataNodeHeartbeat(cluster, nodes[0].getHostName());
-      assertNotNull(staleNode);
-      // set the node as stale
-      DatanodeDescriptor dnDesc = cluster.getNameNode().getNamesystem()
-          .getBlockManager().getDatanodeManager()
-          .getDatanode(staleNode.getDatanodeId());
-      DFSTestUtil.resetLastUpdatesWithOffset(dnDesc, -(staleInterval + 1));
-
-      LocatedBlock lastBlockAfterStale = client.getLocatedBlocks(
-          fileName.toString(), 0, Long.MAX_VALUE).getLastLocatedBlock();
-      nodesAfterStale = lastBlockAfterStale.getLocations();
-      assertEquals(nodesAfterStale.length, 3);
-      assertEquals(nodesAfterStale[2].getHostName(), nodes[0].getHostName());
-    } finally {
-      if (stm != null) {
-        stm.close();
-      }
-      client.close();
-      cluster.shutdown();
-    }
-  }
-
   /** test getBlocks */
   @Test
   public void testGetBlocks() throws Exception {
@@ -184,8 +85,6 @@ public class TestGetBlocks {
     final int DEFAULT_BLOCK_SIZE = 1024;
 
     CONF.setLong(DFSConfigKeys.DFS_BLOCK_SIZE_KEY, DEFAULT_BLOCK_SIZE);
-    CONF.setLong(DFSConfigKeys.DFS_BALANCER_GETBLOCKS_MIN_BLOCK_SIZE_KEY,
-      DEFAULT_BLOCK_SIZE);
 
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(CONF)
               .numDataNodes(REPLICATION_FACTOR)

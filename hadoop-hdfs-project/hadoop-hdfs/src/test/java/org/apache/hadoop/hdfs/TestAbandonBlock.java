@@ -117,9 +117,6 @@ public class TestAbandonBlock {
       fout.writeByte(123);
     }
 
-    // Shutdown one datanode, causing the block abandonment.
-    cluster.getDataNodes().get(0).shutdown();
-
     // Close the file, new block will be allocated with 2MB pending size.
     try {
       fout.close();

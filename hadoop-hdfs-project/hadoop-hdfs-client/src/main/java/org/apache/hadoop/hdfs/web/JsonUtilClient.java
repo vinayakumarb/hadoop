@@ -37,7 +37,6 @@ import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hdfs.DFSUtilClient;
 import org.apache.hadoop.hdfs.protocol.BlockStoragePolicy;
 import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
-import org.apache.hadoop.hdfs.protocol.ErasureCodingPolicy;
 import org.apache.hadoop.hdfs.protocol.SnapshotDiffReport;
 import org.apache.hadoop.hdfs.protocol.SnapshottableDirectoryStatus;
 import org.apache.hadoop.hdfs.protocol.DatanodeInfo.DatanodeInfoBuilder;
@@ -145,19 +144,6 @@ class JsonUtilClient {
       f.add(HdfsFileStatus.Flags.HAS_EC);
     }
 
-    Map<String, Object> ecPolicyObj = (Map) m.get("ecPolicyObj");
-    ErasureCodingPolicy ecPolicy = null;
-    if (ecPolicyObj != null) {
-      Map<String, String> extraOptions = (Map) ecPolicyObj.get("extraOptions");
-      ECSchema ecSchema = new ECSchema((String) ecPolicyObj.get("codecName"),
-          (int) ecPolicyObj.get("numDataUnits"),
-          (int) ecPolicyObj.get("numParityUnits"), extraOptions);
-      ecPolicy = new ErasureCodingPolicy((String) ecPolicyObj.get("name"),
-          ecSchema, (int) ecPolicyObj.get("cellSize"),
-          (byte) (int) ecPolicyObj.get("id"));
-
-    }
-
     final long aTime = ((Number) m.get("accessTime")).longValue();
     final long mTime = ((Number) m.get("modificationTime")).longValue();
     final long blockSize = ((Number) m.get("blockSize")).longValue();
@@ -185,7 +171,6 @@ class JsonUtilClient {
       .fileId(fileId)
       .children(childrenNum)
       .storagePolicy(storagePolicy)
-      .ecPolicy(ecPolicy)
       .build();
   }
 
@@ -382,18 +367,8 @@ class JsonUtilClient {
     }
 
     final ExtendedBlock b = toExtendedBlock((Map<?, ?>)m.get("block"));
-    final DatanodeInfo[] locations = toDatanodeInfoArray(
-        getList(m, "locations"));
     final long startOffset = ((Number) m.get("startOffset")).longValue();
-    final boolean isCorrupt = (Boolean)m.get("isCorrupt");
-    final DatanodeInfo[] cachedLocations = toDatanodeInfoArray(
-        getList(m, "cachedLocations"));
-
-    final StorageType[] storageTypes = toStorageTypeArray(
-        getList(m, "storageTypes"));
-    final LocatedBlock locatedblock = new LocatedBlock(b, locations,
-        null, storageTypes, startOffset, isCorrupt, cachedLocations);
-    locatedblock.setBlockToken(toBlockToken((Map<?, ?>)m.get("blockToken")));
+    final LocatedBlock locatedblock = new LocatedBlock(b, startOffset);
     return locatedblock;
   }
 
@@ -631,7 +606,7 @@ class JsonUtilClient {
         (Map<?, ?>) m.get("lastLocatedBlock"));
     final boolean isLastBlockComplete = (Boolean)m.get("isLastBlockComplete");
     return new LocatedBlocks(fileLength, isUnderConstruction, locatedBlocks,
-        lastLocatedBlock, isLastBlockComplete, null, null);
+        lastLocatedBlock, isLastBlockComplete, null);
   }
 
   public static Collection<BlockStoragePolicy> getStoragePolicies(

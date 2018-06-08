@@ -18,6 +18,7 @@
 package org.apache.hadoop.hdfs.server.blockmanagement;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 import org.apache.hadoop.hdfs.DFSTestUtil;
 import org.apache.hadoop.hdfs.protocol.Block;
@@ -31,52 +32,12 @@ import org.junit.Test;
 public class TestBlockUnderConstructionFeature {
   @Test
   public void testInitializeBlockRecovery() throws Exception {
-    DatanodeStorageInfo s1 = DFSTestUtil.createDatanodeStorageInfo("10.10.1.1", "s1");
-    DatanodeDescriptor dd1 = s1.getDatanodeDescriptor();
-    DatanodeStorageInfo s2 = DFSTestUtil.createDatanodeStorageInfo("10.10.1.2", "s2");
-    DatanodeDescriptor dd2 = s2.getDatanodeDescriptor();
-    DatanodeStorageInfo s3 = DFSTestUtil.createDatanodeStorageInfo("10.10.1.3", "s3");
-    DatanodeDescriptor dd3 = s3.getDatanodeDescriptor();
-
-    dd1.setAlive(true);
-    dd2.setAlive(true);
-    dd3.setAlive(true);
-    BlockInfoContiguous blockInfo = new BlockInfoContiguous(
+    BlockInfo blockInfo = new BlockInfo(
         new Block(0, 0, GenerationStamp.LAST_RESERVED_STAMP), (short) 3);
-    blockInfo.convertToBlockUnderConstruction(BlockUCState.UNDER_CONSTRUCTION,
-        new DatanodeStorageInfo[] {s1, s2, s3});
+    blockInfo.convertToBlockUnderConstruction(BlockUCState.UNDER_CONSTRUCTION);
 
     // Recovery attempt #1.
-    DFSTestUtil.resetLastUpdatesWithOffset(dd1, -3 * 1000);
-    DFSTestUtil.resetLastUpdatesWithOffset(dd2, -1 * 1000);
-    DFSTestUtil.resetLastUpdatesWithOffset(dd3, -2 * 1000);
     blockInfo.getUnderConstructionFeature().initializeBlockRecovery(blockInfo, 1, true);
-    BlockInfo[] blockInfoRecovery = dd2.getLeaseRecoveryCommand(1);
-    assertEquals(blockInfoRecovery[0], blockInfo);
-
-    // Recovery attempt #2.
-    DFSTestUtil.resetLastUpdatesWithOffset(dd1, -2 * 1000);
-    DFSTestUtil.resetLastUpdatesWithOffset(dd2, -1 * 1000);
-    DFSTestUtil.resetLastUpdatesWithOffset(dd3, -3 * 1000);
-    blockInfo.getUnderConstructionFeature().initializeBlockRecovery(blockInfo, 2, true);
-    blockInfoRecovery = dd1.getLeaseRecoveryCommand(1);
-    assertEquals(blockInfoRecovery[0], blockInfo);
-
-    // Recovery attempt #3.
-    DFSTestUtil.resetLastUpdatesWithOffset(dd1, -2 * 1000);
-    DFSTestUtil.resetLastUpdatesWithOffset(dd2, -1 * 1000);
-    DFSTestUtil.resetLastUpdatesWithOffset(dd3, -3 * 1000);
-    blockInfo.getUnderConstructionFeature().initializeBlockRecovery(blockInfo, 3, true);
-    blockInfoRecovery = dd3.getLeaseRecoveryCommand(1);
-    assertEquals(blockInfoRecovery[0], blockInfo);
-
-    // Recovery attempt #4.
-    // Reset everything. And again pick DN with most recent heart beat.
-    DFSTestUtil.resetLastUpdatesWithOffset(dd1, -2 * 1000);
-    DFSTestUtil.resetLastUpdatesWithOffset(dd2, -1 * 1000);
-    DFSTestUtil.resetLastUpdatesWithOffset(dd3, 0);
-    blockInfo.getUnderConstructionFeature().initializeBlockRecovery(blockInfo, 3, true);
-    blockInfoRecovery = dd3.getLeaseRecoveryCommand(1);
-    assertEquals(blockInfoRecovery[0], blockInfo);
+    fail("TODO: Assertion not implemented yet!!");
   }
 }

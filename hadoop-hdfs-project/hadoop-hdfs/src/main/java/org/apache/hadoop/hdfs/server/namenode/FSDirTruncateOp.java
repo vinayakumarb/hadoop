@@ -29,9 +29,7 @@ import org.apache.hadoop.hdfs.protocol.BlockStoragePolicy;
 import org.apache.hadoop.hdfs.protocol.QuotaExceededException;
 import org.apache.hadoop.hdfs.protocol.SnapshotAccessControlException;
 import org.apache.hadoop.hdfs.server.blockmanagement.BlockInfo;
-import org.apache.hadoop.hdfs.server.blockmanagement.BlockInfoContiguous;
 import org.apache.hadoop.hdfs.server.blockmanagement.BlockManager;
-import org.apache.hadoop.hdfs.protocol.BlockType;
 import org.apache.hadoop.hdfs.server.blockmanagement.BlockUnderConstructionFeature;
 import org.apache.hadoop.hdfs.server.common.HdfsServerConstants.BlockUCState;
 import org.apache.hadoop.hdfs.server.namenode.FSDirectory.DirOp;
@@ -229,7 +227,7 @@ final class FSDirTruncateOp {
     boolean shouldCopyOnTruncate = shouldCopyOnTruncate(fsn, file, oldBlock);
     if (newBlock == null) {
       newBlock = (shouldCopyOnTruncate) ?
-          fsn.createNewBlock(BlockType.CONTIGUOUS)
+          fsn.createNewBlock()
           : new Block(oldBlock.getBlockId(), oldBlock.getNumBytes(),
           fsn.nextGenerationStamp(fsn.getBlockManager().isLegacyBlock(
               oldBlock)));
@@ -240,10 +238,10 @@ final class FSDirTruncateOp {
     if (shouldCopyOnTruncate) {
       // Add new truncateBlock into blocksMap and
       // use oldBlock as a source for copy-on-truncate recovery
-      truncatedBlockUC = new BlockInfoContiguous(newBlock,
+      truncatedBlockUC = new BlockInfo(newBlock,
           file.getPreferredBlockReplication());
       truncatedBlockUC.convertToBlockUnderConstruction(
-          BlockUCState.UNDER_CONSTRUCTION, blockManager.getStorages(oldBlock));
+          BlockUCState.UNDER_CONSTRUCTION);
       truncatedBlockUC.setNumBytes(oldBlock.getNumBytes() - lastBlockDelta);
       truncatedBlockUC.getUnderConstructionFeature().setTruncateBlock(oldBlock);
       file.setLastBlock(truncatedBlockUC);
@@ -259,7 +257,7 @@ final class FSDirTruncateOp {
       oldBlock = file.getLastBlock();
       assert !oldBlock.isComplete() : "oldBlock should be under construction";
       BlockUnderConstructionFeature uc = oldBlock.getUnderConstructionFeature();
-      uc.setTruncateBlock(new BlockInfoContiguous(oldBlock,
+      uc.setTruncateBlock(new BlockInfo(oldBlock,
           oldBlock.getReplication()));
       uc.getTruncateBlock().setNumBytes(oldBlock.getNumBytes() - lastBlockDelta);
       uc.getTruncateBlock().setGenerationStamp(newBlock.getGenerationStamp());

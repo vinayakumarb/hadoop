@@ -69,7 +69,6 @@ public class GetConf extends Configured implements Tool {
     NAMENODE("-namenodes", "gets list of namenodes in the cluster."),
     SECONDARY("-secondaryNameNodes", 
         "gets list of secondary namenodes in the cluster."),
-    BACKUP("-backupNodes", "gets list of backup nodes in the cluster."),
     JOURNALNODE("-journalNodes", "gets list of journal nodes in the cluster."),
     INCLUDE_FILE("-includeFile",
         "gets the include file path that defines the datanodes " +
@@ -87,8 +86,6 @@ public class GetConf extends Configured implements Tool {
           new NameNodesCommandHandler());
       map.put(StringUtils.toLowerCase(SECONDARY.getName()),
           new SecondaryNameNodesCommandHandler());
-      map.put(StringUtils.toLowerCase(BACKUP.getName()),
-          new BackupNodesCommandHandler());
       map.put(StringUtils.toLowerCase(JOURNALNODE.getName()),
           new JournalNodeCommandHandler());
       map.put(StringUtils.toLowerCase(INCLUDE_FILE.getName()),
@@ -193,17 +190,6 @@ public class GetConf extends Configured implements Tool {
     @Override
     int doWorkInternal(GetConf tool, String []args) throws IOException {
       tool.printMap(DFSUtil.getNNServiceRpcAddressesForCluster(tool.getConf()));
-      return 0;
-    }
-  }
-  
-  /**
-   * Handler for {@link Command#BACKUP}
-   */
-  static class BackupNodesCommandHandler extends CommandHandler {
-    @Override
-    public int doWorkInternal(GetConf tool, String []args) throws IOException {
-      tool.printMap(DFSUtil.getBackupNodeAddresses(tool.getConf()));
       return 0;
     }
   }

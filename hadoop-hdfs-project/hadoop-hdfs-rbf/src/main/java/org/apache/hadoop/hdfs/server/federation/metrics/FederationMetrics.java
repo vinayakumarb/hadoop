@@ -314,7 +314,7 @@ public class FederationMetrics implements FederationMBean {
   /**
    * Populate the map with the State Store versions.
    *
-   * @param innerInfo Map with the information.
+   * @param map Map with the information.
    * @param version State Store versions.
    */
   private static void setStateStoreVersions(
@@ -337,11 +337,6 @@ public class FederationMetrics implements FederationMBean {
   @Override
   public long getRemainingCapacity() {
     return getNameserviceAggregatedLong(MembershipStats::getAvailableSpace);
-  }
-
-  @Override
-  public long getProvidedSpace() {
-    return getNameserviceAggregatedLong(MembershipStats::getProvidedSpace);
   }
 
   @Override
@@ -395,100 +390,8 @@ public class FederationMetrics implements FederationMBean {
   }
 
   @Override
-  public int getNumLiveNodes() {
-    return getNameserviceAggregatedInt(
-        MembershipStats::getNumOfActiveDatanodes);
-  }
-
-  @Override
-  public int getNumDeadNodes() {
-    return getNameserviceAggregatedInt(MembershipStats::getNumOfDeadDatanodes);
-  }
-
-  @Override
-  public int getNumDecommissioningNodes() {
-    return getNameserviceAggregatedInt(
-        MembershipStats::getNumOfDecommissioningDatanodes);
-  }
-
-  @Override
-  public int getNumDecomLiveNodes() {
-    return getNameserviceAggregatedInt(
-        MembershipStats::getNumOfDecomActiveDatanodes);
-  }
-
-  @Override
-  public int getNumDecomDeadNodes() {
-    return getNameserviceAggregatedInt(
-        MembershipStats::getNumOfDecomDeadDatanodes);
-  }
-
-  @Override // NameNodeMXBean
-  public String getNodeUsage() {
-    float median = 0;
-    float max = 0;
-    float min = 0;
-    float dev = 0;
-
-    final Map<String, Map<String, Object>> info = new HashMap<>();
-    try {
-      RouterRpcServer rpcServer = this.router.getRpcServer();
-      DatanodeInfo[] live = rpcServer.getDatanodeReport(
-          DatanodeReportType.LIVE, false, TIME_OUT);
-
-      if (live.length > 0) {
-        float totalDfsUsed = 0;
-        float[] usages = new float[live.length];
-        int i = 0;
-        for (DatanodeInfo dn : live) {
-          usages[i++] = dn.getDfsUsedPercent();
-          totalDfsUsed += dn.getDfsUsedPercent();
-        }
-        totalDfsUsed /= live.length;
-        Arrays.sort(usages);
-        median = usages[usages.length / 2];
-        max = usages[usages.length - 1];
-        min = usages[0];
-
-        for (i = 0; i < usages.length; i++) {
-          dev += (usages[i] - totalDfsUsed) * (usages[i] - totalDfsUsed);
-        }
-        dev = (float) Math.sqrt(dev / usages.length);
-      }
-    } catch (IOException e) {
-      LOG.error("Cannot get the live nodes: {}", e.getMessage());
-    }
-
-    final Map<String, Object> innerInfo = new HashMap<>();
-    innerInfo.put("min", StringUtils.format("%.2f%%", min));
-    innerInfo.put("median", StringUtils.format("%.2f%%", median));
-    innerInfo.put("max", StringUtils.format("%.2f%%", max));
-    innerInfo.put("stdDev", StringUtils.format("%.2f%%", dev));
-    info.put("nodeUsage", innerInfo);
-
-    return JSON.toString(info);
-  }
-
-  @Override
   public long getNumBlocks() {
     return getNameserviceAggregatedLong(MembershipStats::getNumOfBlocks);
-  }
-
-  @Override
-  public long getNumOfMissingBlocks() {
-    return getNameserviceAggregatedLong(MembershipStats::getNumOfBlocksMissing);
-  }
-
-  @Override
-  public long getNumOfBlocksPendingReplication() {
-    return getNameserviceAggregatedLong(
-        MembershipStats::getNumOfBlocksPendingReplication);
-  }
-
-  @Override
-  public long getNumOfBlocksUnderReplicated() {
-    return getNameserviceAggregatedLong(
-        MembershipStats::getNumOfBlocksUnderReplicated);
   }
 
   @Override

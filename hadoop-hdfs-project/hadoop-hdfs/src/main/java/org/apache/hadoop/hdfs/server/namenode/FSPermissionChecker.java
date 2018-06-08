@@ -444,7 +444,6 @@ public class FSPermissionChecker implements AccessControlEnforcer {
    * - Default entries may be present, but they are ignored during enforcement.
    *
    * @param inode INodeAttributes accessed inode
-   * @param snapshotId int snapshot ID
    * @param access FsAction requested permission
    * @param mode FsPermission mode from inode
    * @param aclFeature AclFeature of inode
@@ -550,37 +549,6 @@ public class FSPermissionChecker implements AccessControlEnforcer {
         inode.getFsPermission().toString(), parentPath, parent.getUserName(),
         parent.getGroupName(), parent.isDirectory() ? "d" : "-",
         parent.getFsPermission().toString()));
-  }
-
-  /**
-   * Whether a cache pool can be accessed by the current context
-   *
-   * @param pool CachePool being accessed
-   * @param access type of action being performed on the cache pool
-   * @throws AccessControlException if pool cannot be accessed
-   */
-  public void checkPermission(CachePool pool, FsAction access)
-      throws AccessControlException {
-    FsPermission mode = pool.getMode();
-    if (isSuperUser()) {
-      return;
-    }
-    if (getUser().equals(pool.getOwnerName())
-        && mode.getUserAction().implies(access)) {
-      return;
-    }
-    if (isMemberOfGroup(pool.getGroupName())
-        && mode.getGroupAction().implies(access)) {
-      return;
-    }
-    if (!getUser().equals(pool.getOwnerName())
-        && !isMemberOfGroup(pool.getGroupName())
-        && mode.getOtherAction().implies(access)) {
-      return;
-    }
-    throw new AccessControlException("Permission denied while accessing pool "
-        + pool.getPoolName() + ": user " + getUser() + " does not have "
-        + access.toString() + " permissions.");
   }
 
   /**

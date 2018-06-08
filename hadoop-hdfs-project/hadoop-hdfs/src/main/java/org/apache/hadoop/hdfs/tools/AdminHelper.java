@@ -21,9 +21,7 @@ import com.google.common.base.Preconditions;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.hdfs.DFSUtil;
 import org.apache.hadoop.hdfs.DistributedFileSystem;
-import org.apache.hadoop.hdfs.protocol.CachePoolInfo;
 import org.apache.hadoop.tools.TableListing;
 
 import java.io.IOException;
@@ -73,35 +71,6 @@ public class AdminHelper {
     return new TableListing.Builder()
         .addField("").addField("", true)
         .wrapWidth(MAX_LINE_WIDTH).hideHeaders().build();
-  }
-
-  /**
-   * Parses a time-to-live value from a string
-   * @return The ttl in milliseconds
-   * @throws IOException if it could not be parsed
-   */
-  static Long parseTtlString(String maxTtlString) throws IOException {
-    Long maxTtl = null;
-    if (maxTtlString != null) {
-      if (maxTtlString.equalsIgnoreCase("never")) {
-        maxTtl = CachePoolInfo.RELATIVE_EXPIRY_NEVER;
-      } else {
-        maxTtl = DFSUtil.parseRelativeTime(maxTtlString);
-      }
-    }
-    return maxTtl;
-  }
-
-  static Long parseLimitString(String limitString) {
-    Long limit = null;
-    if (limitString != null) {
-      if (limitString.equalsIgnoreCase("unlimited")) {
-        limit = CachePoolInfo.LIMIT_UNLIMITED;
-      } else {
-        limit = Long.parseLong(limitString);
-      }
-    }
-    return limit;
   }
 
   static Command determineCommand(String commandName, Command[] commands) {

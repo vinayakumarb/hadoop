@@ -21,21 +21,17 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.EnumSet;
-import java.util.HashMap;
 import java.util.List;
 
 import com.google.common.collect.Lists;
 
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.crypto.CryptoProtocolVersion;
 import org.apache.hadoop.fs.BatchedRemoteIterator.BatchedEntries;
 import org.apache.hadoop.fs.BatchedRemoteIterator.BatchedListEntries;
-import org.apache.hadoop.fs.CacheFlag;
 import org.apache.hadoop.fs.ContentSummary;
 import org.apache.hadoop.fs.CreateFlag;
 import org.apache.hadoop.fs.FsServerDefaults;
@@ -50,23 +46,14 @@ import org.apache.hadoop.fs.permission.FsAction;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hdfs.AddBlockFlag;
 import org.apache.hadoop.hdfs.inotify.EventBatchList;
-import org.apache.hadoop.hdfs.protocol.AddErasureCodingPolicyResponse;
 import org.apache.hadoop.hdfs.protocol.BlockStoragePolicy;
-import org.apache.hadoop.hdfs.protocol.CacheDirectiveEntry;
-import org.apache.hadoop.hdfs.protocol.CacheDirectiveInfo;
-import org.apache.hadoop.hdfs.protocol.CachePoolEntry;
-import org.apache.hadoop.hdfs.protocol.CachePoolInfo;
 import org.apache.hadoop.hdfs.protocol.ClientProtocol;
 import org.apache.hadoop.hdfs.protocol.CorruptFileBlocks;
 import org.apache.hadoop.hdfs.protocol.DatanodeID;
 import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.hdfs.protocol.DirectoryListing;
-import org.apache.hadoop.hdfs.protocol.ECBlockGroupStats;
 import org.apache.hadoop.hdfs.protocol.EncryptionZone;
-import org.apache.hadoop.hdfs.protocol.ErasureCodingPolicy;
-import org.apache.hadoop.hdfs.protocol.ErasureCodingPolicyInfo;
 import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
-import org.apache.hadoop.hdfs.protocol.HdfsConstants.DatanodeReportType;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants.ReencryptAction;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants.RollingUpgradeAction;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants.SafeModeAction;
@@ -76,7 +63,6 @@ import org.apache.hadoop.hdfs.protocol.LastBlockWithStatus;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
 import org.apache.hadoop.hdfs.protocol.OpenFilesIterator.OpenFilesType;
-import org.apache.hadoop.hdfs.protocol.ReplicatedBlockStats;
 import org.apache.hadoop.hdfs.protocol.OpenFileEntry;
 import org.apache.hadoop.hdfs.protocol.OpenFilesIterator;
 import org.apache.hadoop.hdfs.protocol.ZoneReencryptionStatus;
@@ -93,12 +79,9 @@ import org.apache.hadoop.hdfs.protocol.proto.AclProtos.RemoveDefaultAclRequestPr
 import org.apache.hadoop.hdfs.protocol.proto.AclProtos.SetAclRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.AbandonBlockRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.AddBlockRequestProto;
-import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.AddCacheDirectiveRequestProto;
-import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.AddCachePoolRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.AllowSnapshotRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.AppendRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.AppendResponseProto;
-import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.CachePoolEntryProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.CheckAccessRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.CompleteRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.ConcatRequestProto;
@@ -118,15 +101,11 @@ import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.GetCon
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.GetCurrentEditLogTxidRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.GetDataEncryptionKeyRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.GetDataEncryptionKeyResponseProto;
-import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.GetDatanodeReportRequestProto;
-import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.GetDatanodeStorageReportRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.GetEditsFromTxidRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.GetFileInfoRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.GetFileInfoResponseProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.GetFileLinkInfoRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.GetFileLinkInfoResponseProto;
-import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.GetFsECBlockGroupStatsRequestProto;
-import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.GetFsReplicatedBlockStatsRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.GetFsStatusRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.GetLinkTargetRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.GetLinkTargetResponseProto;
@@ -147,22 +126,14 @@ import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.GetSto
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.GetStoragePoliciesResponseProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.GetStoragePolicyRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.IsFileClosedRequestProto;
-import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.ListCacheDirectivesRequestProto;
-import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.ListCacheDirectivesResponseProto;
-import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.ListCachePoolsRequestProto;
-import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.ListCachePoolsResponseProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.ListCorruptFileBlocksRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.ListOpenFilesRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.ListOpenFilesResponseProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.MetaSaveRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.MkdirsRequestProto;
-import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.ModifyCacheDirectiveRequestProto;
-import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.ModifyCachePoolRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.OpenFilesBatchResponseProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.RecoverLeaseRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.RefreshNodesRequestProto;
-import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.RemoveCacheDirectiveRequestProto;
-import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.RemoveCachePoolRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.Rename2RequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.RenameRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.RenameSnapshotRequestProto;
@@ -197,28 +168,12 @@ import org.apache.hadoop.hdfs.protocol.proto.EncryptionZonesProtos.ListReencrypt
 import org.apache.hadoop.hdfs.protocol.proto.EncryptionZonesProtos.ListReencryptionStatusResponseProto;
 import org.apache.hadoop.hdfs.protocol.proto.EncryptionZonesProtos.ZoneReencryptionStatusProto;
 import org.apache.hadoop.hdfs.protocol.proto.EncryptionZonesProtos.ReencryptEncryptionZoneRequestProto;
-import org.apache.hadoop.hdfs.protocol.proto.ErasureCodingProtos.AddErasureCodingPoliciesRequestProto;
-import org.apache.hadoop.hdfs.protocol.proto.ErasureCodingProtos.AddErasureCodingPoliciesResponseProto;
-import org.apache.hadoop.hdfs.protocol.proto.ErasureCodingProtos.GetErasureCodingPoliciesRequestProto;
-import org.apache.hadoop.hdfs.protocol.proto.ErasureCodingProtos.GetErasureCodingPoliciesResponseProto;
-import org.apache.hadoop.hdfs.protocol.proto.ErasureCodingProtos.GetErasureCodingPolicyRequestProto;
-import org.apache.hadoop.hdfs.protocol.proto.ErasureCodingProtos.GetErasureCodingPolicyResponseProto;
-import org.apache.hadoop.hdfs.protocol.proto.ErasureCodingProtos.RemoveErasureCodingPolicyRequestProto;
-import org.apache.hadoop.hdfs.protocol.proto.ErasureCodingProtos.EnableErasureCodingPolicyRequestProto;
-import org.apache.hadoop.hdfs.protocol.proto.ErasureCodingProtos.DisableErasureCodingPolicyRequestProto;
-import org.apache.hadoop.hdfs.protocol.proto.ErasureCodingProtos.GetErasureCodingCodecsRequestProto;
-import org.apache.hadoop.hdfs.protocol.proto.ErasureCodingProtos.GetErasureCodingCodecsResponseProto;
-import org.apache.hadoop.hdfs.protocol.proto.ErasureCodingProtos.SetErasureCodingPolicyRequestProto;
-import org.apache.hadoop.hdfs.protocol.proto.ErasureCodingProtos.UnsetErasureCodingPolicyRequestProto;
-import org.apache.hadoop.hdfs.protocol.proto.ErasureCodingProtos.CodecProto;
-import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.ErasureCodingPolicyProto;
 import org.apache.hadoop.hdfs.protocol.proto.XAttrProtos.GetXAttrsRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.XAttrProtos.ListXAttrsRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.XAttrProtos.RemoveXAttrRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.XAttrProtos.SetXAttrRequestProto;
 import org.apache.hadoop.hdfs.security.token.block.DataEncryptionKey;
 import org.apache.hadoop.hdfs.security.token.delegation.DelegationTokenIdentifier;
-import org.apache.hadoop.hdfs.server.protocol.DatanodeStorageReport;
 import org.apache.hadoop.io.EnumSetWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.retry.AsyncCallHandler;
@@ -257,14 +212,6 @@ public class ClientNamenodeProtocolTranslatorPB implements
   private final static GetFsStatusRequestProto VOID_GET_FSSTATUS_REQUEST =
       GetFsStatusRequestProto.newBuilder().build();
 
-  private final static GetFsReplicatedBlockStatsRequestProto
-      VOID_GET_FS_REPLICATED_BLOCK_STATS_REQUEST =
-      GetFsReplicatedBlockStatsRequestProto.newBuilder().build();
-
-  private final static GetFsECBlockGroupStatsRequestProto
-      VOID_GET_FS_ECBLOCKGROUP_STATS_REQUEST =
-      GetFsECBlockGroupStatsRequestProto.newBuilder().build();
-
   private final static RollEditsRequestProto VOID_ROLLEDITS_REQUEST =
       RollEditsRequestProto.getDefaultInstance();
 
@@ -286,14 +233,6 @@ public class ClientNamenodeProtocolTranslatorPB implements
   private final static GetStoragePoliciesRequestProto
       VOID_GET_STORAGE_POLICIES_REQUEST =
       GetStoragePoliciesRequestProto.newBuilder().build();
-
-  private final static GetErasureCodingPoliciesRequestProto
-      VOID_GET_EC_POLICIES_REQUEST = GetErasureCodingPoliciesRequestProto
-      .newBuilder().build();
-
-  private final static GetErasureCodingCodecsRequestProto
-      VOID_GET_EC_CODEC_REQUEST = GetErasureCodingCodecsRequestProto
-      .newBuilder().build();
 
   public ClientNamenodeProtocolTranslatorPB(ClientNamenodeProtocolPB proxy) {
     rpcProxy = proxy;
@@ -704,55 +643,6 @@ public class ClientNamenodeProtocolTranslatorPB implements
     try {
       return PBHelperClient.convert(rpcProxy.getFsStats(null,
           VOID_GET_FSSTATUS_REQUEST));
-    } catch (ServiceException e) {
-      throw ProtobufHelper.getRemoteException(e);
-    }
-  }
-
-  @Override
-  public ReplicatedBlockStats getReplicatedBlockStats() throws IOException {
-    try {
-      return PBHelperClient.convert(rpcProxy.getFsReplicatedBlockStats(null,
-          VOID_GET_FS_REPLICATED_BLOCK_STATS_REQUEST));
-    } catch (ServiceException e) {
-      throw ProtobufHelper.getRemoteException(e);
-    }
-  }
-
-  @Override
-  public ECBlockGroupStats getECBlockGroupStats() throws IOException {
-    try {
-      return PBHelperClient.convert(rpcProxy.getFsECBlockGroupStats(null,
-          VOID_GET_FS_ECBLOCKGROUP_STATS_REQUEST));
-    } catch (ServiceException e) {
-      throw ProtobufHelper.getRemoteException(e);
-    }
-  }
-
-  @Override
-  public DatanodeInfo[] getDatanodeReport(DatanodeReportType type)
-      throws IOException {
-    GetDatanodeReportRequestProto req = GetDatanodeReportRequestProto
-        .newBuilder()
-        .setType(PBHelperClient.convert(type)).build();
-    try {
-      return PBHelperClient.convert(
-          rpcProxy.getDatanodeReport(null, req).getDiList());
-    } catch (ServiceException e) {
-      throw ProtobufHelper.getRemoteException(e);
-    }
-  }
-
-  @Override
-  public DatanodeStorageReport[] getDatanodeStorageReport(
-      DatanodeReportType type) throws IOException {
-    final GetDatanodeStorageReportRequestProto req
-        = GetDatanodeStorageReportRequestProto.newBuilder()
-        .setType(PBHelperClient.convert(type)).build();
-    try {
-      return PBHelperClient.convertDatanodeStorageReports(
-          rpcProxy.getDatanodeStorageReport(null, req)
-              .getDatanodeStorageReportsList());
     } catch (ServiceException e) {
       throw ProtobufHelper.getRemoteException(e);
     }
@@ -1272,166 +1162,6 @@ public class ClientNamenodeProtocolTranslatorPB implements
   }
 
   @Override
-  public long addCacheDirective(CacheDirectiveInfo directive,
-      EnumSet<CacheFlag> flags) throws IOException {
-    try {
-      AddCacheDirectiveRequestProto.Builder builder =
-          AddCacheDirectiveRequestProto.newBuilder().
-              setInfo(PBHelperClient.convert(directive));
-      if (!flags.isEmpty()) {
-        builder.setCacheFlags(PBHelperClient.convertCacheFlags(flags));
-      }
-      return rpcProxy.addCacheDirective(null, builder.build()).getId();
-    } catch (ServiceException e) {
-      throw ProtobufHelper.getRemoteException(e);
-    }
-  }
-
-  @Override
-  public void modifyCacheDirective(CacheDirectiveInfo directive,
-      EnumSet<CacheFlag> flags) throws IOException {
-    try {
-      ModifyCacheDirectiveRequestProto.Builder builder =
-          ModifyCacheDirectiveRequestProto.newBuilder().
-              setInfo(PBHelperClient.convert(directive));
-      if (!flags.isEmpty()) {
-        builder.setCacheFlags(PBHelperClient.convertCacheFlags(flags));
-      }
-      rpcProxy.modifyCacheDirective(null, builder.build());
-    } catch (ServiceException e) {
-      throw ProtobufHelper.getRemoteException(e);
-    }
-  }
-
-  @Override
-  public void removeCacheDirective(long id)
-      throws IOException {
-    try {
-      rpcProxy.removeCacheDirective(null,
-          RemoveCacheDirectiveRequestProto.newBuilder().
-              setId(id).build());
-    } catch (ServiceException e) {
-      throw ProtobufHelper.getRemoteException(e);
-    }
-  }
-
-  private static class BatchedCacheEntries
-      implements BatchedEntries<CacheDirectiveEntry> {
-    private final ListCacheDirectivesResponseProto response;
-
-    BatchedCacheEntries(
-        ListCacheDirectivesResponseProto response) {
-      this.response = response;
-    }
-
-    @Override
-    public CacheDirectiveEntry get(int i) {
-      return PBHelperClient.convert(response.getElements(i));
-    }
-
-    @Override
-    public int size() {
-      return response.getElementsCount();
-    }
-
-    @Override
-    public boolean hasMore() {
-      return response.getHasMore();
-    }
-  }
-
-  @Override
-  public BatchedEntries<CacheDirectiveEntry> listCacheDirectives(long prevId,
-      CacheDirectiveInfo filter) throws IOException {
-    if (filter == null) {
-      filter = new CacheDirectiveInfo.Builder().build();
-    }
-    try {
-      return new BatchedCacheEntries(
-          rpcProxy.listCacheDirectives(null,
-              ListCacheDirectivesRequestProto.newBuilder().
-                  setPrevId(prevId).
-                  setFilter(PBHelperClient.convert(filter)).
-                  build()));
-    } catch (ServiceException e) {
-      throw ProtobufHelper.getRemoteException(e);
-    }
-  }
-
-  @Override
-  public void addCachePool(CachePoolInfo info) throws IOException {
-    AddCachePoolRequestProto.Builder builder =
-        AddCachePoolRequestProto.newBuilder();
-    builder.setInfo(PBHelperClient.convert(info));
-    try {
-      rpcProxy.addCachePool(null, builder.build());
-    } catch (ServiceException e) {
-      throw ProtobufHelper.getRemoteException(e);
-    }
-  }
-
-  @Override
-  public void modifyCachePool(CachePoolInfo req) throws IOException {
-    ModifyCachePoolRequestProto.Builder builder =
-        ModifyCachePoolRequestProto.newBuilder();
-    builder.setInfo(PBHelperClient.convert(req));
-    try {
-      rpcProxy.modifyCachePool(null, builder.build());
-    } catch (ServiceException e) {
-      throw ProtobufHelper.getRemoteException(e);
-    }
-  }
-
-  @Override
-  public void removeCachePool(String cachePoolName) throws IOException {
-    try {
-      rpcProxy.removeCachePool(null,
-          RemoveCachePoolRequestProto.newBuilder().
-              setPoolName(cachePoolName).build());
-    } catch (ServiceException e) {
-      throw ProtobufHelper.getRemoteException(e);
-    }
-  }
-
-  private static class BatchedCachePoolEntries
-      implements BatchedEntries<CachePoolEntry> {
-    private final ListCachePoolsResponseProto proto;
-
-    public BatchedCachePoolEntries(ListCachePoolsResponseProto proto) {
-      this.proto = proto;
-    }
-
-    @Override
-    public CachePoolEntry get(int i) {
-      CachePoolEntryProto elem = proto.getEntries(i);
-      return PBHelperClient.convert(elem);
-    }
-
-    @Override
-    public int size() {
-      return proto.getEntriesCount();
-    }
-
-    @Override
-    public boolean hasMore() {
-      return proto.getHasMore();
-    }
-  }
-
-  @Override
-  public BatchedEntries<CachePoolEntry> listCachePools(String prevKey)
-      throws IOException {
-    try {
-      return new BatchedCachePoolEntries(
-          rpcProxy.listCachePools(null,
-              ListCachePoolsRequestProto.newBuilder().
-                  setPrevPoolName(prevKey).build()));
-    } catch (ServiceException e) {
-      throw ProtobufHelper.getRemoteException(e);
-    }
-  }
-
-  @Override
   public void modifyAclEntries(String src, List<AclEntry> aclSpec)
       throws IOException {
     ModifyAclEntriesRequestProto req = ModifyAclEntriesRequestProto
@@ -1581,37 +1311,6 @@ public class ClientNamenodeProtocolTranslatorPB implements
         elements.add(PBHelperClient.convert(p));
       }
       return new BatchedListEntries<>(elements, response.getHasMore());
-    } catch (ServiceException e) {
-      throw ProtobufHelper.getRemoteException(e);
-    }
-  }
-
-  @Override
-  public void setErasureCodingPolicy(String src, String ecPolicyName)
-      throws IOException {
-    final SetErasureCodingPolicyRequestProto.Builder builder =
-        SetErasureCodingPolicyRequestProto.newBuilder();
-    builder.setSrc(src);
-    if (ecPolicyName != null) {
-      builder.setEcPolicyName(ecPolicyName);
-    }
-    SetErasureCodingPolicyRequestProto req = builder.build();
-    try {
-      rpcProxy.setErasureCodingPolicy(null, req);
-    } catch (ServiceException e) {
-      throw ProtobufHelper.getRemoteException(e);
-    }
-  }
-
-  @Override
-  public void unsetErasureCodingPolicy(String src)
-      throws IOException {
-    final UnsetErasureCodingPolicyRequestProto.Builder builder =
-        ErasureCodingProtos.UnsetErasureCodingPolicyRequestProto.newBuilder();
-    builder.setSrc(src);
-    UnsetErasureCodingPolicyRequestProto req = builder.build();
-    try {
-      rpcProxy.unsetErasureCodingPolicy(null, req);
     } catch (ServiceException e) {
       throw ProtobufHelper.getRemoteException(e);
     }
@@ -1779,122 +1478,6 @@ public class ClientNamenodeProtocolTranslatorPB implements
         .setTxid(txid).build();
     try {
       return PBHelperClient.convert(rpcProxy.getEditsFromTxid(null, req));
-    } catch (ServiceException e) {
-      throw ProtobufHelper.getRemoteException(e);
-    }
-  }
-
-  @Override
-  public AddErasureCodingPolicyResponse[] addErasureCodingPolicies(
-      ErasureCodingPolicy[] policies) throws IOException {
-    List<ErasureCodingPolicyProto> protos = Arrays.stream(policies)
-        .map(PBHelperClient::convertErasureCodingPolicy)
-        .collect(Collectors.toList());
-    AddErasureCodingPoliciesRequestProto req =
-        AddErasureCodingPoliciesRequestProto.newBuilder()
-        .addAllEcPolicies(protos).build();
-    try {
-      AddErasureCodingPoliciesResponseProto rep = rpcProxy
-          .addErasureCodingPolicies(null, req);
-      AddErasureCodingPolicyResponse[] responses =
-          rep.getResponsesList().stream()
-              .map(PBHelperClient::convertAddErasureCodingPolicyResponse)
-              .toArray(AddErasureCodingPolicyResponse[]::new);
-      return responses;
-    }  catch (ServiceException e) {
-      throw ProtobufHelper.getRemoteException(e);
-    }
-  }
-
-  @Override
-  public void removeErasureCodingPolicy(String ecPolicyName)
-      throws IOException {
-    RemoveErasureCodingPolicyRequestProto.Builder builder =
-        RemoveErasureCodingPolicyRequestProto.newBuilder();
-    builder.setEcPolicyName(ecPolicyName);
-    RemoveErasureCodingPolicyRequestProto req = builder.build();
-    try {
-      rpcProxy.removeErasureCodingPolicy(null, req);
-    } catch (ServiceException e) {
-      throw ProtobufHelper.getRemoteException(e);
-    }
-  }
-
-  @Override
-  public void enableErasureCodingPolicy(String ecPolicyName)
-      throws IOException {
-    EnableErasureCodingPolicyRequestProto.Builder builder =
-        EnableErasureCodingPolicyRequestProto.newBuilder();
-    builder.setEcPolicyName(ecPolicyName);
-    EnableErasureCodingPolicyRequestProto req = builder.build();
-    try {
-      rpcProxy.enableErasureCodingPolicy(null, req);
-    } catch (ServiceException e) {
-      throw ProtobufHelper.getRemoteException(e);
-    }
-  }
-
-  @Override
-  public void disableErasureCodingPolicy(String ecPolicyName)
-      throws IOException {
-    DisableErasureCodingPolicyRequestProto.Builder builder =
-        DisableErasureCodingPolicyRequestProto.newBuilder();
-    builder.setEcPolicyName(ecPolicyName);
-    DisableErasureCodingPolicyRequestProto req = builder.build();
-    try {
-      rpcProxy.disableErasureCodingPolicy(null, req);
-    } catch (ServiceException e) {
-      throw ProtobufHelper.getRemoteException(e);
-    }
-  }
-
-  @Override
-  public ErasureCodingPolicyInfo[] getErasureCodingPolicies()
-      throws IOException {
-    try {
-      GetErasureCodingPoliciesResponseProto response = rpcProxy
-          .getErasureCodingPolicies(null, VOID_GET_EC_POLICIES_REQUEST);
-      ErasureCodingPolicyInfo[] ecPolicies =
-          new ErasureCodingPolicyInfo[response.getEcPoliciesCount()];
-      int i = 0;
-      for (ErasureCodingPolicyProto proto : response.getEcPoliciesList()) {
-        ecPolicies[i++] =
-            PBHelperClient.convertErasureCodingPolicyInfo(proto);
-      }
-      return ecPolicies;
-    } catch (ServiceException e) {
-      throw ProtobufHelper.getRemoteException(e);
-    }
-  }
-
-  @Override
-  public Map<String, String> getErasureCodingCodecs() throws IOException {
-    try {
-      GetErasureCodingCodecsResponseProto response = rpcProxy
-          .getErasureCodingCodecs(null, VOID_GET_EC_CODEC_REQUEST);
-      Map<String, String> ecCodecs = new HashMap<>();
-      for (CodecProto codec : response.getCodecList()) {
-        ecCodecs.put(codec.getCodec(), codec.getCoders());
-      }
-      return ecCodecs;
-    } catch (ServiceException e) {
-      throw ProtobufHelper.getRemoteException(e);
-    }
-  }
-
-  @Override
-  public ErasureCodingPolicy getErasureCodingPolicy(String src)
-      throws IOException {
-    GetErasureCodingPolicyRequestProto req =
-        GetErasureCodingPolicyRequestProto.newBuilder().setSrc(src).build();
-    try {
-      GetErasureCodingPolicyResponseProto response =
-          rpcProxy.getErasureCodingPolicy(null, req);
-      if (response.hasEcPolicy()) {
-        return PBHelperClient.convertErasureCodingPolicy(
-            response.getEcPolicy());
-      }
-      return null;
     } catch (ServiceException e) {
       throw ProtobufHelper.getRemoteException(e);
     }

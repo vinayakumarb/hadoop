@@ -27,18 +27,12 @@ import java.security.PrivilegedExceptionAction;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Date;
 import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.TreeSet;
 import java.util.concurrent.TimeUnit;
-
-import com.google.common.base.Joiner;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -58,7 +52,6 @@ import org.apache.hadoop.fs.shell.PathData;
 import org.apache.hadoop.fs.StorageType;
 import org.apache.hadoop.hdfs.DFSUtilClient;
 import org.apache.hadoop.hdfs.HAUtilClient;
-import org.apache.hadoop.hdfs.client.BlockReportOptions;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.DFSUtil;
 import org.apache.hadoop.hdfs.DistributedFileSystem;
@@ -67,15 +60,8 @@ import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.hadoop.hdfs.NameNodeProxies;
 import org.apache.hadoop.hdfs.NameNodeProxiesClient.ProxyAndInfo;
 import org.apache.hadoop.hdfs.protocol.OpenFilesIterator.OpenFilesType;
-import org.apache.hadoop.hdfs.protocol.ReplicatedBlockStats;
-import org.apache.hadoop.hdfs.protocol.ClientDatanodeProtocol;
 import org.apache.hadoop.hdfs.protocol.ClientProtocol;
-import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
-import org.apache.hadoop.hdfs.protocol.DatanodeLocalInfo;
-import org.apache.hadoop.hdfs.protocol.DatanodeVolumeInfo;
-import org.apache.hadoop.hdfs.protocol.ECBlockGroupStats;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants;
-import org.apache.hadoop.hdfs.protocol.HdfsConstants.DatanodeReportType;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants.RollingUpgradeAction;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants.SafeModeAction;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants.UpgradeAction;
@@ -533,96 +519,9 @@ public class DFSAdmin extends FsShell {
     System.out.println("DFS Used%: "
         + StringUtils.formatPercent(dfsUsedPercent, 2));
 
-    /* These counts are not always upto date. They are updated after  
-     * iteration of an internal list. Should be updated in a few seconds to 
-     * minutes. Use "-metaSave" to list of all such blocks and accurate 
-     * counts.
-     */
-    ReplicatedBlockStats replicatedBlockStats =
-        dfs.getClient().getNamenode().getReplicatedBlockStats();
-    System.out.println("Replicated Blocks:");
-    System.out.println("\tUnder replicated blocks: " +
-        replicatedBlockStats.getLowRedundancyBlocks());
-    System.out.println("\tBlocks with corrupt replicas: " +
-        replicatedBlockStats.getCorruptBlocks());
-    System.out.println("\tMissing blocks: " +
-        replicatedBlockStats.getMissingReplicaBlocks());
-    System.out.println("\tMissing blocks (with replication factor 1): " +
-        replicatedBlockStats.getMissingReplicationOneBlocks());
-    System.out.println("\tPending deletion blocks: " +
-        replicatedBlockStats.getPendingDeletionBlocks());
-
-    ECBlockGroupStats ecBlockGroupStats =
-        dfs.getClient().getNamenode().getECBlockGroupStats();
-    System.out.println("Erasure Coded Block Groups: ");
-    System.out.println("\tLow redundancy block groups: " +
-        ecBlockGroupStats.getLowRedundancyBlockGroups());
-    System.out.println("\tBlock groups with corrupt internal blocks: " +
-        ecBlockGroupStats.getCorruptBlockGroups());
-    System.out.println("\tMissing block groups: " +
-        ecBlockGroupStats.getMissingBlockGroups());
-    System.out.println("\tPending deletion blocks: " +
-        ecBlockGroupStats.getPendingDeletionBlocks());
-
     System.out.println();
 
     System.out.println("-------------------------------------------------");
-    
-    // Parse arguments for filtering the node list
-    List<String> args = Arrays.asList(argv);
-    // Truncate already handled arguments before parsing report()-specific ones
-    args = new ArrayList<String>(args.subList(i, args.size()));
-    final boolean listLive = StringUtils.popOption("-live", args);
-    final boolean listDead = StringUtils.popOption("-dead", args);
-    final boolean listDecommissioning =
-        StringUtils.popOption("-decommissioning", args);
-    final boolean listEnteringMaintenance =
-        StringUtils.popOption("-enteringmaintenance", args);
-    final boolean listInMaintenance =
-        StringUtils.popOption("-inmaintenance", args);
-
-
-    // If no filter flags are found, then list all DN types
-    boolean listAll = (!listLive && !listDead && !listDecommissioning
-        && !listEnteringMaintenance && !listInMaintenance);
-
-    if (listAll || listLive) {
-      printDataNodeReports(dfs, DatanodeReportType.LIVE, listLive, "Live");
-    }
-
-    if (listAll || listDead) {
-      printDataNodeReports(dfs, DatanodeReportType.DEAD, listDead, "Dead");
-    }
-
-    if (listAll || listDecommissioning) {
-      printDataNodeReports(dfs, DatanodeReportType.DECOMMISSIONING,
-          listDecommissioning, "Decommissioning");
-    }
-
-    if (listAll || listEnteringMaintenance) {
-      printDataNodeReports(dfs, DatanodeReportType.ENTERING_MAINTENANCE,
-          listEnteringMaintenance, "Entering maintenance");
-    }
-
-    if (listAll || listInMaintenance) {
-      printDataNodeReports(dfs, DatanodeReportType.IN_MAINTENANCE,
-          listInMaintenance, "In maintenance");
-    }
-  }
-
-  private static void printDataNodeReports(DistributedFileSystem dfs,
-      DatanodeReportType type, boolean listNodes, String nodeState)
-      throws IOException {
-    DatanodeInfo[] nodes = dfs.getDataNodeStats(type);
-    if (nodes.length > 0 || listNodes) {
-      System.out.println(nodeState + " datanodes (" + nodes.length + "):\n");
-    }
-    if (nodes.length > 0) {
-      for (DatanodeInfo dn : nodes) {
-        System.out.println(dn.getDatanodeReport());
-        System.out.println();
-      }
-    }
   }
 
   /**
@@ -709,38 +608,6 @@ public class DFSAdmin extends FsShell {
       inSafeMode = nn.setSafeMode(SafeModeAction.SAFEMODE_GET, false);
     }
     return inSafeMode;
-  }
-
-  public int triggerBlockReport(String[] argv) throws IOException {
-    List<String> args = new LinkedList<String>();
-    for (int j = 1; j < argv.length; j++) {
-      args.add(argv[j]);
-    }
-    boolean incremental = StringUtils.popOption("-incremental", args);
-    String hostPort = StringUtils.popFirstNonOption(args);
-    if (hostPort == null) {
-      System.err.println("You must specify a host:port pair.");
-      return 1;
-    }
-    if (!args.isEmpty()) {
-      System.err.print("Can't understand arguments: " +
-        Joiner.on(" ").join(args) + "\n");
-      return 1;
-    }
-    ClientDatanodeProtocol dnProxy = getDataNodeProxy(hostPort);
-    try {
-      dnProxy.triggerBlockReport(
-          new BlockReportOptions.Factory().
-              setIncremental(incremental).
-              build());
-    } catch (IOException e) {
-      System.err.println("triggerBlockReport error: " + e);
-      return 1;
-    }
-    System.out.println("Triggering " +
-        (incremental ? "an incremental " : "a full ") +
-        "block report on " + hostPort + ".");
-    return 0;
   }
 
   /**
@@ -1042,25 +909,6 @@ public class DFSAdmin extends FsShell {
     exitCode = 0;
 
     return exitCode;
-  }
-
-  /**
-   * Command to get balancer bandwidth for the given datanode. Usage: hdfs
-   * dfsadmin -getBalancerBandwidth {@literal <datanode_host:ipc_port>}
-   * @param argv List of of command line parameters.
-   * @param idx The index of the command that is being processed.
-   * @exception IOException
-   */
-  public int getBalancerBandwidth(String[] argv, int idx) throws IOException {
-    ClientDatanodeProtocol dnProxy = getDataNodeProxy(argv[idx]);
-    try {
-      long bandwidth = dnProxy.getBalancerBandwidth();
-      System.out.println("Balancer bandwidth is " + bandwidth
-          + " bytes per second.");
-    } catch (IOException ioe) {
-      throw new IOException("Datanode unreachable. " + ioe, ioe);
-    }
-    return 0;
   }
 
   /**
@@ -1547,51 +1395,6 @@ public class DFSAdmin extends FsShell {
     return 0;
   }
 
-  /**
-   * Display each rack and the nodes assigned to that rack, as determined
-   * by the NameNode, in a hierarchical manner.  The nodes and racks are
-   * sorted alphabetically.
-   * 
-   * @throws IOException If an error while getting datanode report
-   */
-  public int printTopology() throws IOException {
-      DistributedFileSystem dfs = getDFS();
-      final DatanodeInfo[] report = dfs.getDataNodeStats();
-
-      // Build a map of rack -> nodes from the datanode report
-      HashMap<String, TreeSet<String> > tree = new HashMap<String, TreeSet<String>>();
-      for(DatanodeInfo dni : report) {
-        String location = dni.getNetworkLocation();
-        String name = dni.getName();
-        
-        if(!tree.containsKey(location)) {
-          tree.put(location, new TreeSet<String>());
-        }
-        
-        tree.get(location).add(name);
-      }
-      
-      // Sort the racks (and nodes) alphabetically, display in order
-      ArrayList<String> racks = new ArrayList<String>(tree.keySet());
-      Collections.sort(racks);
-      
-      for(String r : racks) {
-        System.out.println("Rack: " + r);
-        TreeSet<String> nodes = tree.get(r);
-
-        for(String n : nodes) {
-          System.out.print("   " + n);
-          String hostname = NetUtils.getHostNameOfIP(n);
-          if(hostname != null)
-            System.out.print(" (" + hostname + ")");
-          System.out.println();
-        }
-
-        System.out.println();
-      }
-    return 0;
-  }
-  
   private static UserGroupInformation getUGI() 
   throws IOException {
     return UserGroupInformation.getCurrentUser();
@@ -1861,10 +1664,6 @@ public class DFSAdmin extends FsShell {
       ReconfigurationProtocol reconfProxy = getNameNodeProxy(address);
       reconfProxy.startReconfiguration();
       return 0;
-    } else if ("datanode".equals(nodeType)) {
-      ClientDatanodeProtocol reconfProxy = getDataNodeProxy(address);
-      reconfProxy.startReconfiguration();
-      return 0;
     } else {
       System.err.println("Node type " + nodeType
           + " does not support reconfiguration.");
@@ -1939,9 +1738,6 @@ public class DFSAdmin extends FsShell {
     if ("namenode".equals(nodeType)) {
       ReconfigurationProtocol reconfProxy = getNameNodeProxy(address);
       return reconfProxy.getReconfigurationStatus();
-    } else if ("datanode".equals(nodeType)) {
-      ClientDatanodeProtocol reconfProxy = getDataNodeProxy(address);
-      return reconfProxy.getReconfigurationStatus();
     } else {
       err.println("Node type " + nodeType
           + " does not support reconfiguration.");
@@ -1983,9 +1779,6 @@ public class DFSAdmin extends FsShell {
       throws IOException {
     if ("namenode".equals(nodeType)) {
       ReconfigurationProtocol reconfProxy = getNameNodeProxy(address);
-      return reconfProxy.listReconfigurableProperties();
-    } else if ("datanode".equals(nodeType)) {
-      ClientDatanodeProtocol reconfProxy = getDataNodeProxy(address);
       return reconfProxy.listReconfigurableProperties();
     } else {
       err.println("Node type " + nodeType
@@ -2380,30 +2173,10 @@ public class DFSAdmin extends FsShell {
         exitCode = refreshCallQueue();
       } else if ("-refresh".equals(cmd)) {
         exitCode = genericRefresh(argv, i);
-      } else if ("-printTopology".equals(cmd)) {
-        exitCode = printTopology();
-      } else if ("-refreshNamenodes".equals(cmd)) {
-        exitCode = refreshNamenodes(argv, i);
-      } else if ("-getVolumeReport".equals(cmd)) {
-        exitCode = getVolumeReport(argv, i);
-      } else if ("-deleteBlockPool".equals(cmd)) {
-        exitCode = deleteBlockPool(argv, i);
-      } else if ("-setBalancerBandwidth".equals(cmd)) {
-        exitCode = setBalancerBandwidth(argv, i);
-      } else if ("-getBalancerBandwidth".equals(cmd)) {
-        exitCode = getBalancerBandwidth(argv, i);
       } else if ("-fetchImage".equals(cmd)) {
         exitCode = fetchImage(argv, i);
-      } else if ("-shutdownDatanode".equals(cmd)) {
-        exitCode = shutdownDatanode(argv, i);
-      } else if ("-evictWriters".equals(cmd)) {
-        exitCode = evictWriters(argv, i);
-      } else if ("-getDatanodeInfo".equals(cmd)) {
-        exitCode = getDatanodeInfo(argv, i);
       } else if ("-reconfig".equals(cmd)) {
         exitCode = reconfig(argv, i);
-      } else if ("-triggerBlockReport".equals(cmd)) {
-        exitCode = triggerBlockReport(argv);
       } else if ("-listOpenFiles".equals(cmd)) {
         exitCode = listOpenFiles(argv);
       } else if ("-help".equals(cmd)) {
@@ -2450,34 +2223,6 @@ public class DFSAdmin extends FsShell {
     return exitCode;
   }
 
-  private int getVolumeReport(String[] argv, int i) throws IOException {
-    ClientDatanodeProtocol datanode = getDataNodeProxy(argv[i]);
-    List<DatanodeVolumeInfo> volumeReport = datanode
-        .getVolumeReport();
-    System.out.println("Active Volumes : " + volumeReport.size());
-    for (DatanodeVolumeInfo info : volumeReport) {
-      System.out.println("\n" + info.getDatanodeVolumeReport());
-    }
-    return 0;
-  }
-
-  private ClientDatanodeProtocol getDataNodeProxy(String datanode)
-      throws IOException {
-    InetSocketAddress datanodeAddr = NetUtils.createSocketAddr(datanode);
-    // Get the current configuration
-    Configuration conf = getConf();
-
-    // For datanode proxy the server principal should be DN's one.
-    conf.set(CommonConfigurationKeys.HADOOP_SECURITY_SERVICE_USER_NAME_KEY,
-        conf.get(DFSConfigKeys.DFS_DATANODE_KERBEROS_PRINCIPAL_KEY, ""));
-
-    // Create the client
-    ClientDatanodeProtocol dnProtocol =     
-        DFSUtilClient.createClientDatanodeProtocolProxy(datanodeAddr, getUGI(), conf,
-            NetUtils.getSocketFactory(conf, ClientDatanodeProtocol.class));
-    return dnProtocol;
-  }
-
   private ReconfigurationProtocol getNameNodeProxy(String node)
       throws IOException {
     InetSocketAddress nodeAddr = NetUtils.createSocketAddr(node);
@@ -2493,69 +2238,6 @@ public class DFSAdmin extends FsShell {
         .createReconfigurationProtocolProxy(nodeAddr, getUGI(), conf,
             NetUtils.getSocketFactory(conf, ReconfigurationProtocol.class));
     return reconfigProtocol;
-  }
-  
-  private int deleteBlockPool(String[] argv, int i) throws IOException {
-    ClientDatanodeProtocol dnProxy = getDataNodeProxy(argv[i]);
-    boolean force = false;
-    if (argv.length-1 == i+2) {
-      if ("force".equals(argv[i+2])) {
-        force = true;
-      } else {
-        printUsage("-deleteBlockPool");
-        return -1;
-      }
-    }
-    dnProxy.deleteBlockPool(argv[i+1], force);
-    return 0;
-  }
-  
-  private int refreshNamenodes(String[] argv, int i) throws IOException {
-    String datanode = argv[i];
-    ClientDatanodeProtocol refreshProtocol = getDataNodeProxy(datanode);
-    refreshProtocol.refreshNamenodes();
-    
-    return 0;
-  }
-
-  private int shutdownDatanode(String[] argv, int i) throws IOException {
-    final String dn = argv[i];
-    ClientDatanodeProtocol dnProxy = getDataNodeProxy(dn);
-    boolean upgrade = false;
-    if (argv.length-1 == i+1) {
-      if ("upgrade".equalsIgnoreCase(argv[i+1])) {
-        upgrade = true;
-      } else {
-        printUsage("-shutdownDatanode");
-        return -1;
-      }
-    }
-    dnProxy.shutdownDatanode(upgrade);
-    System.out.println("Submitted a shutdown request to datanode " + dn);
-    return 0;
-  }
-
-  private int evictWriters(String[] argv, int i) throws IOException {
-    final String dn = argv[i];
-    ClientDatanodeProtocol dnProxy = getDataNodeProxy(dn);
-    try {
-      dnProxy.evictWriters();
-      System.out.println("Requested writer eviction to datanode " + dn);
-    } catch (IOException ioe) {
-      throw new IOException("Datanode unreachable. " + ioe, ioe);
-    }
-    return 0;
-  }
-
-  private int getDatanodeInfo(String[] argv, int i) throws IOException {
-    ClientDatanodeProtocol dnProxy = getDataNodeProxy(argv[i]);
-    try {
-      DatanodeLocalInfo dnInfo = dnProxy.getDatanodeInfo();
-      System.out.println(dnInfo.getDatanodeLocalReport());
-    } catch (IOException ioe) {
-      throw new IOException("Datanode unreachable. " + ioe, ioe);
-    }
-    return 0;
   }
 
   /**

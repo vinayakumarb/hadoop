@@ -132,10 +132,6 @@ final class FSDirAppendOp {
               new NotReplicatedYetException("append: lastBlock="
                   + lastBlock + " of src=" + path
                   + " is COMMITTED but not yet COMPLETE."));
-        } else if (lastBlock.isComplete()
-          && !blockManager.isSufficientlyReplicated(lastBlock)) {
-          throw new IOException("append: lastBlock=" + lastBlock + " of src="
-              + path + " is not sufficiently replicated yet.");
         }
       }
       lb = prepareFileForAppend(fsn, iip, holder, clientMachine, newBlock,
@@ -208,7 +204,7 @@ final class FSDirAppendOp {
       BlockInfo lastBlock = file.getLastBlock();
       if (lastBlock != null) {
         ExtendedBlock blk = new ExtendedBlock(fsn.getBlockPoolId(), lastBlock);
-        ret = new LocatedBlock(blk, new DatanodeInfo[0]);
+        ret = new LocatedBlock(blk, 0);
       }
     }
 

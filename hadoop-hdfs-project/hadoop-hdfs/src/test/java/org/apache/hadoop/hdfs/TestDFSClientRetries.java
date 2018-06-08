@@ -68,7 +68,6 @@ import org.apache.hadoop.hdfs.client.HdfsClientConfigKeys;
 import org.apache.hadoop.hdfs.client.HdfsUtils;
 import org.apache.hadoop.hdfs.client.impl.LeaseRenewer;
 import org.apache.hadoop.hdfs.protocol.Block;
-import org.apache.hadoop.hdfs.protocol.ClientDatanodeProtocol;
 import org.apache.hadoop.hdfs.protocol.DatanodeID;
 import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
@@ -575,10 +574,7 @@ public class TestDFSClientRetries {
     private LocatedBlocks makeBadBlockList(LocatedBlocks goodBlockList) {
       LocatedBlock goodLocatedBlock = goodBlockList.get(0);
       LocatedBlock badLocatedBlock = new LocatedBlock(
-        goodLocatedBlock.getBlock(),
-        new DatanodeInfo[] {
-          DFSTestUtil.getDatanodeInfo("1.2.3.4", "bogus", 1234)
-        });
+          goodLocatedBlock.getBlock(), goodLocatedBlock.getStartOffset());
       badLocatedBlock.setStartOffset(goodLocatedBlock.getStartOffset());
 
 
@@ -586,184 +582,10 @@ public class TestDFSClientRetries {
       badBlocks.add(badLocatedBlock);
       return new LocatedBlocks(goodBlockList.getFileLength(), false,
                                badBlocks, null, true,
-                               null, null);
+                               null);
     }
   }
   
-  /**
-   * Test that a DFSClient waits for random time before retry on busy blocks.
-   */
-  @Test
-  public void testDFSClientRetriesOnBusyBlocks() throws IOException {
-    
-    System.out.println("Testing DFSClient random waiting on busy blocks.");
-    
-    //
-    // Test settings: 
-    // 
-    //           xcievers    fileLen   #clients  timeWindow    #retries
-    //           ========    =======   ========  ==========    ========
-    // Test 1:          2       6 MB         50      300 ms           3
-    // Test 2:          2       6 MB         50      300 ms          50
-    // Test 3:          2       6 MB         50     1000 ms           3
-    // Test 4:          2       6 MB         50     1000 ms          50
-    // 
-    //   Minimum xcievers is 2 since 1 thread is reserved for registry.
-    //   Test 1 & 3 may fail since # retries is low. 
-    //   Test 2 & 4 should never fail since (#threads)/(xcievers-1) is the upper
-    //   bound for guarantee to not throw BlockMissingException.
-    //
-    int xcievers  = 2;
-    int fileLen   = 6*1024*1024;
-    int threads   = 50;
-    int retries   = 3;
-    int timeWin   = 300;
-    
-    //
-    // Test 1: might fail
-    // 
-    long timestamp = Time.now();
-    boolean pass = busyTest(xcievers, threads, fileLen, timeWin, retries);
-    long timestamp2 = Time.now();
-    if ( pass ) {
-      LOG.info("Test 1 succeeded! Time spent: " + (timestamp2-timestamp)/1000.0 + " sec.");
-    } else {
-      LOG.warn("Test 1 failed, but relax. Time spent: " + (timestamp2-timestamp)/1000.0 + " sec.");
-    }
-    
-    //
-    // Test 2: should never fail
-    // 
-    retries = 50;
-    timestamp = Time.now();
-    pass = busyTest(xcievers, threads, fileLen, timeWin, retries);
-    timestamp2 = Time.now();
-    assertTrue("Something wrong! Test 2 got Exception with maxmum retries!", pass);
-    LOG.info("Test 2 succeeded! Time spent: "  + (timestamp2-timestamp)/1000.0 + " sec.");
-    
-    //
-    // Test 3: might fail
-    // 
-    retries = 3;
-    timeWin = 1000;
-    timestamp = Time.now();
-    pass = busyTest(xcievers, threads, fileLen, timeWin, retries);
-    timestamp2 = Time.now();
-    if ( pass ) {
-      LOG.info("Test 3 succeeded! Time spent: " + (timestamp2-timestamp)/1000.0 + " sec.");
-    } else {
-      LOG.warn("Test 3 failed, but relax. Time spent: " + (timestamp2-timestamp)/1000.0 + " sec.");
-    }
-    
-    //
-    // Test 4: should never fail
-    //
-    retries = 50;
-    timeWin = 1000;
-    timestamp = Time.now();
-    pass = busyTest(xcievers, threads, fileLen, timeWin, retries);
-    timestamp2 = Time.now();
-    assertTrue("Something wrong! Test 4 got Exception with maxmum retries!", pass);
-    LOG.info("Test 4 succeeded! Time spent: "  + (timestamp2-timestamp)/1000.0 + " sec.");
-  }
-
-  private boolean busyTest(int xcievers, int threads, int fileLen, int timeWin, int retries)
-    throws IOException {
-
-    boolean ret = true;
-    short replicationFactor = 1;
-    long blockSize = 128*1024*1024; // DFS block size
-    int bufferSize = 4096;
-    int originalXcievers = conf.getInt(
-      DFSConfigKeys.DFS_DATANODE_MAX_RECEIVER_THREADS_KEY,
-      DFSConfigKeys.DFS_DATANODE_MAX_RECEIVER_THREADS_DEFAULT);
-    conf.setInt(DFSConfigKeys.DFS_DATANODE_MAX_RECEIVER_THREADS_KEY,
-      xcievers);
-    conf.setInt(HdfsClientConfigKeys.DFS_CLIENT_MAX_BLOCK_ACQUIRE_FAILURES_KEY,
-      retries);
-    conf.setInt(HdfsClientConfigKeys.Retry.WINDOW_BASE_KEY, timeWin);
-    // Disable keepalive
-    conf.setInt(DFSConfigKeys.DFS_DATANODE_SOCKET_REUSE_KEEPALIVE_KEY, 0);
-
-    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).numDataNodes(replicationFactor).build();
-    cluster.waitActive();
-    
-    FileSystem fs = cluster.getFileSystem();
-    Path file1 = new Path("test_data.dat");
-    file1 = file1.makeQualified(fs.getUri(), fs.getWorkingDirectory()); // make URI hdfs://
-    
-    try {
-      
-      FSDataOutputStream stm = fs.create(file1, true,
-                                         bufferSize,
-                                         replicationFactor,
-                                         blockSize);
-      
-      // verify that file exists in FS namespace
-      assertTrue(file1 + " should be a file", 
-                  fs.getFileStatus(file1).isFile());
-      System.out.println("Path : \"" + file1 + "\"");
-      LOG.info("Path : \"" + file1 + "\"");
-
-      // write 1 block to file
-      byte[] buffer = AppendTestUtil.randomBytes(Time.now(), fileLen);
-      stm.write(buffer, 0, fileLen);
-      stm.close();
-
-      // verify that file size has changed to the full size
-      long len = fs.getFileStatus(file1).getLen();
-      
-      assertTrue(file1 + " should be of size " + fileLen +
-                 " but found to be of size " + len, 
-                  len == fileLen);
-      
-      // read back and check data integrigy
-      byte[] read_buf = new byte[fileLen];
-      InputStream in = fs.open(file1, fileLen);
-      IOUtils.readFully(in, read_buf, 0, fileLen);
-      assert(Arrays.equals(buffer, read_buf));
-      in.close();
-      read_buf = null; // GC it if needed
-      
-      // compute digest of the content to reduce memory space
-      MessageDigest m = MessageDigest.getInstance("SHA");
-      m.update(buffer, 0, fileLen);
-      byte[] hash_sha = m.digest();
-
-      // spawn multiple threads and all trying to access the same block
-      Thread[] readers = new Thread[threads];
-      Counter counter = new Counter(0);
-      for (int i = 0; i < threads; ++i ) {
-        DFSClientReader reader = new DFSClientReader(file1, cluster, hash_sha, fileLen, counter);
-        readers[i] = new Thread(reader);
-        readers[i].start();
-      }
-      
-      // wait for them to exit
-      for (int i = 0; i < threads; ++i ) {
-        readers[i].join();
-      }
-      if ( counter.get() == threads )
-        ret = true;
-      else
-        ret = false;
-      
-    } catch (InterruptedException e) {
-      System.out.println("Thread got InterruptedException.");
-      e.printStackTrace();
-      ret = false;
-    } catch (Exception e) {
-      e.printStackTrace();
-      ret = false;
-    } finally {
-      conf.setInt(DFSConfigKeys.DFS_DATANODE_MAX_RECEIVER_THREADS_KEY,
-        originalXcievers);
-      fs.delete(file1, false);
-      cluster.shutdown();
-    }
-    return ret;
-  }
-
   private void verifyEmptyLease(LeaseRenewer leaseRenewer) throws Exception {
     int sleepCount = 0;
     while (!leaseRenewer.isEmpty() && sleepCount++ < 20) {
@@ -843,120 +665,6 @@ public class TestDFSClientRetries {
     Counter(int n) { counter = n; }
     public synchronized void inc() { ++counter; }
     public int get() { return counter; }
-  }
-
-  @Test
-  public void testGetFileChecksum() throws Exception {
-    final String f = "/testGetFileChecksum";
-    final Path p = new Path(f);
-
-    final MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).numDataNodes(3).build();
-    try {
-      cluster.waitActive();
-
-      //create a file
-      final FileSystem fs = cluster.getFileSystem();
-      DFSTestUtil.createFile(fs, p, 1L << 20, (short)3, 20100402L);
-
-      //get checksum
-      final FileChecksum cs1 = fs.getFileChecksum(p);
-      assertTrue(cs1 != null);
-
-      //stop the first datanode
-      final List<LocatedBlock> locatedblocks = DFSClient.callGetBlockLocations(
-          cluster.getNameNodeRpc(), f, 0, Long.MAX_VALUE)
-            .getLocatedBlocks();
-      final DatanodeInfo first = locatedblocks.get(0).getLocations()[0];
-      cluster.stopDataNode(first.getXferAddr());
-
-      //get checksum again
-      final FileChecksum cs2 = fs.getFileChecksum(p);
-      assertEquals(cs1, cs2);
-    } finally {
-      cluster.shutdown();
-    }
-  }
-
-  /** Test that timeout occurs when DN does not respond to RPC.
-   * Start up a server and ask it to sleep for n seconds. Make an
-   * RPC to the server and set rpcTimeout to less than n and ensure
-   * that socketTimeoutException is obtained
-   */
-  @Test
-  public void testClientDNProtocolTimeout() throws IOException {
-    final Server server = new TestServer(1, true);
-    server.start();
-
-    final InetSocketAddress addr = NetUtils.getConnectAddress(server);
-    DatanodeID fakeDnId = DFSTestUtil.getLocalDatanodeID(addr.getPort());
-    
-    ExtendedBlock b = new ExtendedBlock("fake-pool", new Block(12345L));
-    LocatedBlock fakeBlock = new LocatedBlock(b, new DatanodeInfo[0]);
-
-    ClientDatanodeProtocol proxy = null;
-
-    try {
-      proxy = DFSUtilClient.createClientDatanodeProtocolProxy(
-          fakeDnId, conf, 500, false, fakeBlock);
-
-      proxy.getReplicaVisibleLength(new ExtendedBlock("bpid", 1));
-      fail ("Did not get expected exception: SocketTimeoutException");
-    } catch (SocketTimeoutException e) {
-      LOG.info("Got the expected Exception: SocketTimeoutException");
-    } finally {
-      if (proxy != null) {
-        RPC.stopProxy(proxy);
-      }
-      server.stop();
-    }
-  }
-
-  /**
-   * Test that checksum failures are recovered from by the next read on the same
-   * DFSInputStream. Corruption information is not persisted from read call to
-   * read call, so the client should expect consecutive calls to behave the same
-   * way. See HDFS-3067.
-   */
-  @Test
-  public void testRetryOnChecksumFailure() throws Exception {
-    HdfsConfiguration conf = new HdfsConfiguration();
-    MiniDFSCluster cluster =
-      new MiniDFSCluster.Builder(conf).numDataNodes(1).build();
-
-    try {
-      final short REPL_FACTOR = 1;
-      final long FILE_LENGTH = 512L;
-      cluster.waitActive();
-      FileSystem fs = cluster.getFileSystem();
-
-      Path path = new Path("/corrupted");
-
-      DFSTestUtil.createFile(fs, path, FILE_LENGTH, REPL_FACTOR, 12345L);
-      DFSTestUtil.waitReplication(fs, path, REPL_FACTOR);
-
-      ExtendedBlock block = DFSTestUtil.getFirstBlock(fs, path);
-      int blockFilesCorrupted = cluster.corruptBlockOnDataNodes(block);
-      assertEquals("All replicas not corrupted", REPL_FACTOR,
-          blockFilesCorrupted);
-
-      InetSocketAddress nnAddr =
-        new InetSocketAddress("localhost", cluster.getNameNodePort());
-      DFSClient client = new DFSClient(nnAddr, conf);
-      DFSInputStream dis = client.open(path.toString());
-      byte[] arr = new byte[(int)FILE_LENGTH];
-      for (int i = 0; i < 2; ++i) {
-        try {
-          dis.read(arr, 0, (int)FILE_LENGTH);
-          fail("Expected ChecksumException not thrown");
-        } catch (ChecksumException ex) {
-          GenericTestUtils.assertExceptionContains(
-              "Checksum", ex);
-        }
-      }
-      client.close();
-    } finally {
-      cluster.shutdown();
-    }
   }
 
   /** Test client retry with namenode restarting. */

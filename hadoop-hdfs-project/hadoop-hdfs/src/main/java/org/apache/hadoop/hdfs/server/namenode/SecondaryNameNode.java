@@ -1100,11 +1100,29 @@ public class SecondaryNameNode implements Runnable,
     // error simulation code for junit test
     CheckpointFaultInjector.getInstance().duringMerge();   
 
-    Checkpointer.rollForwardByApplyingLogs(manifest, dstImage, dstNamesystem);
+    rollForwardByApplyingLogs(manifest, dstImage, dstNamesystem);
     // The following has the side effect of purging old fsimages/edit logs.
     dstImage.saveFSImageInAllDirs(dstNamesystem, dstImage.getLastAppliedTxId());
     if (!namenode.isRollingUpgrade()) {
       dstImage.updateStorageVersion();
     }
+  }
+
+  static void rollForwardByApplyingLogs(RemoteEditLogManifest manifest,
+      FSImage dstImage, FSNamesystem dstNamesystem) throws IOException {
+    NNStorage dstStorage = dstImage.getStorage();
+
+    List<EditLogInputStream> editsStreams = Lists.newArrayList();
+    for (RemoteEditLog log : manifest.getLogs()) {
+      if (log.getEndTxId() > dstImage.getLastAppliedTxId()) {
+        File f = dstStorage.findFinalizedEditsFile(
+            log.getStartTxId(), log.getEndTxId());
+        editsStreams.add(new EditLogFileInputStream(f, log.getStartTxId(),
+            log.getEndTxId(), true));
+      }
+    }
+    LOG.info("Checkpointer about to load edits from " +
+        editsStreams.size() + " stream(s).");
+    dstImage.loadEdits(editsStreams, dstNamesystem);
   }
 }

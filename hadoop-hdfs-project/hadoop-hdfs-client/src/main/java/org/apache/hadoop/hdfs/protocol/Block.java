@@ -53,23 +53,9 @@ public class Block implements Writable, Comparable<Block> {
       .compile(BLOCK_FILE_PREFIX + "(-??\\d++)(_(\\d++)\\" + METADATA_EXTENSION
           + ")?$");
 
-  public static boolean isBlockFilename(File f) {
-    String name = f.getName();
-    return blockFilePattern.matcher(name).matches();
-  }
-
   public static long filename2id(String name) {
     Matcher m = blockFilePattern.matcher(name);
     return m.matches() ? Long.parseLong(m.group(1)) : 0;
-  }
-
-  public static boolean isMetaFilename(String name) {
-    return metaFilePattern.matcher(name).matches();
-  }
-
-  public static File metaToBlockFile(File metaFile) {
-    return new File(metaFile.getParent(), metaFile.getName().substring(
-        0, metaFile.getName().lastIndexOf('_')));
   }
 
   /**
@@ -105,13 +91,6 @@ public class Block implements Writable, Comparable<Block> {
 
   public Block(Block blk) {
     this(blk.blockId, blk.numBytes, blk.generationStamp);
-  }
-
-  /**
-   * Find the blockid from the given filename
-   */
-  public Block(File f, long len, long genstamp) {
-    this(filename2id(f.getName()), len, genstamp);
   }
 
   public void set(long blkid, long len, long genStamp) {

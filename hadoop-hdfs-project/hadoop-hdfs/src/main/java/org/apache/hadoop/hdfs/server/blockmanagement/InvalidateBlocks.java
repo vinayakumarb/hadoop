@@ -22,11 +22,8 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
 import java.util.concurrent.atomic.LongAdder;
 
 import org.apache.hadoop.classification.InterfaceAudience;
@@ -50,12 +47,8 @@ import org.slf4j.Logger;
  */
 @InterfaceAudience.Private
 class InvalidateBlocks {
-  private final Map<DatanodeInfo, LightWeightHashSet<Block>>
-      nodeToBlocks = new HashMap<>();
-  private final Map<DatanodeInfo, LightWeightHashSet<Block>>
-      nodeToECBlocks = new HashMap<>();
+  private LightWeightHashSet<Block> blocks = new LightWeightHashSet<>();
   private final LongAdder numBlocks = new LongAdder();
-  private final LongAdder numECBlocks = new LongAdder();
   private final int blockInvalidateLimit;
   private final BlockIdManager blockIdManager;
 
@@ -90,7 +83,7 @@ class InvalidateBlocks {
    * @return The total number of blocks to be invalidated.
    */
   long numBlocks() {
-    return getECBlocks() + getBlocks();
+    return getBlocks();
   }
 
   /**
@@ -103,68 +96,13 @@ class InvalidateBlocks {
   }
 
   /**
-   * @return The total number of blocks of type
-   * {@link org.apache.hadoop.hdfs.protocol.BlockType#STRIPED}
-   * to be invalidated.
-   */
-  long getECBlocks() {
-    return numECBlocks.longValue();
-  }
-
-  private LightWeightHashSet<Block> getBlocksSet(final DatanodeInfo dn) {
-    if (nodeToBlocks.containsKey(dn)) {
-      return nodeToBlocks.get(dn);
-    }
-    return null;
-  }
-
-  private LightWeightHashSet<Block> getECBlocksSet(final DatanodeInfo dn) {
-    if (nodeToECBlocks.containsKey(dn)) {
-      return nodeToECBlocks.get(dn);
-    }
-    return null;
-  }
-
-  private LightWeightHashSet<Block> getBlocksSet(final DatanodeInfo dn,
-      final Block block) {
-    if (blockIdManager.isStripedBlock(block)) {
-      return getECBlocksSet(dn);
-    } else {
-      return getBlocksSet(dn);
-    }
-  }
-
-  private void putBlocksSet(final DatanodeInfo dn, final Block block,
-      final LightWeightHashSet set) {
-    if (blockIdManager.isStripedBlock(block)) {
-      assert getECBlocksSet(dn) == null;
-      nodeToECBlocks.put(dn, set);
-    } else {
-      assert getBlocksSet(dn) == null;
-      nodeToBlocks.put(dn, set);
-    }
-  }
-
-  private long getBlockSetsSize(final DatanodeInfo dn) {
-    LightWeightHashSet<Block> replicaBlocks = getBlocksSet(dn);
-    LightWeightHashSet<Block> stripedBlocks = getECBlocksSet(dn);
-    return ((replicaBlocks == null ? 0 : replicaBlocks.size()) +
-        (stripedBlocks == null ? 0 : stripedBlocks.size()));
-  }
-
-
-  /**
    * @return true if the given storage has the given block listed for
    * invalidation. Blocks are compared including their generation stamps:
    * if a block is pending invalidation but with a different generation stamp,
    * returns false.
    */
-  synchronized boolean contains(final DatanodeInfo dn, final Block block) {
-    final LightWeightHashSet<Block> s = getBlocksSet(dn, block);
-    if (s == null) {
-      return false; // no invalidate blocks for this storage ID
-    }
-    Block blockInSet = s.getElement(block);
+  synchronized boolean contains(final Block block) {
+    Block blockInSet = blocks.getElement(block);
     return blockInSet != null &&
         block.getGenerationStamp() == blockInSet.getGenerationStamp();
   }
@@ -173,83 +111,33 @@ class InvalidateBlocks {
    * Add a block to the block collection which will be
    * invalidated on the specified datanode.
    */
-  synchronized void add(final Block block, final DatanodeInfo datanode,
-      final boolean log) {
-    LightWeightHashSet<Block> set = getBlocksSet(datanode, block);
-    if (set == null) {
-      set = new LightWeightHashSet<>();
-      putBlocksSet(datanode, block, set);
-    }
-    if (set.add(block)) {
-      if (blockIdManager.isStripedBlock(block)) {
-        numECBlocks.increment();
-      } else {
-        numBlocks.increment();
-      }
+  synchronized void add(final Block block, final boolean log) {
+    if (blocks.add(block)) {
+      numBlocks.increment();
       if (log) {
-        NameNode.blockStateChangeLog.debug("BLOCK* {}: add {} to {}",
-            getClass().getSimpleName(), block, datanode);
+        NameNode.blockStateChangeLog.debug("BLOCK* {}: add {}",
+            getClass().getSimpleName(), block);
       }
-    }
-  }
-
-  /** Remove a storage from the invalidatesSet */
-  synchronized void remove(final DatanodeInfo dn) {
-    LightWeightHashSet<Block> replicaBlockSets = nodeToBlocks.remove(dn);
-    if (replicaBlockSets != null) {
-      numBlocks.add(replicaBlockSets.size() * -1);
-    }
-    LightWeightHashSet<Block> ecBlocksSet = nodeToECBlocks.remove(dn);
-    if (ecBlocksSet != null) {
-      numECBlocks.add(ecBlocksSet.size() * -1);
     }
   }
 
   /** Remove the block from the specified storage. */
-  synchronized void remove(final DatanodeInfo dn, final Block block) {
-    final LightWeightHashSet<Block> v = getBlocksSet(dn, block);
-    if (v != null && v.remove(block)) {
-      if (blockIdManager.isStripedBlock(block)) {
-        numECBlocks.decrement();
-      } else {
-        numBlocks.decrement();
-      }
-      if (v.isEmpty() && getBlockSetsSize(dn) == 0) {
-        remove(dn);
-      }
+  synchronized void remove(final Block block) {
+    if (blocks.remove(block)) {
+      numBlocks.decrement();
     }
   }
 
-  private void dumpBlockSet(final Map<DatanodeInfo,
-      LightWeightHashSet<Block>> nodeToBlocksMap, final PrintWriter out) {
-    for(Entry<DatanodeInfo, LightWeightHashSet<Block>> entry :
-        nodeToBlocksMap.entrySet()) {
-      final LightWeightHashSet<Block> blocks = entry.getValue();
-      if (blocks != null && blocks.size() > 0) {
-        out.println(entry.getKey());
-        out.println(StringUtils.join(',', blocks));
-      }
+  private void dumpBlockSet(final PrintWriter out) {
+    if (blocks != null && blocks.size() > 0) {
+      out.println(StringUtils.join(',', blocks));
     }
   }
   /** Print the contents to out. */
   synchronized void dump(final PrintWriter out) {
-    final int size = nodeToBlocks.values().size() +
-        nodeToECBlocks.values().size();
     out.println("Metasave: Blocks " + numBlocks()
-        + " waiting deletion from " + size + " datanodes.");
-    if (size == 0) {
-      return;
-    }
-    dumpBlockSet(nodeToBlocks, out);
-    dumpBlockSet(nodeToECBlocks, out);
-  }
-
-  /** @return a list of the storage IDs. */
-  synchronized List<DatanodeInfo> getDatanodes() {
-    HashSet<DatanodeInfo> set = new HashSet<>();
-    set.addAll(nodeToBlocks.keySet());
-    set.addAll(nodeToECBlocks.keySet());
-    return new ArrayList<>(set);
+        + " waiting deletion");
+    dumpBlockSet(out);
   }
 
   /**
@@ -260,55 +148,8 @@ class InvalidateBlocks {
     return pendingPeriodInMs - (Time.monotonicNow() - startupTime);
   }
 
-  /**
-   * Get blocks to invalidate by limit as blocks that can be sent in one
-   * message is limited.
-   * @return the remaining limit
-   */
-  private int getBlocksToInvalidateByLimit(LightWeightHashSet<Block> blockSet,
-      List<Block> toInvalidate, LongAdder statsAdder, int limit) {
-    assert blockSet != null;
-    int remainingLimit = limit;
-    List<Block> polledBlocks = blockSet.pollN(limit);
-    remainingLimit -= polledBlocks.size();
-    toInvalidate.addAll(polledBlocks);
-    statsAdder.add(polledBlocks.size() * -1);
-    return remainingLimit;
-  }
-
-  synchronized List<Block> invalidateWork(final DatanodeDescriptor dn) {
-    final long delay = getInvalidationDelay();
-    if (delay > 0) {
-      BlockManager.LOG
-          .debug("Block deletion is delayed during NameNode startup. "
-              + "The deletion will start after {} ms.", delay);
-      return null;
-    }
-
-    int remainingLimit = blockInvalidateLimit;
-    final List<Block> toInvalidate = new ArrayList<>();
-
-    if (nodeToBlocks.get(dn) != null) {
-      remainingLimit = getBlocksToInvalidateByLimit(nodeToBlocks.get(dn),
-          toInvalidate, numBlocks, remainingLimit);
-    }
-    if ((remainingLimit > 0) && (nodeToECBlocks.get(dn) != null)) {
-      getBlocksToInvalidateByLimit(nodeToECBlocks.get(dn),
-          toInvalidate, numECBlocks, remainingLimit);
-    }
-    if (toInvalidate.size() > 0) {
-      if (getBlockSetsSize(dn) == 0) {
-        remove(dn);
-      }
-      dn.addBlocksToBeInvalidated(toInvalidate);
-    }
-    return toInvalidate;
-  }
-  
   synchronized void clear() {
-    nodeToBlocks.clear();
-    nodeToECBlocks.clear();
+    blocks.clear();
     numBlocks.reset();
-    numECBlocks.reset();
   }
 }

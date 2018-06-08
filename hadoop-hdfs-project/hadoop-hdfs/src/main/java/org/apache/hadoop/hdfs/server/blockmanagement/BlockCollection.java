@@ -81,8 +81,7 @@ public interface BlockCollection {
    * Convert the last block of the collection to an under-construction block
    * and set the locations.
    */
-  void convertLastBlockToUC(BlockInfo lastBlock,
-      DatanodeStorageInfo[] targets) throws IOException;
+  void convertLastBlockToUC(BlockInfo lastBlock) throws IOException;
 
   /**
    * @return whether the block collection is under construction.

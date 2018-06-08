@@ -35,7 +35,6 @@ import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.apache.hadoop.hdfs.MiniDFSNNTopology;
 import org.apache.hadoop.hdfs.protocol.ClientProtocol;
-import org.apache.hadoop.hdfs.server.balancer.TestBalancer;
 import org.apache.log4j.Level;
 import org.junit.Assert;
 import org.junit.Test;
@@ -54,10 +53,6 @@ public class TestFsckWithMultipleNameNodes {
   private static final Path FILE_PATH = new Path(FILE_NAME);
   
   private static final Random RANDOM = new Random();
-
-  static {
-    TestBalancer.initTestSetup();
-  }
 
   /** Common objects used in various methods. */
   private static class Suite {
@@ -88,7 +83,6 @@ public class TestFsckWithMultipleNameNodes {
   private static Configuration createConf() {
     final Configuration conf = new HdfsConfiguration();
     conf.setLong(DFSConfigKeys.DFS_NAMENODE_ACCESSTIME_PRECISION_KEY, 1L);
-    conf.setLong(DFSConfigKeys.DFS_BLOCKREPORT_INTERVAL_MSEC_KEY, 10000L);
     return conf;
   }
 

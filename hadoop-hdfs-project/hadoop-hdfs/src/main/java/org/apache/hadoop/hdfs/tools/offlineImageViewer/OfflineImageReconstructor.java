@@ -17,7 +17,6 @@
  */
 package org.apache.hadoop.hdfs.tools.offlineImageViewer;
 
-import com.google.common.base.Preconditions;
 import static org.apache.hadoop.hdfs.server.namenode.FSImageFormatPBINode.ACL_ENTRY_NAME_MASK;
 import static org.apache.hadoop.hdfs.server.namenode.FSImageFormatPBINode.ACL_ENTRY_NAME_OFFSET;
 import static org.apache.hadoop.hdfs.server.namenode.FSImageFormatPBINode.ACL_ENTRY_SCOPE_OFFSET;
@@ -61,17 +60,10 @@ import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.fs.permission.AclEntry;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos;
-import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.ECSchemaProto;
-import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.ErasureCodingPolicyProto;
-import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.CacheDirectiveInfoExpirationProto;
-import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.CacheDirectiveInfoProto;
-import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.CachePoolInfoProto;
 import org.apache.hadoop.hdfs.protocol.proto.XAttrProtos;
 import org.apache.hadoop.hdfs.server.namenode.FSImageFormatProtobuf.SectionName;
 import org.apache.hadoop.hdfs.server.namenode.FSImageUtil;
 import org.apache.hadoop.hdfs.server.namenode.FsImageProto;
-import org.apache.hadoop.hdfs.server.namenode.FsImageProto.CacheManagerSection;
-import org.apache.hadoop.hdfs.server.namenode.FsImageProto.ErasureCodingSection;
 import org.apache.hadoop.hdfs.server.namenode.FsImageProto.FileSummary;
 import org.apache.hadoop.hdfs.server.namenode.FsImageProto.FilesUnderConstructionSection.FileUnderConstructionEntry;
 import org.apache.hadoop.hdfs.server.namenode.FsImageProto.INodeSection;
@@ -150,13 +142,9 @@ class OfflineImageReconstructor {
     this.events = factory.createXMLEventReader(reader);
     this.sections = new HashMap<>();
     this.sections.put(NameSectionProcessor.NAME, new NameSectionProcessor());
-    this.sections.put(ErasureCodingSectionProcessor.NAME,
-        new ErasureCodingSectionProcessor());
     this.sections.put(INodeSectionProcessor.NAME, new INodeSectionProcessor());
     this.sections.put(SecretManagerSectionProcessor.NAME,
         new SecretManagerSectionProcessor());
-    this.sections.put(CacheManagerSectionProcessor.NAME,
-        new CacheManagerSectionProcessor());
     this.sections.put(SnapshotDiffSectionProcessor.NAME,
         new SnapshotDiffSectionProcessor());
     this.sections.put(INodeReferenceSectionProcessor.NAME,
@@ -479,11 +467,6 @@ class OfflineImageReconstructor {
       if (lval != null)  {
         b.setRollingUpgradeStartTime(lval);
       }
-      lval = node.removeChildLong(
-          NAME_SECTION_LAST_ALLOCATED_STRIPED_BLOCK_ID);
-      if (lval != null)  {
-        b.setLastAllocatedStripedBlockId(lval);
-      }
       node.verifyNoRemainingKeys("NameSection");
       NameSystemSection s = b.build();
       if (LOG.isDebugEnabled()) {
@@ -492,76 +475,6 @@ class OfflineImageReconstructor {
       }
       s.writeDelimitedTo(out);
       recordSectionLength(SectionName.NS_INFO.name());
-    }
-  }
-
-  private class ErasureCodingSectionProcessor implements SectionProcessor {
-    static final String NAME = "ErasureCodingSection";
-
-    @Override
-    public void process() throws IOException {
-      Node node = new Node();
-      loadNodeChildren(node, "ErasureCodingSection fields");
-      ErasureCodingSection.Builder builder = ErasureCodingSection.newBuilder();
-      while (true) {
-        ErasureCodingPolicyProto.Builder policyBuilder =
-            ErasureCodingPolicyProto.newBuilder();
-        Node ec = node.removeChild(ERASURE_CODING_SECTION_POLICY);
-        if (ec == null) {
-          break;
-        }
-        int policyId = ec.removeChildInt(ERASURE_CODING_SECTION_POLICY_ID);
-        policyBuilder.setId(policyId);
-        String name = ec.removeChildStr(ERASURE_CODING_SECTION_POLICY_NAME);
-        policyBuilder.setName(name);
-        Integer cellSize =
-            ec.removeChildInt(ERASURE_CODING_SECTION_POLICY_CELL_SIZE);
-        policyBuilder.setCellSize(cellSize);
-        String policyState =
-            ec.removeChildStr(ERASURE_CODING_SECTION_POLICY_STATE);
-        if (policyState != null) {
-          policyBuilder.setState(
-              HdfsProtos.ErasureCodingPolicyState.valueOf(policyState));
-        }
-
-        Node schema = ec.removeChild(ERASURE_CODING_SECTION_SCHEMA);
-        Preconditions.checkNotNull(schema);
-
-        ECSchemaProto.Builder schemaBuilder = ECSchemaProto.newBuilder();
-        String codecName =
-            schema.removeChildStr(ERASURE_CODING_SECTION_SCHEMA_CODEC_NAME);
-        schemaBuilder.setCodecName(codecName);
-        Integer dataUnits =
-            schema.removeChildInt(ERASURE_CODING_SECTION_SCHEMA_DATA_UNITS);
-        schemaBuilder.setDataUnits(dataUnits);
-        Integer parityUnits = schema.
-            removeChildInt(ERASURE_CODING_SECTION_SCHEMA_PARITY_UNITS);
-        schemaBuilder.setParityUnits(parityUnits);
-        Node options = schema
-            .removeChild(ERASURE_CODING_SECTION_SCHEMA_OPTIONS);
-        if (options != null) {
-          while (true) {
-            Node option =
-                options.removeChild(ERASURE_CODING_SECTION_SCHEMA_OPTION);
-            if (option == null) {
-              break;
-            }
-            String key = option
-                .removeChildStr(ERASURE_CODING_SECTION_SCHEMA_OPTION_KEY);
-            String value = option
-                .removeChildStr(ERASURE_CODING_SECTION_SCHEMA_OPTION_VALUE);
-            schemaBuilder.addOptions(HdfsProtos.ECSchemaOptionEntryProto
-                .newBuilder().setKey(key).setValue(value).build());
-          }
-        }
-        policyBuilder.setSchema(schemaBuilder.build());
-
-        builder.addPolicies(policyBuilder.build());
-      }
-      ErasureCodingSection section = builder.build();
-      section.writeDelimitedTo(out);
-      node.verifyNoRemainingKeys("ErasureCodingSection");
-      recordSectionLength(SectionName.ERASURE_CODING.name());
     }
   }
 
@@ -713,24 +626,6 @@ class OfflineImageReconstructor {
     ival = node.removeChildInt(INODE_SECTION_STORAGE_POLICY_ID);
     if (ival != null) {
       bld.setStoragePolicyID(ival);
-    }
-    String blockType = node.removeChildStr(INODE_SECTION_BLOCK_TYPE);
-    if(blockType != null) {
-      switch (blockType) {
-      case "CONTIGUOUS":
-        bld.setBlockType(HdfsProtos.BlockTypeProto.CONTIGUOUS);
-        break;
-      case "STRIPED":
-        bld.setBlockType(HdfsProtos.BlockTypeProto.STRIPED);
-        ival = node.removeChildInt(INODE_SECTION_EC_POLICY_ID);
-        if (ival != null) {
-          bld.setErasureCodingPolicyID(ival);
-        }
-        break;
-      default:
-        throw new IOException("INode XML found with unknown <blocktype> " +
-            blockType);
-      }
     }
     return bld;
   }
@@ -1059,150 +954,6 @@ class OfflineImageReconstructor {
       } catch (ParseException e) {
         throw new IOException("Failed to parse ISO date string " + dateStr, e);
       }
-    }
-  }
-
-  private class CacheManagerSectionProcessor implements SectionProcessor {
-    static final String NAME = "CacheManagerSection";
-
-    @Override
-    public void process() throws IOException {
-      Node node = new Node();
-      loadNodeChildren(node, "CacheManager fields", "pool", "directive");
-      CacheManagerSection.Builder b =  CacheManagerSection.newBuilder();
-      Long nextDirectiveId =
-          node.removeChildLong(CACHE_MANAGER_SECTION_NEXT_DIRECTIVE_ID);
-      if (nextDirectiveId == null) {
-        throw new IOException("CacheManager section had no <nextDirectiveId>");
-      }
-      b.setNextDirectiveId(nextDirectiveId);
-      Integer expectedNumPools =
-          node.removeChildInt(CACHE_MANAGER_SECTION_NUM_POOLS);
-      if (expectedNumPools == null) {
-        throw new IOException("CacheManager section had no <numPools>");
-      }
-      b.setNumPools(expectedNumPools);
-      Integer expectedNumDirectives =
-          node.removeChildInt(CACHE_MANAGER_SECTION_NUM_DIRECTIVES);
-      if (expectedNumDirectives == null) {
-        throw new IOException("CacheManager section had no <numDirectives>");
-      }
-      b.setNumDirectives(expectedNumDirectives);
-      b.build().writeDelimitedTo(out);
-      long actualNumPools = 0;
-      while (actualNumPools < expectedNumPools) {
-        try {
-          expectTag(CACHE_MANAGER_SECTION_POOL, false);
-        } catch (IOException e) {
-          throw new IOException("Only read " + actualNumPools +
-              " cache pools out of " + expectedNumPools, e);
-        }
-        actualNumPools++;
-        Node pool = new Node();
-        loadNodeChildren(pool, "pool fields", "");
-        processPoolXml(node);
-      }
-      long actualNumDirectives = 0;
-      while (actualNumDirectives < expectedNumDirectives) {
-        try {
-          expectTag(CACHE_MANAGER_SECTION_DIRECTIVE, false);
-        } catch (IOException e) {
-          throw new IOException("Only read " + actualNumDirectives +
-              " cache pools out of " + expectedNumDirectives, e);
-        }
-        actualNumDirectives++;
-        Node pool = new Node();
-        loadNodeChildren(pool, "directive fields", "");
-        processDirectiveXml(node);
-      }
-      expectTagEnd(CACHE_MANAGER_SECTION_NAME);
-      recordSectionLength(SectionName.CACHE_MANAGER.name());
-    }
-
-    private void processPoolXml(Node pool) throws IOException {
-      CachePoolInfoProto.Builder bld = CachePoolInfoProto.newBuilder();
-      String poolName =
-          pool.removeChildStr(CACHE_MANAGER_SECTION_POOL_NAME);
-      if (poolName == null) {
-        throw new IOException("<pool> found without <poolName>");
-      }
-      bld.setPoolName(poolName);
-      String ownerName =
-          pool.removeChildStr(CACHE_MANAGER_SECTION_OWNER_NAME);
-      if (ownerName == null) {
-        throw new IOException("<pool> found without <ownerName>");
-      }
-      bld.setOwnerName(ownerName);
-      String groupName =
-          pool.removeChildStr(CACHE_MANAGER_SECTION_GROUP_NAME);
-      if (groupName == null) {
-        throw new IOException("<pool> found without <groupName>");
-      }
-      bld.setGroupName(groupName);
-      Integer mode = pool.removeChildInt(CACHE_MANAGER_SECTION_MODE);
-      if (mode == null) {
-        throw new IOException("<pool> found without <mode>");
-      }
-      bld.setMode(mode);
-      Long limit = pool.removeChildLong(CACHE_MANAGER_SECTION_LIMIT);
-      if (limit == null) {
-        throw new IOException("<pool> found without <limit>");
-      }
-      bld.setLimit(limit);
-      Long maxRelativeExpiry =
-          pool.removeChildLong(CACHE_MANAGER_SECTION_MAX_RELATIVE_EXPIRY);
-      if (maxRelativeExpiry == null) {
-        throw new IOException("<pool> found without <maxRelativeExpiry>");
-      }
-      bld.setMaxRelativeExpiry(maxRelativeExpiry);
-      pool.verifyNoRemainingKeys("pool");
-      bld.build().writeDelimitedTo(out);
-    }
-
-    private void processDirectiveXml(Node directive) throws IOException {
-      CacheDirectiveInfoProto.Builder bld =
-          CacheDirectiveInfoProto.newBuilder();
-      Long id = directive.removeChildLong(SECTION_ID);
-      if (id == null) {
-        throw new IOException("<directive> found without <id>");
-      }
-      bld.setId(id);
-      String path = directive.removeChildStr(SECTION_PATH);
-      if (path == null) {
-        throw new IOException("<directive> found without <path>");
-      }
-      bld.setPath(path);
-      Integer replication = directive.removeChildInt(SECTION_REPLICATION);
-      if (replication == null) {
-        throw new IOException("<directive> found without <replication>");
-      }
-      bld.setReplication(replication);
-      String pool = directive.removeChildStr(CACHE_MANAGER_SECTION_POOL);
-      if (path == null) {
-        throw new IOException("<directive> found without <pool>");
-      }
-      bld.setPool(pool);
-      Node expiration =
-          directive.removeChild(CACHE_MANAGER_SECTION_EXPIRATION);
-      if (expiration != null) {
-        CacheDirectiveInfoExpirationProto.Builder ebld =
-            CacheDirectiveInfoExpirationProto.newBuilder();
-        Long millis =
-            expiration.removeChildLong(CACHE_MANAGER_SECTION_MILLIS);
-        if (millis == null) {
-          throw new IOException("cache directive <expiration> found " +
-              "without <millis>");
-        }
-        ebld.setMillis(millis);
-        if (expiration.removeChildBool(CACHE_MANAGER_SECTION_RELATIVE)) {
-          ebld.setIsRelative(true);
-        } else {
-          ebld.setIsRelative(false);
-        }
-        bld.setExpiration(ebld);
-      }
-      directive.verifyNoRemainingKeys("directive");
-      bld.build().writeDelimitedTo(out);
     }
   }
 

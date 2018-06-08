@@ -17,55 +17,34 @@
  */
 package org.apache.hadoop.hdfs.server.namenode;
 
+import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_NAMENODE_LEASE_RECHECK_INTERVAL_MS_DEFAULT;
+import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_NAMENODE_LEASE_RECHECK_INTERVAL_MS_KEY;
+
 import java.io.FileNotFoundException;
-import java.util.AbstractMap;
-import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.TreeSet;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hdfs.AddBlockFlag;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hdfs.protocol.BlockStoragePolicy;
 import org.apache.hadoop.hdfs.AppendTestUtil;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
-import org.apache.hadoop.hdfs.DFSTestUtil;
 import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
-import org.apache.hadoop.hdfs.protocol.DatanodeID;
-import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
-import org.apache.hadoop.hdfs.protocolPB.DatanodeProtocolClientSideTranslatorPB;
-import org.apache.hadoop.hdfs.server.blockmanagement.BlockPlacementPolicy;
-import org.apache.hadoop.hdfs.server.blockmanagement.BlockPlacementPolicyDefault;
-import org.apache.hadoop.hdfs.server.blockmanagement.DatanodeDescriptor;
-import org.apache.hadoop.hdfs.server.blockmanagement.DatanodeStorageInfo;
-import org.apache.hadoop.hdfs.server.datanode.DataNode;
-import org.apache.hadoop.hdfs.server.datanode.InternalDataNodeTestUtils;
 import org.apache.hadoop.hdfs.server.namenode.LeaseManager.Lease;
 import org.apache.hadoop.hdfs.server.namenode.snapshot.SnapshotTestHelper;
 import org.apache.hadoop.io.IOUtils;
-import org.apache.hadoop.net.Node;
 import org.apache.hadoop.test.GenericTestUtils;
-import org.apache.hadoop.test.GenericTestUtils.DelayAnswer;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.Timeout;
 import org.mockito.Mockito;
 import org.mockito.internal.util.reflection.Whitebox;
-
-import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_NAMENODE_LEASE_RECHECK_INTERVAL_MS_DEFAULT;
-import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_NAMENODE_LEASE_RECHECK_INTERVAL_MS_KEY;
 
 /**
  * Test race between delete and other operations.  For now only addBlock()
@@ -93,8 +72,6 @@ public class TestDeleteRace {
 
   private void testDeleteAddBlockRace(boolean hasSnapshot) throws Exception {
     try {
-      conf.setClass(DFSConfigKeys.DFS_BLOCK_REPLICATOR_CLASSNAME_KEY,
-          SlowBlockPlacementPolicy.class, BlockPlacementPolicy.class);
       cluster = new MiniDFSCluster.Builder(conf).build();
       FileSystem fs = cluster.getFileSystem();
       final String fileName = "/testDeleteAddBlockRace";
@@ -122,28 +99,6 @@ public class TestDeleteRace {
       if (cluster != null) {
         cluster.shutdown();
       }
-    }
-  }
-
-  private static class SlowBlockPlacementPolicy extends
-      BlockPlacementPolicyDefault {
-    @Override
-    public DatanodeStorageInfo[] chooseTarget(String srcPath,
-                                      int numOfReplicas,
-                                      Node writer,
-                                      List<DatanodeStorageInfo> chosenNodes,
-                                      boolean returnChosenNodes,
-                                      Set<Node> excludedNodes,
-                                      long blocksize,
-                                      final BlockStoragePolicy storagePolicy,
-                                      EnumSet<AddBlockFlag> flags) {
-      DatanodeStorageInfo[] results = super.chooseTarget(srcPath,
-          numOfReplicas, writer, chosenNodes, returnChosenNodes, excludedNodes,
-          blocksize, storagePolicy, flags);
-      try {
-        Thread.sleep(3000);
-      } catch (InterruptedException e) {}
-      return results;
     }
   }
 
@@ -204,8 +159,6 @@ public class TestDeleteRace {
   @Test
   public void testRenameRace() throws Exception {
     try {
-      conf.setClass(DFSConfigKeys.DFS_BLOCK_REPLICATOR_CLASSNAME_KEY,
-          SlowBlockPlacementPolicy.class, BlockPlacementPolicy.class);
       cluster = new MiniDFSCluster.Builder(conf).build();
       FileSystem fs = cluster.getFileSystem();
       Path dirPath1 = new Path("/testRenameRace1");
@@ -231,144 +184,6 @@ public class TestDeleteRace {
       }
     }
   }
-
-  /**
-   * Test race between delete operation and commitBlockSynchronization method.
-   * See HDFS-6825.
-   * @param hasSnapshot
-   * @throws Exception
-   */
-  private void testDeleteAndCommitBlockSynchronizationRace(boolean hasSnapshot)
-      throws Exception {
-    LOG.info("Start testing, hasSnapshot: " + hasSnapshot);
-    ArrayList<AbstractMap.SimpleImmutableEntry<String, Boolean>> testList =
-        new ArrayList<AbstractMap.SimpleImmutableEntry<String, Boolean>> ();
-    testList.add(
-        new AbstractMap.SimpleImmutableEntry<String, Boolean>("/test-file", false));
-    testList.add(     
-        new AbstractMap.SimpleImmutableEntry<String, Boolean>("/test-file1", true));
-    testList.add(
-        new AbstractMap.SimpleImmutableEntry<String, Boolean>(
-            "/testdir/testdir1/test-file", false));
-    testList.add(
-        new AbstractMap.SimpleImmutableEntry<String, Boolean>(
-            "/testdir/testdir1/test-file1", true));
-    
-    final Path rootPath = new Path("/");
-    final Configuration conf = new Configuration();
-    // Disable permissions so that another user can recover the lease.
-    conf.setBoolean(DFSConfigKeys.DFS_PERMISSIONS_ENABLED_KEY, false);
-    conf.setInt(DFSConfigKeys.DFS_BLOCK_SIZE_KEY, BLOCK_SIZE);
-    FSDataOutputStream stm = null;
-    Map<DataNode, DatanodeProtocolClientSideTranslatorPB> dnMap =
-        new HashMap<DataNode, DatanodeProtocolClientSideTranslatorPB>();
-
-    try {
-      cluster = new MiniDFSCluster.Builder(conf)
-          .numDataNodes(3)
-          .build();
-      cluster.waitActive();
-
-      DistributedFileSystem fs = cluster.getFileSystem();
-      int stId = 0;
-      for(AbstractMap.SimpleImmutableEntry<String, Boolean> stest : testList) {
-        String testPath = stest.getKey();
-        Boolean mkSameDir = stest.getValue();
-        LOG.info("test on " + testPath + " mkSameDir: " + mkSameDir
-            + " snapshot: " + hasSnapshot);
-        Path fPath = new Path(testPath);
-        //find grandest non-root parent
-        Path grandestNonRootParent = fPath;
-        while (!grandestNonRootParent.getParent().equals(rootPath)) {
-          grandestNonRootParent = grandestNonRootParent.getParent();
-        }
-        stm = fs.create(fPath);
-        LOG.info("test on " + testPath + " created " + fPath);
-
-        // write a half block
-        AppendTestUtil.write(stm, 0, BLOCK_SIZE / 2);
-        stm.hflush();
-
-        if (hasSnapshot) {
-          SnapshotTestHelper.createSnapshot(fs, rootPath,
-              "st" + String.valueOf(stId));
-          ++stId;
-        }
-
-        // Look into the block manager on the active node for the block
-        // under construction.
-        NameNode nn = cluster.getNameNode();
-        ExtendedBlock blk = DFSTestUtil.getFirstBlock(fs, fPath);
-        DatanodeDescriptor expectedPrimary =
-            DFSTestUtil.getExpectedPrimaryNode(nn, blk);
-        LOG.info("Expecting block recovery to be triggered on DN " +
-            expectedPrimary);
-
-        // Find the corresponding DN daemon, and spy on its connection to the
-        // active.
-        DataNode primaryDN = cluster.getDataNode(expectedPrimary.getIpcPort());
-        DatanodeProtocolClientSideTranslatorPB nnSpy = dnMap.get(primaryDN);
-        if (nnSpy == null) {
-          nnSpy = InternalDataNodeTestUtils.spyOnBposToNN(primaryDN, nn);
-          dnMap.put(primaryDN, nnSpy);
-        }
-
-        // Delay the commitBlockSynchronization call
-        DelayAnswer delayer = new DelayAnswer(LOG);
-        Mockito.doAnswer(delayer).when(nnSpy).commitBlockSynchronization(
-            Mockito.eq(blk),
-            Mockito.anyInt(),  // new genstamp
-            Mockito.anyLong(), // new length
-            Mockito.eq(true),  // close file
-            Mockito.eq(false), // delete block
-            (DatanodeID[]) Mockito.anyObject(), // new targets
-            (String[]) Mockito.anyObject());    // new target storages
-
-        fs.recoverLease(fPath);
-
-        LOG.info("Waiting for commitBlockSynchronization call from primary");
-        delayer.waitForCall();
-
-        LOG.info("Deleting recursively " + grandestNonRootParent);
-        fs.delete(grandestNonRootParent, true);
-        if (mkSameDir && !grandestNonRootParent.toString().equals(testPath)) {
-          LOG.info("Recreate dir " + grandestNonRootParent + " testpath: "
-              + testPath);
-          fs.mkdirs(grandestNonRootParent);
-        }
-        delayer.proceed();
-        LOG.info("Now wait for result");
-        delayer.waitForResult();
-        Throwable t = delayer.getThrown();
-        if (t != null) {
-          LOG.info("Result exception (snapshot: " + hasSnapshot + "): " + t);
-        }
-      } // end of loop each fPath
-      LOG.info("Now check we can restart");
-      cluster.restartNameNodes();
-      LOG.info("Restart finished");
-    } finally {
-      if (stm != null) {
-        IOUtils.closeStream(stm);
-      }
-      if (cluster != null) {
-        cluster.shutdown();
-      }
-    }
-  }
-
-  @Test(timeout=600000)
-  public void testDeleteAndCommitBlockSynchonizationRaceNoSnapshot()
-      throws Exception {
-    testDeleteAndCommitBlockSynchronizationRace(false);
-  }
-
-  @Test(timeout=600000)
-  public void testDeleteAndCommitBlockSynchronizationRaceHasSnapshot()
-      throws Exception {
-    testDeleteAndCommitBlockSynchronizationRace(true);
-  }
-
 
   /**
    * Test the sequence of deleting a file that has snapshot,

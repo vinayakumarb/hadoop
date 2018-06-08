@@ -28,7 +28,6 @@ import static org.apache.hadoop.hdfs.client.HdfsClientConfigKeys.DFS_CLIENT_SERV
 import static org.apache.hadoop.hdfs.client.HdfsClientConfigKeys.DFS_CLIENT_TEST_DROP_NAMENODE_RESPONSE_NUM_DEFAULT;
 import static org.apache.hadoop.hdfs.client.HdfsClientConfigKeys.DFS_CLIENT_TEST_DROP_NAMENODE_RESPONSE_NUM_KEY;
 
-import java.io.DataOutputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -62,7 +61,6 @@ import org.apache.hadoop.crypto.CryptoOutputStream;
 import org.apache.hadoop.crypto.key.KeyProvider;
 import org.apache.hadoop.crypto.key.KeyProvider.KeyVersion;
 import org.apache.hadoop.fs.BlockLocation;
-import org.apache.hadoop.fs.CacheFlag;
 import org.apache.hadoop.fs.ContentSummary;
 import org.apache.hadoop.fs.CreateFlag;
 import org.apache.hadoop.fs.FileAlreadyExistsException;
@@ -100,14 +98,7 @@ import org.apache.hadoop.hdfs.client.impl.DfsClientConf;
 import org.apache.hadoop.hdfs.client.impl.LeaseRenewer;
 import org.apache.hadoop.hdfs.net.Peer;
 import org.apache.hadoop.hdfs.protocol.AclException;
-import org.apache.hadoop.hdfs.protocol.AddErasureCodingPolicyResponse;
 import org.apache.hadoop.hdfs.protocol.BlockStoragePolicy;
-import org.apache.hadoop.hdfs.protocol.CacheDirectiveEntry;
-import org.apache.hadoop.hdfs.protocol.CacheDirectiveInfo;
-import org.apache.hadoop.hdfs.protocol.CacheDirectiveIterator;
-import org.apache.hadoop.hdfs.protocol.CachePoolEntry;
-import org.apache.hadoop.hdfs.protocol.CachePoolInfo;
-import org.apache.hadoop.hdfs.protocol.CachePoolIterator;
 import org.apache.hadoop.hdfs.protocol.ClientProtocol;
 import org.apache.hadoop.hdfs.protocol.CorruptFileBlocks;
 import org.apache.hadoop.hdfs.protocol.DSQuotaExceededException;
@@ -116,8 +107,6 @@ import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.hdfs.protocol.DirectoryListing;
 import org.apache.hadoop.hdfs.protocol.EncryptionZone;
 import org.apache.hadoop.hdfs.protocol.EncryptionZoneIterator;
-import org.apache.hadoop.hdfs.protocol.ErasureCodingPolicy;
-import org.apache.hadoop.hdfs.protocol.ErasureCodingPolicyInfo;
 import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants.DatanodeReportType;
@@ -143,16 +132,12 @@ import org.apache.hadoop.hdfs.protocol.UnresolvedPathException;
 import org.apache.hadoop.hdfs.protocol.ZoneReencryptionStatus;
 import org.apache.hadoop.hdfs.protocol.SnapshotDiffReport;
 import org.apache.hadoop.hdfs.protocol.SnapshotDiffReportListing;
-import org.apache.hadoop.hdfs.protocol.datatransfer.DataTransferProtoUtil;
 import org.apache.hadoop.hdfs.protocol.datatransfer.IOStreamPair;
 import org.apache.hadoop.hdfs.protocol.datatransfer.ReplaceDatanodeOnFailure;
-import org.apache.hadoop.hdfs.protocol.datatransfer.Sender;
 import org.apache.hadoop.hdfs.protocol.datatransfer.TrustedChannelResolver;
 import org.apache.hadoop.hdfs.protocol.datatransfer.sasl.DataEncryptionKeyFactory;
 import org.apache.hadoop.hdfs.protocol.datatransfer.sasl.DataTransferSaslUtil;
 import org.apache.hadoop.hdfs.protocol.datatransfer.sasl.SaslDataTransferClient;
-import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.BlockOpResponseProto;
-import org.apache.hadoop.hdfs.protocolPB.PBHelperClient;
 import org.apache.hadoop.hdfs.security.token.block.BlockTokenIdentifier;
 import org.apache.hadoop.hdfs.security.token.block.DataEncryptionKey;
 import org.apache.hadoop.hdfs.security.token.delegation.DelegationTokenIdentifier;
@@ -177,7 +162,6 @@ import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.security.token.TokenRenewer;
 import org.apache.hadoop.util.Daemon;
 import org.apache.hadoop.util.DataChecksum;
-import org.apache.hadoop.util.DataChecksum.Type;
 import org.apache.hadoop.util.Progressable;
 import org.apache.hadoop.util.Time;
 import org.apache.htrace.core.TraceScope;
@@ -221,8 +205,6 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
   private volatile long serverDefaultsLastUpdate;
   final String clientName;
   final SocketFactory socketFactory;
-  final ReplaceDatanodeOnFailure dtpReplaceDatanodeOnFailure;
-  final short dtpReplaceDatanodeOnFailureReplication;
   private final FileSystem.Statistics stats;
   private final URI namenodeUri;
   private final Random r = new Random();
@@ -304,19 +286,7 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
     this.conf = conf;
     this.stats = stats;
     this.socketFactory = NetUtils.getSocketFactory(conf, ClientProtocol.class);
-    this.dtpReplaceDatanodeOnFailure = ReplaceDatanodeOnFailure.get(conf);
     this.smallBufferSize = DFSUtilClient.getSmallBufferSize(conf);
-    this.dtpReplaceDatanodeOnFailureReplication = (short) conf
-        .getInt(HdfsClientConfigKeys.BlockWrite.ReplaceDatanodeOnFailure.
-                MIN_REPLICATION,
-            HdfsClientConfigKeys.BlockWrite.ReplaceDatanodeOnFailure.
-                MIN_REPLICATION_DEFAULT);
-    if (LOG.isDebugEnabled()) {
-      LOG.debug(
-          "Sets " + HdfsClientConfigKeys.BlockWrite.ReplaceDatanodeOnFailure.
-              MIN_REPLICATION + " to "
-              + dtpReplaceDatanodeOnFailureReplication);
-    }
     this.ugi = UserGroupInformation.getCurrentUser();
 
     this.namenodeUri = nameNodeUri;
@@ -388,9 +358,6 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
       this.initThreadsNumForHedgedReads(dfsClientConf.
           getHedgedReadThreadpoolSize());
     }
-
-    this.initThreadsNumForStripedReads(dfsClientConf.
-        getStripedReadThreadpoolSize());
     this.saslClient = new SaslDataTransferClient(
         conf, DataTransferSaslUtil.getSaslPropertiesResolver(conf),
         TrustedChannelResolver.getInstance(conf), nnFallbackToSimpleAuth);
@@ -1028,11 +995,6 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
   private DFSInputStream openInternal(LocatedBlocks locatedBlocks, String src,
       boolean verifyChecksum) throws IOException {
     if (locatedBlocks != null) {
-      ErasureCodingPolicy ecPolicy = locatedBlocks.getErasureCodingPolicy();
-      if (ecPolicy != null) {
-        return new DFSStripedInputStream(this, src, verifyChecksum, ecPolicy,
-            locatedBlocks);
-      }
       return new DFSInputStream(this, src, verifyChecksum, locatedBlocks);
     } else {
       throw new IOException("Cannot open filename " + src);
@@ -1181,31 +1143,13 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
       long blockSize, Progressable progress, int buffersize,
       ChecksumOpt checksumOpt, InetSocketAddress[] favoredNodes)
       throws IOException {
-    return create(src, permission, flag, createParent, replication, blockSize,
-        progress, buffersize, checksumOpt, favoredNodes, null);
-  }
-
-
-  /**
-   * Same as {@link #create(String, FsPermission, EnumSet, boolean, short, long,
-   * Progressable, int, ChecksumOpt, InetSocketAddress[])} with the addition of
-   * ecPolicyName that is used to specify a specific erasure coding policy
-   * instead of inheriting any policy from this new file's parent directory.
-   * This policy will be persisted in HDFS. A value of null means inheriting
-   * parent groups' whatever policy.
-   */
-  public DFSOutputStream create(String src, FsPermission permission,
-      EnumSet<CreateFlag> flag, boolean createParent, short replication,
-      long blockSize, Progressable progress, int buffersize,
-      ChecksumOpt checksumOpt, InetSocketAddress[] favoredNodes,
-      String ecPolicyName) throws IOException {
     checkOpen();
     final FsPermission masked = applyUMask(permission);
     LOG.debug("{}: masked={}", src, masked);
     final DFSOutputStream result = DFSOutputStream.newStreamForCreate(this,
         src, masked, flag, createParent, replication, blockSize, progress,
         dfsClientConf.createChecksum(checksumOpt),
-        getFavoredNodesStr(favoredNodes), ecPolicyName);
+        getFavoredNodesStr(favoredNodes));
     beginFileLease(result.getFileId(), result);
     return result;
   }
@@ -1259,7 +1203,7 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
       DataChecksum checksum = dfsClientConf.createChecksum(checksumOpt);
       result = DFSOutputStream.newStreamForCreate(this, src, absPermission,
           flag, createParent, replication, blockSize, progress, checksum,
-          null, null);
+          null);
     }
     beginFileLease(result.getFileId(), result);
     return result;
@@ -1763,16 +1707,11 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
 
     LocatedBlocks blockLocations = null;
     FileChecksumHelper.FileChecksumComputer maker = null;
-    ErasureCodingPolicy ecPolicy = null;
     if (length > 0) {
       blockLocations = getBlockLocations(src, length);
-      ecPolicy = blockLocations.getErasureCodingPolicy();
     }
 
-    maker = ecPolicy != null ?
-        new FileChecksumHelper.StripedFileNonStripedChecksumComputer(src,
-            length, blockLocations, namenode, this, ecPolicy, combineMode) :
-        new FileChecksumHelper.ReplicatedFileChecksumComputer(src, length,
+    maker = new FileChecksumHelper.ReplicatedFileChecksumComputer(src, length,
             blockLocations, namenode, this, combineMode);
 
     maker.compute();
@@ -1837,39 +1776,6 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
       throws IOException {
     return DFSUtilClient.connectToDN(dn, timeout, conf, saslClient,
         socketFactory, getConf().isConnectToDnViaHostname(), this, blockToken);
-  }
-
-  /**
-   * Infer the checksum type for a replica by sending an OP_READ_BLOCK
-   * for the first byte of that replica. This is used for compatibility
-   * with older HDFS versions which did not include the checksum type in
-   * OpBlockChecksumResponseProto.
-   *
-   * @param lb the located block
-   * @param dn the connected datanode
-   * @return the inferred checksum type
-   * @throws IOException if an error occurs
-   */
-  protected Type inferChecksumTypeByReading(LocatedBlock lb, DatanodeInfo dn)
-      throws IOException {
-    IOStreamPair pair = connectToDN(dn, dfsClientConf.getSocketTimeout(),
-        lb.getBlockToken());
-
-    try {
-      new Sender((DataOutputStream) pair.out).readBlock(lb.getBlock(),
-          lb.getBlockToken(), clientName,
-          0, 1, true, CachingStrategy.newDefaultStrategy());
-      final BlockOpResponseProto reply =
-          BlockOpResponseProto.parseFrom(PBHelperClient.vintPrefixed(pair.in));
-      String logInfo = "trying to read " + lb.getBlock() + " from datanode " +
-          dn;
-      DataTransferProtoUtil.checkBlockOpStatus(reply, logInfo);
-
-      return PBHelperClient.convert(
-          reply.getReadOpChecksumInfo().getChecksum().getType());
-    } finally {
-      IOUtilsClient.cleanup(null, pair.in, pair.out);
-    }
   }
 
   /**
@@ -1998,22 +1904,6 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
     try (TraceScope ignored
              = newPathTraceScope("listCorruptFileBlocks", path)) {
       return namenode.listCorruptFileBlocks(path, cookie);
-    }
-  }
-
-  public DatanodeInfo[] datanodeReport(DatanodeReportType type)
-      throws IOException {
-    checkOpen();
-    try (TraceScope ignored = tracer.newScope("datanodeReport")) {
-      return namenode.getDatanodeReport(type);
-    }
-  }
-
-  public DatanodeStorageReport[] getDatanodeStorageReport(
-      DatanodeReportType type) throws IOException {
-    checkOpen();
-    try (TraceScope ignored = tracer.newScope("datanodeStorageReport")) {
-      return namenode.getDatanodeStorageReport(type);
     }
   }
 
@@ -2174,74 +2064,6 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
     } catch (RemoteException re) {
       throw re.unwrapRemoteException();
     }
-  }
-
-  public long addCacheDirective(
-      CacheDirectiveInfo info, EnumSet<CacheFlag> flags) throws IOException {
-    checkOpen();
-    try (TraceScope ignored = tracer.newScope("addCacheDirective")) {
-      return namenode.addCacheDirective(info, flags);
-    } catch (RemoteException re) {
-      throw re.unwrapRemoteException();
-    }
-  }
-
-  public void modifyCacheDirective(
-      CacheDirectiveInfo info, EnumSet<CacheFlag> flags) throws IOException {
-    checkOpen();
-    try (TraceScope ignored = tracer.newScope("modifyCacheDirective")) {
-      namenode.modifyCacheDirective(info, flags);
-    } catch (RemoteException re) {
-      throw re.unwrapRemoteException();
-    }
-  }
-
-  public void removeCacheDirective(long id)
-      throws IOException {
-    checkOpen();
-    try (TraceScope ignored = tracer.newScope("removeCacheDirective")) {
-      namenode.removeCacheDirective(id);
-    } catch (RemoteException re) {
-      throw re.unwrapRemoteException();
-    }
-  }
-
-  public RemoteIterator<CacheDirectiveEntry> listCacheDirectives(
-      CacheDirectiveInfo filter) throws IOException {
-    checkOpen();
-    return new CacheDirectiveIterator(namenode, filter, tracer);
-  }
-
-  public void addCachePool(CachePoolInfo info) throws IOException {
-    checkOpen();
-    try (TraceScope ignored = tracer.newScope("addCachePool")) {
-      namenode.addCachePool(info);
-    } catch (RemoteException re) {
-      throw re.unwrapRemoteException();
-    }
-  }
-
-  public void modifyCachePool(CachePoolInfo info) throws IOException {
-    checkOpen();
-    try (TraceScope ignored = tracer.newScope("modifyCachePool")) {
-      namenode.modifyCachePool(info);
-    } catch (RemoteException re) {
-      throw re.unwrapRemoteException();
-    }
-  }
-
-  public void removeCachePool(String poolName) throws IOException {
-    checkOpen();
-    try (TraceScope ignored = tracer.newScope("removeCachePool")) {
-      namenode.removeCachePool(poolName);
-    } catch (RemoteException re) {
-      throw re.unwrapRemoteException();
-    }
-  }
-
-  public RemoteIterator<CachePoolEntry> listCachePools() throws IOException {
-    checkOpen();
-    return new CachePoolIterator(namenode, tracer);
   }
 
   /**
@@ -2555,8 +2377,7 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
   }
 
   void reportChecksumFailure(String file, ExtendedBlock blk, DatanodeInfo dn) {
-    DatanodeInfo [] dnArr = { dn };
-    LocatedBlock [] lblocks = { new LocatedBlock(blk, dnArr) };
+    LocatedBlock [] lblocks = { new LocatedBlock(blk, 0) };
     reportChecksumFailure(file, lblocks);
   }
 
@@ -2723,33 +2544,6 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
     return new ReencryptionStatusIterator(namenode, tracer);
   }
 
-  public void setErasureCodingPolicy(String src, String ecPolicyName)
-      throws IOException {
-    checkOpen();
-    try (TraceScope ignored =
-             newPathTraceScope("setErasureCodingPolicy", src)) {
-      namenode.setErasureCodingPolicy(src, ecPolicyName);
-    } catch (RemoteException re) {
-      throw re.unwrapRemoteException(AccessControlException.class,
-          SafeModeException.class,
-          UnresolvedPathException.class,
-          FileNotFoundException.class);
-    }
-  }
-
-  public void unsetErasureCodingPolicy(String src) throws IOException {
-    checkOpen();
-    try (TraceScope ignored =
-             newPathTraceScope("unsetErasureCodingPolicy", src)) {
-      namenode.unsetErasureCodingPolicy(src);
-    } catch (RemoteException re) {
-      throw re.unwrapRemoteException(AccessControlException.class,
-          SafeModeException.class,
-          UnresolvedPathException.class,
-          FileNotFoundException.class);
-    }
-  }
-
   public void setXAttr(String src, String name, byte[] value,
       EnumSet<XAttrSetFlag> flag) throws IOException {
     checkOpen();
@@ -2840,65 +2634,6 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
     }
   }
 
-  public ErasureCodingPolicyInfo[] getErasureCodingPolicies()
-      throws IOException {
-    checkOpen();
-    try (TraceScope ignored = tracer.newScope("getErasureCodingPolicies")) {
-      return namenode.getErasureCodingPolicies();
-    }
-  }
-
-  public Map<String, String> getErasureCodingCodecs() throws IOException {
-    checkOpen();
-    try (TraceScope ignored = tracer.newScope("getErasureCodingCodecs")) {
-      return namenode.getErasureCodingCodecs();
-    }
-  }
-
-  public AddErasureCodingPolicyResponse[] addErasureCodingPolicies(
-      ErasureCodingPolicy[] policies) throws IOException {
-    checkOpen();
-    try (TraceScope ignored = tracer.newScope("addErasureCodingPolicies")) {
-      return namenode.addErasureCodingPolicies(policies);
-    } catch (RemoteException re) {
-      throw re.unwrapRemoteException(AccessControlException.class,
-          SafeModeException.class);
-    }
-  }
-
-  public void removeErasureCodingPolicy(String ecPolicyName)
-      throws IOException {
-    checkOpen();
-    try (TraceScope ignored = tracer.newScope("removeErasureCodingPolicy")) {
-      namenode.removeErasureCodingPolicy(ecPolicyName);
-    } catch (RemoteException re) {
-      throw re.unwrapRemoteException(AccessControlException.class,
-          SafeModeException.class);
-    }
-  }
-
-  public void enableErasureCodingPolicy(String ecPolicyName)
-      throws IOException {
-    checkOpen();
-    try (TraceScope ignored = tracer.newScope("enableErasureCodingPolicy")) {
-      namenode.enableErasureCodingPolicy(ecPolicyName);
-    } catch (RemoteException re) {
-      throw re.unwrapRemoteException(AccessControlException.class,
-          SafeModeException.class);
-    }
-  }
-
-  public void disableErasureCodingPolicy(String ecPolicyName)
-      throws IOException {
-    checkOpen();
-    try (TraceScope ignored = tracer.newScope("disableErasureCodingPolicy")) {
-      namenode.disableErasureCodingPolicy(ecPolicyName);
-    } catch (RemoteException re) {
-      throw re.unwrapRemoteException(AccessControlException.class,
-          SafeModeException.class);
-    }
-  }
-
   public DFSInotifyEventInputStream getInotifyEventStream() throws IOException {
     checkOpen();
     return new DFSInotifyEventInputStream(namenode, tracer);
@@ -2975,34 +2710,8 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
     LOG.debug("Using hedged reads; pool threads={}", num);
   }
 
-  /**
-   * Create thread pool for parallel reading in striped layout,
-   * STRIPED_READ_THREAD_POOL, if it does not already exist.
-   * @param numThreads Number of threads for striped reads thread pool.
-   */
-  private void initThreadsNumForStripedReads(int numThreads) {
-    assert numThreads > 0;
-    if (STRIPED_READ_THREAD_POOL != null) {
-      return;
-    }
-    synchronized (DFSClient.class) {
-      if (STRIPED_READ_THREAD_POOL == null) {
-        // Only after thread pool is fully constructed then save it to
-        // volatile field.
-        ThreadPoolExecutor threadPool = DFSUtilClient.getThreadPoolExecutor(1,
-            numThreads, 60, "StripedRead-", true);
-        threadPool.allowCoreThreadTimeOut(true);
-        STRIPED_READ_THREAD_POOL = threadPool;
-      }
-    }
-  }
-
   ThreadPoolExecutor getHedgedReadsThreadPool() {
     return HEDGED_READ_THREAD_POOL;
-  }
-
-  ThreadPoolExecutor getStripedReadsThreadPool() {
-    return STRIPED_READ_THREAD_POOL;
   }
 
   boolean isHedgedReadsEnabled() {
@@ -3081,28 +2790,6 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
   /** Add the returned length info to the scope. */
   void addRetLenToReaderScope(TraceScope scope, int retLen) {
     scope.addKVAnnotation("retLen", Integer.toString(retLen));
-  }
-
-  /**
-   * Get the erasure coding policy information for the specified path
-   *
-   * @param src path to get the information for
-   * @return Returns the policy information if file or directory on the path is
-   * erasure coded, null otherwise. Null will be returned if directory or file
-   * has REPLICATION policy.
-   * @throws IOException
-   */
-
-  public ErasureCodingPolicy getErasureCodingPolicy(String src)
-      throws IOException {
-    checkOpen();
-    try (TraceScope ignored =
-             newPathTraceScope("getErasureCodingPolicy", src)) {
-      return namenode.getErasureCodingPolicy(src);
-    } catch (RemoteException re) {
-      throw re.unwrapRemoteException(FileNotFoundException.class,
-          AccessControlException.class, UnresolvedPathException.class);
-    }
   }
 
   Tracer getTracer() {

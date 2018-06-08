@@ -38,15 +38,11 @@ import org.apache.hadoop.fs.permission.PermissionStatus;
 import org.apache.hadoop.hdfs.protocol.Block;
 import org.apache.hadoop.hdfs.protocol.BlockStoragePolicy;
 import org.apache.hadoop.hdfs.protocol.BlockType;
-import org.apache.hadoop.hdfs.protocol.ErasureCodingPolicy;
-import org.apache.hadoop.hdfs.protocol.HdfsConstants;
 import org.apache.hadoop.hdfs.protocol.QuotaExceededException;
 import org.apache.hadoop.hdfs.server.blockmanagement.BlockCollection;
 import org.apache.hadoop.hdfs.server.blockmanagement.BlockInfo;
-import org.apache.hadoop.hdfs.server.blockmanagement.BlockInfoStriped;
 import org.apache.hadoop.hdfs.server.blockmanagement.BlockManager;
 import org.apache.hadoop.hdfs.server.blockmanagement.BlockStoragePolicySuite;
-import org.apache.hadoop.hdfs.server.blockmanagement.DatanodeStorageInfo;
 import org.apache.hadoop.hdfs.server.common.HdfsServerConstants.BlockUCState;
 import org.apache.hadoop.hdfs.server.namenode.snapshot.FileDiff;
 import org.apache.hadoop.hdfs.server.namenode.snapshot.FileDiffList;
@@ -54,7 +50,8 @@ import org.apache.hadoop.hdfs.server.namenode.snapshot.FileWithSnapshotFeature;
 import org.apache.hadoop.hdfs.server.namenode.snapshot.Snapshot;
 import org.apache.hadoop.hdfs.server.namenode.snapshot.DiffList;
 import org.apache.hadoop.hdfs.util.LongBitFormat;
-import org.apache.hadoop.util.StringUtils;
+import org.apache.hadoop.io.erasurecode.ErasureCodeConstants;
+
 import static org.apache.hadoop.io.erasurecode.ErasureCodeConstants.REPLICATION_POLICY_ID;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -203,13 +200,6 @@ public class INodeFile extends INodeWithAdditionalFields
           throw new IllegalArgumentException(
               "Illegal REPLICATION policy for STRIPED block type");
         }
-        if (null == ErasureCodingPolicyManager.getInstance()
-            .getByID(erasureCodingPolicyID)) {
-          throw new IllegalArgumentException(String.format(
-                "Could not find EC policy with ID 0x%02x",
-                erasureCodingPolicyID));
-        }
-
         // valid parameters for STRIPED
         layoutRedundancy |= BLOCK_TYPE_MASK_STRIPED;
         break;
@@ -255,23 +245,19 @@ public class INodeFile extends INodeWithAdditionalFields
   INodeFile(long id, byte[] name, PermissionStatus permissions, long mtime,
             long atime, BlockInfo[] blklist, short replication,
             long preferredBlockSize) {
-    this(id, name, permissions, mtime, atime, blklist, replication, null,
-        preferredBlockSize, (byte) 0, CONTIGUOUS);
+    this(id, name, permissions, mtime, atime, blklist, replication,
+        preferredBlockSize, (byte) 0);
   }
 
   INodeFile(long id, byte[] name, PermissionStatus permissions, long mtime,
-      long atime, BlockInfo[] blklist, Short replication, Byte ecPolicyID,
-      long preferredBlockSize, byte storagePolicyID, BlockType blockType) {
+      long atime, BlockInfo[] blklist, Short replication,
+      long preferredBlockSize, byte storagePolicyID) {
     super(id, name, permissions, mtime, atime);
-    final long layoutRedundancy = HeaderFormat.getBlockLayoutRedundancy(
-        blockType, replication, ecPolicyID);
+    final long layoutRedundancy = HeaderFormat
+        .getBlockLayoutRedundancy(BlockType.CONTIGUOUS, replication,
+            ErasureCodeConstants.REPLICATION_POLICY_ID);
     header = HeaderFormat.toLong(preferredBlockSize, layoutRedundancy,
         storagePolicyID);
-    if (blklist != null && blklist.length > 0) {
-      for (BlockInfo b : blklist) {
-        Preconditions.checkArgument(b.getBlockType() == blockType);
-      }
-    }
     setBlocks(blklist);
   }
   
@@ -374,37 +360,28 @@ public class INodeFile extends INodeWithAdditionalFields
     if (state == BlockUCState.COMPLETE) {
       return null;
     }
-    if (b.isStriped() || i < blocks.length - numCommittedAllowed) {
+    if (i < blocks.length - numCommittedAllowed) {
       return b + " is " + state + " but not COMPLETE";
     }
     if (state != BlockUCState.COMMITTED) {
       return b + " is " + state + " but neither COMPLETE nor COMMITTED";
-    }
-    final int numExpectedLocations
-        = b.getUnderConstructionFeature().getNumExpectedLocations();
-    if (numExpectedLocations <= minReplication) {
-      return b + " is " + state + " but numExpectedLocations = "
-          + numExpectedLocations + " <= minReplication = " + minReplication;
     }
     return null;
   }
 
   @Override // BlockCollection
   public void setBlock(int index, BlockInfo blk) {
-    Preconditions.checkArgument(blk.isStriped() == this.isStriped());
     this.blocks[index] = blk;
   }
 
   @Override // BlockCollection, the file should be under construction
-  public void convertLastBlockToUC(BlockInfo lastBlock,
-      DatanodeStorageInfo[] locations) throws IOException {
+  public void convertLastBlockToUC(BlockInfo lastBlock) throws IOException {
     Preconditions.checkState(isUnderConstruction(),
         "file is no longer under construction");
     if (numBlocks() == 0) {
       throw new IOException("Failed to set last block: File is empty.");
     }
-    lastBlock.convertToBlockUnderConstruction(BlockUCState.UNDER_CONSTRUCTION,
-        locations);
+    lastBlock.convertToBlockUnderConstruction(BlockUCState.UNDER_CONSTRUCTION);
   }
 
   void setLastBlock(BlockInfo blk) {
@@ -535,15 +512,7 @@ public class INodeFile extends INodeWithAdditionalFields
       }
       max = maxInSnapshot > max ? maxInSnapshot : max;
     }
-    if(!isStriped()){
-      return max;
-    }
-
-    ErasureCodingPolicy ecPolicy = ErasureCodingPolicyManager.getInstance()
-        .getByID(getErasureCodingPolicyID());
-    Preconditions.checkNotNull(ecPolicy, "Could not find EC policy with ID 0x"
-        + StringUtils.byteToHexString(getErasureCodingPolicyID()));
-    return (short) (ecPolicy.getNumDataUnits() + ecPolicy.getNumParityUnits());
+    return max;
   }
 
   /** Set the replication factor of this file. */
@@ -582,22 +551,6 @@ public class INodeFile extends INodeWithAdditionalFields
       id = this.getParent() != null ?
           this.getParent().getStoragePolicyID() : id;
     }
-
-    // For Striped EC files, we support only suitable policies. Current
-    // supported policies are HOT, COLD, ALL_SSD.
-    // If the file was set with any other policies, then we just treat policy as
-    // BLOCK_STORAGE_POLICY_ID_UNSPECIFIED.
-    if (isStriped() && id != BLOCK_STORAGE_POLICY_ID_UNSPECIFIED
-        && !ErasureCodingPolicyManager
-            .checkStoragePolicySuitableForECStripedMode(id)) {
-      id = HdfsConstants.BLOCK_STORAGE_POLICY_ID_UNSPECIFIED;
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("The current effective storage policy id : " + id
-            + " is not suitable for striped mode EC file : " + getName()
-            + ". So, just returning unspecified storage policy id");
-      }
-    }
-
     return id;
   }
 
@@ -706,7 +659,6 @@ public class INodeFile extends INodeWithAdditionalFields
    * add a block to the block list
    */
   void addBlock(BlockInfo newblock) {
-    Preconditions.checkArgument(newblock.isStriped() == this.isStriped());
     if (this.blocks.length == 0) {
       this.setBlocks(new BlockInfo[]{newblock});
     } else {
@@ -940,10 +892,7 @@ public class INodeFile extends INodeWithAdditionalFields
        if (!includesLastUcBlock) {
          size = 0;
        } else if (usePreferredBlockSize4LastUcBlock) {
-         size = isStriped()?
-             getPreferredBlockSize() *
-                 ((BlockInfoStriped)lastBlk).getDataBlockNum() :
-             getPreferredBlockSize();
+         size = getPreferredBlockSize();
        }
     }
     //sum other blocks
@@ -959,24 +908,7 @@ public class INodeFile extends INodeWithAdditionalFields
    * Use preferred block size for the last block if it is under construction.
    */
   public final QuotaCounts storagespaceConsumed(BlockStoragePolicy bsp) {
-    if (isStriped()) {
-      return storagespaceConsumedStriped();
-    } else {
-      return storagespaceConsumedContiguous(bsp);
-    }
-  }
-
-  // TODO: support EC with heterogeneous storage
-  public final QuotaCounts storagespaceConsumedStriped() {
-    QuotaCounts counts = new QuotaCounts.Builder().build();
-    for (BlockInfo b : blocks) {
-      Preconditions.checkState(b.isStriped());
-      long blockSize = b.isComplete() ?
-          ((BlockInfoStriped)b).spaceConsumed() : getPreferredBlockSize() *
-          ((BlockInfoStriped)b).getTotalBlockNum();
-      counts.addStorageSpace(blockSize);
-    }
-    return  counts;
+    return storagespaceConsumedContiguous(bsp);
   }
 
   public final QuotaCounts storagespaceConsumedContiguous(

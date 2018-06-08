@@ -40,19 +40,13 @@ import org.apache.hadoop.fs.permission.PermissionStatus;
 import org.apache.hadoop.fs.StorageType;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.protocol.Block;
-import org.apache.hadoop.hdfs.protocol.CacheDirectiveInfo;
-import org.apache.hadoop.hdfs.protocol.CachePoolInfo;
-import org.apache.hadoop.hdfs.protocol.ErasureCodingPolicy;
 import org.apache.hadoop.hdfs.security.token.delegation.DelegationTokenIdentifier;
 import org.apache.hadoop.hdfs.server.blockmanagement.BlockInfo;
 import org.apache.hadoop.hdfs.server.common.HdfsServerConstants;
-import org.apache.hadoop.hdfs.server.common.HdfsServerConstants.NamenodeRole;
 import org.apache.hadoop.hdfs.server.common.Storage.FormatConfirmable;
 import org.apache.hadoop.hdfs.server.common.Storage.StorageDirectory;
 import org.apache.hadoop.hdfs.server.common.StorageInfo;
 import org.apache.hadoop.hdfs.server.namenode.FSEditLogOp.AddBlockOp;
-import org.apache.hadoop.hdfs.server.namenode.FSEditLogOp.AddCacheDirectiveInfoOp;
-import org.apache.hadoop.hdfs.server.namenode.FSEditLogOp.AddCachePoolOp;
 import org.apache.hadoop.hdfs.server.namenode.FSEditLogOp.AddOp;
 import org.apache.hadoop.hdfs.server.namenode.FSEditLogOp.AllocateBlockIdOp;
 import org.apache.hadoop.hdfs.server.namenode.FSEditLogOp.AllowSnapshotOp;
@@ -67,12 +61,8 @@ import org.apache.hadoop.hdfs.server.namenode.FSEditLogOp.DisallowSnapshotOp;
 import org.apache.hadoop.hdfs.server.namenode.FSEditLogOp.GetDelegationTokenOp;
 import org.apache.hadoop.hdfs.server.namenode.FSEditLogOp.LogSegmentOp;
 import org.apache.hadoop.hdfs.server.namenode.FSEditLogOp.MkdirOp;
-import org.apache.hadoop.hdfs.server.namenode.FSEditLogOp.ModifyCacheDirectiveInfoOp;
-import org.apache.hadoop.hdfs.server.namenode.FSEditLogOp.ModifyCachePoolOp;
 import org.apache.hadoop.hdfs.server.namenode.FSEditLogOp.OpInstanceCache;
 import org.apache.hadoop.hdfs.server.namenode.FSEditLogOp.ReassignLeaseOp;
-import org.apache.hadoop.hdfs.server.namenode.FSEditLogOp.RemoveCacheDirectiveInfoOp;
-import org.apache.hadoop.hdfs.server.namenode.FSEditLogOp.RemoveCachePoolOp;
 import org.apache.hadoop.hdfs.server.namenode.FSEditLogOp.RemoveXAttrOp;
 import org.apache.hadoop.hdfs.server.namenode.FSEditLogOp.RenameOldOp;
 import org.apache.hadoop.hdfs.server.namenode.FSEditLogOp.RenameOp;
@@ -96,13 +86,8 @@ import org.apache.hadoop.hdfs.server.namenode.FSEditLogOp.TimesOp;
 import org.apache.hadoop.hdfs.server.namenode.FSEditLogOp.TruncateOp;
 import org.apache.hadoop.hdfs.server.namenode.FSEditLogOp.UpdateBlocksOp;
 import org.apache.hadoop.hdfs.server.namenode.FSEditLogOp.UpdateMasterKeyOp;
-import org.apache.hadoop.hdfs.server.namenode.FSEditLogOp.AddErasureCodingPolicyOp;
-import org.apache.hadoop.hdfs.server.namenode.FSEditLogOp.EnableErasureCodingPolicyOp;
-import org.apache.hadoop.hdfs.server.namenode.FSEditLogOp.DisableErasureCodingPolicyOp;
-import org.apache.hadoop.hdfs.server.namenode.FSEditLogOp.RemoveErasureCodingPolicyOp;
 import org.apache.hadoop.hdfs.server.namenode.JournalSet.JournalAndStream;
 import org.apache.hadoop.hdfs.server.namenode.metrics.NameNodeMetrics;
-import org.apache.hadoop.hdfs.server.protocol.NamenodeRegistration;
 import org.apache.hadoop.hdfs.server.protocol.NamespaceInfo;
 import org.apache.hadoop.hdfs.server.protocol.RemoteEditLogManifest;
 import org.apache.hadoop.io.IOUtils;
@@ -1148,56 +1133,6 @@ public class FSEditLog implements LogsPurgeable {
     logEdit(op);
   }
 
-  /**
-   * Log a CacheDirectiveInfo returned from
-   * {@link CacheManager#addDirective(CacheDirectiveInfo, FSPermissionChecker)}
-   */
-  void logAddCacheDirectiveInfo(CacheDirectiveInfo directive,
-      boolean toLogRpcIds) {
-    AddCacheDirectiveInfoOp op =
-        AddCacheDirectiveInfoOp.getInstance(cache.get())
-            .setDirective(directive);
-    logRpcIds(op, toLogRpcIds);
-    logEdit(op);
-  }
-
-  void logModifyCacheDirectiveInfo(
-      CacheDirectiveInfo directive, boolean toLogRpcIds) {
-    ModifyCacheDirectiveInfoOp op =
-        ModifyCacheDirectiveInfoOp.getInstance(
-            cache.get()).setDirective(directive);
-    logRpcIds(op, toLogRpcIds);
-    logEdit(op);
-  }
-
-  void logRemoveCacheDirectiveInfo(Long id, boolean toLogRpcIds) {
-    RemoveCacheDirectiveInfoOp op =
-        RemoveCacheDirectiveInfoOp.getInstance(cache.get()).setId(id);
-    logRpcIds(op, toLogRpcIds);
-    logEdit(op);
-  }
-
-  void logAddCachePool(CachePoolInfo pool, boolean toLogRpcIds) {
-    AddCachePoolOp op =
-        AddCachePoolOp.getInstance(cache.get()).setPool(pool);
-    logRpcIds(op, toLogRpcIds);
-    logEdit(op);
-  }
-
-  void logModifyCachePool(CachePoolInfo info, boolean toLogRpcIds) {
-    ModifyCachePoolOp op =
-        ModifyCachePoolOp.getInstance(cache.get()).setInfo(info);
-    logRpcIds(op, toLogRpcIds);
-    logEdit(op);
-  }
-
-  void logRemoveCachePool(String poolName, boolean toLogRpcIds) {
-    RemoveCachePoolOp op =
-        RemoveCachePoolOp.getInstance(cache.get()).setPoolName(poolName);
-    logRpcIds(op, toLogRpcIds);
-    logEdit(op);
-  }
-
   void logStartRollingUpgrade(long startTime) {
     RollingUpgradeStartOp op = RollingUpgradeStartOp.getInstance(cache.get());
     op.setTime(startTime);
@@ -1233,38 +1168,6 @@ public class FSEditLog implements LogsPurgeable {
     logEdit(op);
   }
 
-  void logAddErasureCodingPolicy(ErasureCodingPolicy ecPolicy,
-      boolean toLogRpcIds) {
-    AddErasureCodingPolicyOp op =
-        AddErasureCodingPolicyOp.getInstance(cache.get());
-    op.setErasureCodingPolicy(ecPolicy);
-    logRpcIds(op, toLogRpcIds);
-    logEdit(op);
-  }
-
-  void logEnableErasureCodingPolicy(String ecPolicyName, boolean toLogRpcIds) {
-    EnableErasureCodingPolicyOp op =
-        EnableErasureCodingPolicyOp.getInstance(cache.get());
-    op.setErasureCodingPolicy(ecPolicyName);
-    logRpcIds(op, toLogRpcIds);
-    logEdit(op);
-  }
-
-  void logDisableErasureCodingPolicy(String ecPolicyName, boolean toLogRpcIds) {
-    DisableErasureCodingPolicyOp op =
-        DisableErasureCodingPolicyOp.getInstance(cache.get());
-    op.setErasureCodingPolicy(ecPolicyName);
-    logRpcIds(op, toLogRpcIds);
-    logEdit(op);
-  }
-
-  void logRemoveErasureCodingPolicy(String ecPolicyName, boolean toLogRpcIds) {
-    RemoveErasureCodingPolicyOp op =
-        RemoveErasureCodingPolicyOp.getInstance(cache.get());
-    op.setErasureCodingPolicy(ecPolicyName);
-    logRpcIds(op, toLogRpcIds);
-    logEdit(op);
-  }
   /**
    * Get all the journals this edit log is currently operating on.
    */
@@ -1504,65 +1407,6 @@ public class FSEditLog implements LogsPurgeable {
   // sets the initial capacity of the flush buffer.
   synchronized void setOutputBufferCapacity(int size) {
     journalSet.setOutputBufferCapacity(size);
-  }
-
-  /**
-   * Create (or find if already exists) an edit output stream, which
-   * streams journal records (edits) to the specified backup node.<br>
-   * 
-   * The new BackupNode will start receiving edits the next time this
-   * NameNode's logs roll.
-   * 
-   * @param bnReg the backup node registration information.
-   * @param nnReg this (active) name-node registration.
-   * @throws IOException
-   */
-  synchronized void registerBackupNode(
-      NamenodeRegistration bnReg, // backup node
-      NamenodeRegistration nnReg) // active name-node
-  throws IOException {
-    if(bnReg.isRole(NamenodeRole.CHECKPOINT))
-      return; // checkpoint node does not stream edits
-    
-    JournalManager jas = findBackupJournal(bnReg);
-    if (jas != null) {
-      // already registered
-      LOG.info("Backup node " + bnReg + " re-registers");
-      return;
-    }
-    
-    LOG.info("Registering new backup node: " + bnReg);
-    BackupJournalManager bjm = new BackupJournalManager(bnReg, nnReg);
-    synchronized(journalSetLock) {
-      journalSet.add(bjm, false);
-    }
-  }
-  
-  synchronized void releaseBackupStream(NamenodeRegistration registration)
-      throws IOException {
-    BackupJournalManager bjm = this.findBackupJournal(registration);
-    if (bjm != null) {
-      LOG.info("Removing backup journal " + bjm);
-      synchronized(journalSetLock) {
-        journalSet.remove(bjm);
-      }
-    }
-  }
-  
-  /**
-   * Find the JournalAndStream associated with this BackupNode.
-   * 
-   * @return null if it cannot be found
-   */
-  private synchronized BackupJournalManager findBackupJournal(
-      NamenodeRegistration bnReg) {
-    for (JournalManager bjm : journalSet.getJournalManagers()) {
-      if ((bjm instanceof BackupJournalManager)
-          && ((BackupJournalManager) bjm).matchesRegistration(bnReg)) {
-        return (BackupJournalManager) bjm;
-      }
-    }
-    return null;
   }
 
   /** Write the batch of edits to edit log. */

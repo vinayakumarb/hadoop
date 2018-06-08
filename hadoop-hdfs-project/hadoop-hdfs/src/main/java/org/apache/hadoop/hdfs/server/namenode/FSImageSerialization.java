@@ -21,8 +21,6 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
@@ -32,11 +30,8 @@ import org.apache.hadoop.fs.permission.PermissionStatus;
 import org.apache.hadoop.hdfs.DFSUtil;
 import org.apache.hadoop.hdfs.DeprecatedUTF8;
 import org.apache.hadoop.hdfs.protocol.Block;
-import org.apache.hadoop.hdfs.protocol.CacheDirectiveInfo;
-import org.apache.hadoop.hdfs.protocol.CachePoolInfo;
 import org.apache.hadoop.hdfs.protocol.LayoutVersion;
-import org.apache.hadoop.hdfs.protocol.ErasureCodingPolicy;
-import org.apache.hadoop.hdfs.server.blockmanagement.BlockInfoContiguous;
+import org.apache.hadoop.hdfs.server.blockmanagement.BlockInfo;
 import org.apache.hadoop.hdfs.server.common.HdfsServerConstants.BlockUCState;
 import org.apache.hadoop.hdfs.server.namenode.snapshot.SnapshotFSImageFormat;
 import org.apache.hadoop.hdfs.server.namenode.snapshot.SnapshotFSImageFormat.ReferenceMap;
@@ -49,7 +44,6 @@ import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.ShortWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.WritableUtils;
-import org.apache.hadoop.io.erasurecode.ECSchema;
 import org.xml.sax.ContentHandler;
 import org.xml.sax.SAXException;
 
@@ -130,20 +124,19 @@ public class FSImageSerialization {
 
     int numBlocks = in.readInt();
 
-    final BlockInfoContiguous[] blocksContiguous =
-        new BlockInfoContiguous[numBlocks];
+    final BlockInfo[] blocksContiguous = new BlockInfo[numBlocks];
     Block blk = new Block();
     int i = 0;
     for (; i < numBlocks - 1; i++) {
       blk.readFields(in);
-      blocksContiguous[i] = new BlockInfoContiguous(blk, blockReplication);
+      blocksContiguous[i] = new BlockInfo(blk, blockReplication);
     }
     // last block is UNDER_CONSTRUCTION
     if(numBlocks > 0) {
       blk.readFields(in);
-      blocksContiguous[i] = new BlockInfoContiguous(blk, blockReplication);
+      blocksContiguous[i] = new BlockInfo(blk, blockReplication);
       blocksContiguous[i].convertToBlockUnderConstruction(
-          BlockUCState.UNDER_CONSTRUCTION, null);
+          BlockUCState.UNDER_CONSTRUCTION);
     }
 
     PermissionStatus perm = PermissionStatus.read(in);
@@ -517,282 +510,5 @@ public class FSImageSerialization {
       prev = ret[i];
     }
     return ret;
-  }
-
-  public static void writeCacheDirectiveInfo(DataOutputStream out,
-      CacheDirectiveInfo directive) throws IOException {
-    writeLong(directive.getId(), out);
-    int flags =
-        ((directive.getPath() != null) ? 0x1 : 0) |
-        ((directive.getReplication() != null) ? 0x2 : 0) |
-        ((directive.getPool() != null) ? 0x4 : 0) |
-        ((directive.getExpiration() != null) ? 0x8 : 0);
-    out.writeInt(flags);
-    if (directive.getPath() != null) {
-      writeString(directive.getPath().toUri().getPath(), out);
-    }
-    if (directive.getReplication() != null) {
-      writeShort(directive.getReplication(), out);
-    }
-    if (directive.getPool() != null) {
-      writeString(directive.getPool(), out);
-    }
-    if (directive.getExpiration() != null) {
-      writeLong(directive.getExpiration().getMillis(), out);
-    }
-  }
-
-  public static CacheDirectiveInfo readCacheDirectiveInfo(DataInput in)
-      throws IOException {
-    CacheDirectiveInfo.Builder builder =
-        new CacheDirectiveInfo.Builder();
-    builder.setId(readLong(in));
-    int flags = in.readInt();
-    if ((flags & 0x1) != 0) {
-      builder.setPath(new Path(readString(in)));
-    }
-    if ((flags & 0x2) != 0) {
-      builder.setReplication(readShort(in));
-    }
-    if ((flags & 0x4) != 0) {
-      builder.setPool(readString(in));
-    }
-    if ((flags & 0x8) != 0) {
-      builder.setExpiration(
-          CacheDirectiveInfo.Expiration.newAbsolute(readLong(in)));
-    }
-    if ((flags & ~0xF) != 0) {
-      throw new IOException("unknown flags set in " +
-          "ModifyCacheDirectiveInfoOp: " + flags);
-    }
-    return builder.build();
-  }
-
-  public static CacheDirectiveInfo readCacheDirectiveInfo(Stanza st)
-      throws InvalidXmlException {
-    CacheDirectiveInfo.Builder builder =
-        new CacheDirectiveInfo.Builder();
-    builder.setId(Long.parseLong(st.getValue("ID")));
-    String path = st.getValueOrNull("PATH");
-    if (path != null) {
-      builder.setPath(new Path(path));
-    }
-    String replicationString = st.getValueOrNull("REPLICATION");
-    if (replicationString != null) {
-      builder.setReplication(Short.parseShort(replicationString));
-    }
-    String pool = st.getValueOrNull("POOL");
-    if (pool != null) {
-      builder.setPool(pool);
-    }
-    String expiryTime = st.getValueOrNull("EXPIRATION");
-    if (expiryTime != null) {
-      builder.setExpiration(CacheDirectiveInfo.Expiration.newAbsolute(
-          Long.parseLong(expiryTime)));
-    }
-    return builder.build();
-  }
-
-  public static void writeCacheDirectiveInfo(ContentHandler contentHandler,
-      CacheDirectiveInfo directive) throws SAXException {
-    XMLUtils.addSaxString(contentHandler, "ID",
-        Long.toString(directive.getId()));
-    if (directive.getPath() != null) {
-      XMLUtils.addSaxString(contentHandler, "PATH",
-          directive.getPath().toUri().getPath());
-    }
-    if (directive.getReplication() != null) {
-      XMLUtils.addSaxString(contentHandler, "REPLICATION",
-          Short.toString(directive.getReplication()));
-    }
-    if (directive.getPool() != null) {
-      XMLUtils.addSaxString(contentHandler, "POOL", directive.getPool());
-    }
-    if (directive.getExpiration() != null) {
-      XMLUtils.addSaxString(contentHandler, "EXPIRATION",
-          "" + directive.getExpiration().getMillis());
-    }
-  }
-
-  public static void writeCachePoolInfo(DataOutputStream out, CachePoolInfo info)
-      throws IOException {
-    writeString(info.getPoolName(), out);
-
-    final String ownerName = info.getOwnerName();
-    final String groupName = info.getGroupName();
-    final Long limit = info.getLimit();
-    final FsPermission mode = info.getMode();
-    final Long maxRelativeExpiry = info.getMaxRelativeExpiryMs();
-    final Short defaultReplication = info.getDefaultReplication();
-
-    boolean hasOwner, hasGroup, hasMode, hasLimit,
-            hasMaxRelativeExpiry, hasDefaultReplication;
-    hasOwner = ownerName != null;
-    hasGroup = groupName != null;
-    hasMode = mode != null;
-    hasLimit = limit != null;
-    hasMaxRelativeExpiry = maxRelativeExpiry != null;
-    hasDefaultReplication = defaultReplication != null;
-
-    int flags =
-        (hasOwner ? 0x1 : 0) |
-        (hasGroup ? 0x2 : 0) |
-        (hasMode  ? 0x4 : 0) |
-        (hasLimit ? 0x8 : 0) |
-        (hasMaxRelativeExpiry ? 0x10 : 0) |
-        (hasDefaultReplication ? 0x20 : 0);
-
-    writeInt(flags, out);
-
-    if (hasOwner) {
-      writeString(ownerName, out);
-    }
-    if (hasGroup) {
-      writeString(groupName, out);
-    }
-    if (hasMode) {
-      mode.write(out);
-    }
-    if (hasLimit) {
-      writeLong(limit, out);
-    }
-    if (hasMaxRelativeExpiry) {
-      writeLong(maxRelativeExpiry, out);
-    }
-    if (hasDefaultReplication) {
-      writeShort(defaultReplication, out);
-    }
-  }
-
-  public static CachePoolInfo readCachePoolInfo(DataInput in)
-      throws IOException {
-    String poolName = readString(in);
-    CachePoolInfo info = new CachePoolInfo(poolName);
-    int flags = readInt(in);
-    if ((flags & 0x1) != 0) {
-      info.setOwnerName(readString(in));
-    }
-    if ((flags & 0x2) != 0)  {
-      info.setGroupName(readString(in));
-    }
-    if ((flags & 0x4) != 0) {
-      info.setMode(FsPermission.read(in));
-    }
-    if ((flags & 0x8) != 0) {
-      info.setLimit(readLong(in));
-    }
-    if ((flags & 0x10) != 0) {
-      info.setMaxRelativeExpiryMs(readLong(in));
-    }
-    if ((flags & 0x20) != 0) {
-      info.setDefaultReplication(readShort(in));
-    }
-    if ((flags & ~0x3F) != 0) {
-      throw new IOException("Unknown flag in CachePoolInfo: " + flags);
-    }
-    return info;
-  }
-
-  public static void writeCachePoolInfo(ContentHandler contentHandler,
-      CachePoolInfo info) throws SAXException {
-    XMLUtils.addSaxString(contentHandler, "POOLNAME", info.getPoolName());
-
-    final String ownerName = info.getOwnerName();
-    final String groupName = info.getGroupName();
-    final Long limit = info.getLimit();
-    final FsPermission mode = info.getMode();
-    final Long maxRelativeExpiry = info.getMaxRelativeExpiryMs();
-    final Short defaultReplication = info.getDefaultReplication();
-
-    if (ownerName != null) {
-      XMLUtils.addSaxString(contentHandler, "OWNERNAME", ownerName);
-    }
-    if (groupName != null) {
-      XMLUtils.addSaxString(contentHandler, "GROUPNAME", groupName);
-    }
-    if (mode != null) {
-      FSEditLogOp.fsPermissionToXml(contentHandler, mode);
-    }
-    if (limit != null) {
-      XMLUtils.addSaxString(contentHandler, "LIMIT",
-          Long.toString(limit));
-    }
-    if (maxRelativeExpiry != null) {
-      XMLUtils.addSaxString(contentHandler, "MAXRELATIVEEXPIRY",
-          Long.toString(maxRelativeExpiry));
-    }
-    if (defaultReplication != null) {
-      XMLUtils.addSaxString(contentHandler, "DEFAULTREPLICATION",
-          Short.toString(defaultReplication));
-    }
-  }
-
-  public static CachePoolInfo readCachePoolInfo(Stanza st)
-      throws InvalidXmlException {
-    String poolName = st.getValue("POOLNAME");
-    CachePoolInfo info = new CachePoolInfo(poolName);
-    if (st.hasChildren("OWNERNAME")) {
-      info.setOwnerName(st.getValue("OWNERNAME"));
-    }
-    if (st.hasChildren("GROUPNAME")) {
-      info.setGroupName(st.getValue("GROUPNAME"));
-    }
-    if (st.hasChildren("MODE")) {
-      info.setMode(FSEditLogOp.fsPermissionFromXml(st));
-    }
-    if (st.hasChildren("LIMIT")) {
-      info.setLimit(Long.parseLong(st.getValue("LIMIT")));
-    }
-    if (st.hasChildren("MAXRELATIVEEXPIRY")) {
-      info.setMaxRelativeExpiryMs(
-          Long.parseLong(st.getValue("MAXRELATIVEEXPIRY")));
-    }
-    if (st.hasChildren("DEFAULTREPLICATION")) {
-      info.setDefaultReplication(Short.parseShort(st
-          .getValue("DEFAULTREPLICATION")));
-    }
-    return info;
-  }
-
-  public static void writeErasureCodingPolicy(DataOutputStream out,
-      ErasureCodingPolicy ecPolicy) throws IOException {
-    writeString(ecPolicy.getSchema().getCodecName(), out);
-    writeInt(ecPolicy.getNumDataUnits(), out);
-    writeInt(ecPolicy.getNumParityUnits(), out);
-    writeInt(ecPolicy.getCellSize(), out);
-
-    Map<String, String> extraOptions = ecPolicy.getSchema().getExtraOptions();
-    if (extraOptions == null || extraOptions.isEmpty()) {
-      writeInt(0, out);
-      return;
-    }
-
-    writeInt(extraOptions.size(), out);
-    for (Map.Entry<String, String> entry : extraOptions.entrySet()) {
-      writeString(entry.getKey(), out);
-      writeString(entry.getValue(), out);
-    }
-  }
-
-  public static ErasureCodingPolicy readErasureCodingPolicy(DataInput in)
-      throws IOException {
-    String codecName = readString(in);
-    int numDataUnits = readInt(in);
-    int numParityUnits = readInt(in);
-    int cellSize = readInt(in);
-
-    int size = readInt(in);
-    Map<String, String> extraOptions = new HashMap<>(size);
-
-    if (size != 0) {
-      for (int i = 0; i < size; i++) {
-        String key = readString(in);
-        String value = readString(in);
-        extraOptions.put(key, value);
-      }
-    }
-    ECSchema ecSchema = new ECSchema(codecName, numDataUnits,
-        numParityUnits, extraOptions);
-    return new ErasureCodingPolicy(ecSchema, cellSize);
   }
 }

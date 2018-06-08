@@ -45,10 +45,6 @@ public abstract class MembershipStats extends BaseRecord {
 
   public abstract long getAvailableSpace();
 
-  public abstract void setProvidedSpace(long capacity);
-
-  public abstract long getProvidedSpace();
-
   public abstract void setNumOfFiles(long files);
 
   public abstract long getNumOfFiles();
@@ -57,41 +53,9 @@ public abstract class MembershipStats extends BaseRecord {
 
   public abstract long getNumOfBlocks();
 
-  public abstract void setNumOfBlocksMissing(long blocks);
-
-  public abstract long getNumOfBlocksMissing();
-
-  public abstract void setNumOfBlocksPendingReplication(long blocks);
-
-  public abstract long getNumOfBlocksPendingReplication();
-
-  public abstract void setNumOfBlocksUnderReplicated(long blocks);
-
-  public abstract long getNumOfBlocksUnderReplicated();
-
   public abstract void setNumOfBlocksPendingDeletion(long blocks);
 
   public abstract long getNumOfBlocksPendingDeletion();
-
-  public abstract void setNumOfActiveDatanodes(int nodes);
-
-  public abstract int getNumOfActiveDatanodes();
-
-  public abstract void setNumOfDeadDatanodes(int nodes);
-
-  public abstract int getNumOfDeadDatanodes();
-
-  public abstract void setNumOfDecommissioningDatanodes(int nodes);
-
-  public abstract int getNumOfDecommissioningDatanodes();
-
-  public abstract void setNumOfDecomActiveDatanodes(int nodes);
-
-  public abstract int getNumOfDecomActiveDatanodes();
-
-  public abstract void setNumOfDecomDeadDatanodes(int nodes);
-
-  public abstract int getNumOfDecomDeadDatanodes();
 
   @Override
   public SortedMap<String, String> getPrimaryKeys() {

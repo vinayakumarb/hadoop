@@ -78,17 +78,11 @@ import org.apache.hadoop.hdfs.client.HdfsClientConfigKeys;
 import org.apache.hadoop.hdfs.client.impl.LeaseRenewer;
 import org.apache.hadoop.hdfs.DFSOpsCountStatistics.OpType;
 import org.apache.hadoop.hdfs.net.Peer;
-import org.apache.hadoop.hdfs.protocol.ErasureCodingPolicy;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants.RollingUpgradeAction;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants.SafeModeAction;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
-import org.apache.hadoop.hdfs.server.datanode.DataNode;
-import org.apache.hadoop.hdfs.server.datanode.fsdataset.FsDatasetSpi;
-import org.apache.hadoop.hdfs.server.datanode.fsdataset.FsVolumeSpi;
-import org.apache.hadoop.hdfs.server.namenode.ErasureCodingPolicyManager;
 import org.apache.hadoop.hdfs.web.WebHdfsConstants;
-import org.apache.hadoop.io.erasurecode.ECSchema;
 import org.apache.hadoop.net.DNSToSwitchMapping;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.net.ScriptBasedMapping;
@@ -1143,7 +1137,6 @@ public class TestDistributedFileSystem {
       final int repl = 2;
       DFSTestUtil.createFile(fs, testFile, blockSize, numBlocks * blockSize,
           blockSize, (short) repl, 0xADDED);
-      DFSTestUtil.waitForReplication(fs, testFile, (short) repl, 30000);
       // Get the listing
       RemoteIterator<LocatedFileStatus> it = fs.listLocatedStatus(testFile);
       assertTrue("Expected file to be present", it.hasNext());
@@ -1152,14 +1145,6 @@ public class TestDistributedFileSystem {
       assertEquals("Unexpected number of locations", numBlocks, locs.length);
 
       Set<String> dnStorageIds = new HashSet<>();
-      for (DataNode d : cluster.getDataNodes()) {
-        try (FsDatasetSpi.FsVolumeReferences volumes = d.getFSDataset()
-            .getFsVolumeReferences()) {
-          for (FsVolumeSpi vol : volumes) {
-            dnStorageIds.add(vol.getStorageID());
-          }
-        }
-      }
 
       for (BlockLocation loc : locs) {
         String[] ids = loc.getStorageIds();
@@ -1572,127 +1557,6 @@ public class TestDistributedFileSystem {
 
       FileStatus status = fs.getFileStatus(path);
       assertEquals(16 * 2, status.getLen());
-    }
-  }
-
-  @Test
-  public void testRemoveErasureCodingPolicy() throws Exception {
-    Configuration conf = getTestConfiguration();
-    MiniDFSCluster cluster = null;
-
-    try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(1).build();
-      DistributedFileSystem fs = cluster.getFileSystem();
-      ECSchema toAddSchema = new ECSchema("rs", 3, 2);
-      ErasureCodingPolicy toAddPolicy =
-          new ErasureCodingPolicy(toAddSchema, 128 * 1024, (byte) 254);
-      String policyName = toAddPolicy.getName();
-      ErasureCodingPolicy[] policies = new ErasureCodingPolicy[]{toAddPolicy};
-      fs.addErasureCodingPolicies(policies);
-      assertEquals(policyName, ErasureCodingPolicyManager.getInstance().
-          getByName(policyName).getName());
-      fs.removeErasureCodingPolicy(policyName);
-      assertEquals(policyName, ErasureCodingPolicyManager.getInstance().
-          getRemovedPolicies().get(0).getName());
-
-      // remove erasure coding policy as a user without privilege
-      UserGroupInformation fakeUGI = UserGroupInformation.createUserForTesting(
-          "ProbablyNotARealUserName", new String[] {"ShangriLa"});
-      final MiniDFSCluster finalCluster = cluster;
-      fakeUGI.doAs(new PrivilegedExceptionAction<Object>() {
-        @Override
-        public Object run() throws Exception {
-          DistributedFileSystem fs = finalCluster.getFileSystem();
-          try {
-            fs.removeErasureCodingPolicy(policyName);
-            fail();
-          } catch (AccessControlException ace) {
-            GenericTestUtils.assertExceptionContains("Access denied for user " +
-                "ProbablyNotARealUserName. Superuser privilege is required",
-                ace);
-          }
-          return null;
-        }
-      });
-
-    } finally {
-      if (cluster != null) {
-        cluster.shutdown();
-      }
-    }
-  }
-
-  @Test
-  public void testEnableAndDisableErasureCodingPolicy() throws Exception {
-    Configuration conf = getTestConfiguration();
-    MiniDFSCluster cluster = null;
-
-    try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(1).build();
-      DistributedFileSystem fs = cluster.getFileSystem();
-      ECSchema toAddSchema = new ECSchema("rs", 3, 2);
-      ErasureCodingPolicy toAddPolicy =
-          new ErasureCodingPolicy(toAddSchema, 128 * 1024, (byte) 254);
-      String policyName = toAddPolicy.getName();
-      ErasureCodingPolicy[] policies =
-          new ErasureCodingPolicy[]{toAddPolicy};
-      fs.addErasureCodingPolicies(policies);
-      assertEquals(policyName, ErasureCodingPolicyManager.getInstance().
-          getByName(policyName).getName());
-      fs.disableErasureCodingPolicy(policyName);
-      fs.enableErasureCodingPolicy(policyName);
-      assertEquals(policyName, ErasureCodingPolicyManager.getInstance().
-          getByName(policyName).getName());
-
-      //test enable a policy that doesn't exist
-      try {
-        fs.enableErasureCodingPolicy("notExistECName");
-        Assert.fail("enable the policy that doesn't exist should fail");
-      } catch (Exception e) {
-        GenericTestUtils.assertExceptionContains("does not exist", e);
-        // pass
-      }
-
-      //test disable a policy that doesn't exist
-      try {
-        fs.disableErasureCodingPolicy("notExistECName");
-        Assert.fail("disable the policy that doesn't exist should fail");
-      } catch (Exception e) {
-        GenericTestUtils.assertExceptionContains("does not exist", e);
-        // pass
-      }
-
-      // disable and enable erasure coding policy as a user without privilege
-      UserGroupInformation fakeUGI = UserGroupInformation.createUserForTesting(
-          "ProbablyNotARealUserName", new String[] {"ShangriLa"});
-      final MiniDFSCluster finalCluster = cluster;
-      fakeUGI.doAs(new PrivilegedExceptionAction<Object>() {
-        @Override
-        public Object run() throws Exception {
-          DistributedFileSystem fs = finalCluster.getFileSystem();
-          try {
-            fs.disableErasureCodingPolicy(policyName);
-            fail();
-          } catch (AccessControlException ace) {
-            GenericTestUtils.assertExceptionContains("Access denied for user " +
-                    "ProbablyNotARealUserName. Superuser privilege is required",
-                ace);
-          }
-          try {
-            fs.enableErasureCodingPolicy(policyName);
-            fail();
-          } catch (AccessControlException ace) {
-            GenericTestUtils.assertExceptionContains("Access denied for user " +
-                    "ProbablyNotARealUserName. Superuser privilege is required",
-                ace);
-          }
-          return null;
-        }
-      });
-    } finally {
-      if (cluster != null) {
-        cluster.shutdown();
-      }
     }
   }
 }

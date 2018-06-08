@@ -30,7 +30,6 @@ import org.apache.hadoop.fs.QuotaUsage;
 import org.apache.hadoop.hdfs.DFSUtil;
 import org.apache.hadoop.hdfs.protocol.ClientProtocol;
 import org.apache.hadoop.hdfs.protocol.DirectoryListing;
-import org.apache.hadoop.hdfs.protocol.ErasureCodingPolicy;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants;
 import org.apache.hadoop.hdfs.protocol.HdfsFileStatus;
 import org.apache.hadoop.hdfs.protocol.HdfsLocatedFileStatus;
@@ -170,12 +169,10 @@ class FSDirStatAndListingOp {
 
       final FileEncryptionInfo feInfo =
           FSDirEncryptionZoneOp.getFileEncryptionInfo(fsd, iip);
-      final ErasureCodingPolicy ecPolicy = FSDirErasureCodingOp.
-          unprotectedGetErasureCodingPolicy(fsd.getFSNamesystem(), iip);
 
       final LocatedBlocks blocks = bm.createLocatedBlocks(
           inode.getBlocks(iip.getPathSnapshotId()), fileSize, isUc, offset,
-          length, needBlockToken, iip.isSnapshot(), feInfo, ecPolicy);
+          length, needBlockToken, iip.isSnapshot(), feInfo);
 
       final long now = now();
       boolean updateAccessTime = fsd.isAccessTimeSupported()
@@ -415,10 +412,6 @@ class FSDirStatAndListingOp {
     final boolean isEncrypted = FSDirEncryptionZoneOp.isInAnEZ(fsd, iip);
     FileEncryptionInfo feInfo = null;
 
-    final ErasureCodingPolicy ecPolicy = FSDirErasureCodingOp
-        .unprotectedGetErasureCodingPolicy(fsd.getFSNamesystem(), iip);
-    final boolean isErasureCoded = (ecPolicy != null);
-
     boolean isSnapShottable = false;
 
     if (node.isFile()) {
@@ -436,7 +429,7 @@ class FSDirStatAndListingOp {
             ? fileNode.computeFileSizeNotIncludingLastUcBlock() : size;
         loc = fsd.getBlockManager().createLocatedBlocks(
             fileNode.getBlocks(snapshot), fileSize, isUc, 0L, size,
-            needBlockToken, inSnapshot, feInfo, ecPolicy);
+            needBlockToken, inSnapshot, feInfo);
         if (loc == null) {
           loc = new LocatedBlocks();
         }
@@ -458,9 +451,6 @@ class FSDirStatAndListingOp {
     if (isEncrypted) {
       flags.add(HdfsFileStatus.Flags.HAS_CRYPT);
     }
-    if (isErasureCoded) {
-      flags.add(HdfsFileStatus.Flags.HAS_EC);
-    }
     if(isSnapShottable){
       flags.add(HdfsFileStatus.Flags.SNAPSHOT_ENABLED);
     }
@@ -480,18 +470,15 @@ class FSDirStatAndListingOp {
         node.getId(),
         childrenNum,
         feInfo,
-        storagePolicy,
-        ecPolicy,
-        loc);
+        storagePolicy, loc);
   }
 
-  private static HdfsFileStatus createFileStatus(
-      long length, boolean isdir,
+  private static HdfsFileStatus createFileStatus(long length, boolean isdir,
       int replication, long blocksize, long mtime, long atime,
       FsPermission permission, EnumSet<HdfsFileStatus.Flags> flags,
       String owner, String group, byte[] symlink, byte[] path, long fileId,
       int childrenNum, FileEncryptionInfo feInfo, byte storagePolicy,
-      ErasureCodingPolicy ecPolicy, LocatedBlocks locations) {
+      LocatedBlocks locations) {
     return new HdfsFileStatus.Builder()
         .length(length)
         .isdir(isdir)
@@ -509,7 +496,6 @@ class FSDirStatAndListingOp {
         .children(childrenNum)
         .feInfo(feInfo)
         .storagePolicy(storagePolicy)
-        .ecPolicy(ecPolicy)
         .locations(locations)
         .build();
   }

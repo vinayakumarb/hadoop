@@ -36,30 +36,22 @@ import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import org.apache.hadoop.hdfs.protocol.ErasureCodingPolicyInfo;
-import org.apache.hadoop.hdfs.protocolPB.PBHelperClient;
 import org.apache.hadoop.io.compress.CompressionOutputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.CacheDirectiveInfoProto;
-import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.CachePoolInfoProto;
-import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.ErasureCodingPolicyProto;
 import org.apache.hadoop.hdfs.security.token.delegation.DelegationTokenSecretManager;
 import org.apache.hadoop.hdfs.server.blockmanagement.BlockIdManager;
 import org.apache.hadoop.hdfs.server.common.HdfsServerConstants;
-import org.apache.hadoop.hdfs.server.namenode.FsImageProto.CacheManagerSection;
 import org.apache.hadoop.hdfs.server.namenode.FsImageProto.FileSummary;
 import org.apache.hadoop.hdfs.server.namenode.FsImageProto.NameSystemSection;
 import org.apache.hadoop.hdfs.server.namenode.FsImageProto.SecretManagerSection;
 import org.apache.hadoop.hdfs.server.namenode.FsImageProto.StringTableSection;
-import org.apache.hadoop.hdfs.server.namenode.FsImageProto.ErasureCodingSection;
 import org.apache.hadoop.hdfs.server.namenode.snapshot.FSImageFormatPBSnapshot;
 import org.apache.hadoop.hdfs.server.namenode.startupprogress.Phase;
 import org.apache.hadoop.hdfs.server.namenode.startupprogress.StartupProgress;
@@ -288,14 +280,12 @@ public final class FSImageFormatProtobuf {
         case CACHE_MANAGER: {
           Step step = new Step(StepType.CACHE_POOLS);
           prog.beginStep(Phase.LOADING_FSIMAGE, step);
-          loadCacheManagerSection(in, prog, step);
           prog.endStep(Phase.LOADING_FSIMAGE, step);
         }
           break;
         case ERASURE_CODING:
           Step step = new Step(StepType.ERASURE_CODING_POLICIES);
           prog.beginStep(Phase.LOADING_FSIMAGE, step);
-          loadErasureCodingSection(in);
           prog.endStep(Phase.LOADING_FSIMAGE, step);
           break;
         default:
@@ -312,10 +302,6 @@ public final class FSImageFormatProtobuf {
       blockIdManager.setGenerationStamp(s.getGenstampV2());
       blockIdManager.setLegacyGenerationStampLimit(s.getGenstampV1Limit());
       blockIdManager.setLastAllocatedContiguousBlockId(s.getLastAllocatedBlockId());
-      if (s.hasLastAllocatedStripedBlockId()) {
-        blockIdManager.setLastAllocatedStripedBlockId(
-            s.getLastAllocatedStripedBlockId());
-      }
       imgTxId = s.getTransactionId();
       if (s.hasRollingUpgradeStartTime()
           && fsn.getFSImage().hasRollbackFSImage()) {
@@ -355,38 +341,6 @@ public final class FSImageFormatProtobuf {
       }
 
       fsn.loadSecretManagerState(s, keys, tokens);
-    }
-
-    private void loadCacheManagerSection(InputStream in, StartupProgress prog,
-        Step currentStep) throws IOException {
-      CacheManagerSection s = CacheManagerSection.parseDelimitedFrom(in);
-      int numPools = s.getNumPools();
-      ArrayList<CachePoolInfoProto> pools = Lists
-          .newArrayListWithCapacity(numPools);
-      ArrayList<CacheDirectiveInfoProto> directives = Lists
-          .newArrayListWithCapacity(s.getNumDirectives());
-      prog.setTotal(Phase.LOADING_FSIMAGE, currentStep, numPools);
-      Counter counter = prog.getCounter(Phase.LOADING_FSIMAGE, currentStep);
-      for (int i = 0; i < numPools; ++i) {
-        pools.add(CachePoolInfoProto.parseDelimitedFrom(in));
-        counter.increment();
-      }
-      for (int i = 0; i < s.getNumDirectives(); ++i)
-        directives.add(CacheDirectiveInfoProto.parseDelimitedFrom(in));
-      fsn.getCacheManager().loadState(
-          new CacheManager.PersistState(s, pools, directives));
-    }
-
-    private void loadErasureCodingSection(InputStream in)
-        throws IOException {
-      ErasureCodingSection s = ErasureCodingSection.parseDelimitedFrom(in);
-      List<ErasureCodingPolicyInfo> ecPolicies = Lists
-          .newArrayListWithCapacity(s.getPoliciesCount());
-      for (int i = 0; i < s.getPoliciesCount(); ++i) {
-        ecPolicies.add(PBHelperClient.convertErasureCodingPolicyInfo(
-            s.getPolicies(i)));
-      }
-      fsn.getErasureCodingPolicyManager().loadPolicies(ecPolicies);
     }
   }
 
@@ -535,13 +489,7 @@ public final class FSImageFormatProtobuf {
       // depends on this behavior.
       context.checkCancelled();
 
-      // Erasure coding policies should be saved before inodes
-      Step step = new Step(StepType.ERASURE_CODING_POLICIES, filePath);
-      prog.beginStep(Phase.SAVING_CHECKPOINT, step);
-      saveErasureCodingSection(b);
-      prog.endStep(Phase.SAVING_CHECKPOINT, step);
-
-      step = new Step(StepType.INODES, filePath);
+      Step step = new Step(StepType.INODES, filePath);
       prog.beginStep(Phase.SAVING_CHECKPOINT, step);
       saveInodes(b);
       long numErrors = saveSnapshots(b);
@@ -550,11 +498,6 @@ public final class FSImageFormatProtobuf {
       step = new Step(StepType.DELEGATION_TOKENS, filePath);
       prog.beginStep(Phase.SAVING_CHECKPOINT, step);
       saveSecretManagerSection(b);
-      prog.endStep(Phase.SAVING_CHECKPOINT, step);
-
-      step = new Step(StepType.CACHE_POOLS, filePath);
-      prog.beginStep(Phase.SAVING_CHECKPOINT, step);
-      saveCacheManagerSection(b);
       prog.endStep(Phase.SAVING_CHECKPOINT, step);
 
       saveStringTableSection(b);
@@ -585,38 +528,6 @@ public final class FSImageFormatProtobuf {
       commitSection(summary, SectionName.SECRET_MANAGER);
     }
 
-    private void saveCacheManagerSection(FileSummary.Builder summary)
-        throws IOException {
-      final FSNamesystem fsn = context.getSourceNamesystem();
-      CacheManager.PersistState state = fsn.getCacheManager().saveState();
-      state.section.writeDelimitedTo(sectionOutputStream);
-
-      for (CachePoolInfoProto p : state.pools)
-        p.writeDelimitedTo(sectionOutputStream);
-
-      for (CacheDirectiveInfoProto p : state.directives)
-        p.writeDelimitedTo(sectionOutputStream);
-
-      commitSection(summary, SectionName.CACHE_MANAGER);
-    }
-
-    private void saveErasureCodingSection(
-        FileSummary.Builder summary) throws IOException {
-      final FSNamesystem fsn = context.getSourceNamesystem();
-      ErasureCodingPolicyInfo[] ecPolicies =
-          fsn.getErasureCodingPolicyManager().getPolicies();
-      ArrayList<ErasureCodingPolicyProto> ecPolicyProtoes =
-          new ArrayList<ErasureCodingPolicyProto>();
-      for (ErasureCodingPolicyInfo p : ecPolicies) {
-        ecPolicyProtoes.add(PBHelperClient.convertErasureCodingPolicy(p));
-      }
-
-      ErasureCodingSection section = ErasureCodingSection.newBuilder().
-          addAllPolicies(ecPolicyProtoes).build();
-      section.writeDelimitedTo(sectionOutputStream);
-      commitSection(summary, SectionName.ERASURE_CODING);
-    }
-
     private void saveNameSystemSection(FileSummary.Builder summary)
         throws IOException {
       final FSNamesystem fsn = context.getSourceNamesystem();
@@ -627,7 +538,6 @@ public final class FSImageFormatProtobuf {
           .setGenstampV1Limit(blockIdManager.getLegacyGenerationStampLimit())
           .setGenstampV2(blockIdManager.getGenerationStamp())
           .setLastAllocatedBlockId(blockIdManager.getLastAllocatedContiguousBlockId())
-          .setLastAllocatedStripedBlockId(blockIdManager.getLastAllocatedStripedBlockId())
           .setTransactionId(context.getTxId());
 
       // We use the non-locked version of getNamespaceInfo here since

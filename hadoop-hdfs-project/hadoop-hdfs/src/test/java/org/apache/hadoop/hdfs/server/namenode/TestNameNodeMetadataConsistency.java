@@ -26,7 +26,6 @@ import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.apache.hadoop.hdfs.MiniDFSCluster.DataNodeProperties;
 import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
 import org.apache.hadoop.hdfs.server.blockmanagement.BlockInfo;
-import org.apache.hadoop.hdfs.server.blockmanagement.BlockManagerTestUtil;
 import org.apache.hadoop.test.GenericTestUtils;
 
 import com.google.common.base.Supplier;
@@ -40,6 +39,7 @@ import java.io.OutputStream;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class TestNameNodeMetadataConsistency {
   private static final Path filePath1 = new Path("/testdata1.txt");
@@ -54,8 +54,6 @@ public class TestNameNodeMetadataConsistency {
   @Before
   public void InitTest() throws IOException {
     conf = new HdfsConfiguration();
-    conf.setLong(DFSConfigKeys.DFS_DATANODE_DIRECTORYSCAN_INTERVAL_KEY,
-        SCAN_INTERVAL);
     cluster = new MiniDFSCluster.Builder(conf)
         .numDataNodes(1)
         .build();
@@ -101,16 +99,9 @@ public class TestNameNodeMetadataConsistency {
         .removeBlock(bInfo);
     cluster.getNameNode().getNamesystem().writeUnlock();
 
-    // we also need to tell block manager that we are in the startup path
-    BlockManagerTestUtil.setStartupSafeModeForTest(
-        cluster.getNameNode().getNamesystem().getBlockManager());
-
     cluster.restartDataNode(dnProps);
     waitForNumBytes(TEST_DATA_IN_FUTURE.length());
 
-    // Make sure that we find all written bytes in future block
-    assertEquals(TEST_DATA_IN_FUTURE.length(),
-        cluster.getNameNode().getBytesWithFutureGenerationStamps());
     // Assert safemode reason
     assertTrue(cluster.getNameNode().getNamesystem().getSafeModeTip().contains(
         "Name node detected blocks with generation stamps in future"));
@@ -152,9 +143,7 @@ public class TestNameNodeMetadataConsistency {
     cluster.restartDataNode(dnProps);
     waitForNumBytes(0);
 
-    // Make sure that there are no bytes in future since isInStartupSafe
-    // mode is not true.
-    assertEquals(0, cluster.getNameNode().getBytesWithFutureGenerationStamps());
+    fail("TODO: Add assertion");
   }
 
   private void waitForNumBytes(final int numBytes) throws Exception {
@@ -165,10 +154,11 @@ public class TestNameNodeMetadataConsistency {
         try {
           cluster.triggerBlockReports();
           // Compare the number of bytes
-          if (cluster.getNameNode().getBytesWithFutureGenerationStamps()
-              == numBytes) {
-            return true;
-          }
+//          if (cluster.getNameNode().getBytesWithFutureGenerationStamps()
+//              == numBytes) {
+//            return true;
+//          }
+          fail("TODO: Return valid values");
         } catch (Exception e) {
           // Ignore the exception
         }

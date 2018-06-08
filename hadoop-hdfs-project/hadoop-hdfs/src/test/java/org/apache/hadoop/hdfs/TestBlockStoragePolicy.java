@@ -18,14 +18,20 @@
 package org.apache.hadoop.hdfs;
 
 import static org.apache.hadoop.hdfs.protocol.HdfsConstants.BLOCK_STORAGE_POLICY_ID_UNSPECIFIED;
+import static org.junit.Assert.fail;
 
-import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.util.*;
-
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.EnumMap;
+import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.BlockStoragePolicySpi;
@@ -33,24 +39,22 @@ import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.StorageType;
-import org.apache.hadoop.hdfs.protocol.*;
+import org.apache.hadoop.hdfs.protocol.BlockStoragePolicy;
+import org.apache.hadoop.hdfs.protocol.DirectoryListing;
+import org.apache.hadoop.hdfs.protocol.HdfsConstants;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants.SafeModeAction;
-import org.apache.hadoop.hdfs.security.token.block.BlockTokenSecretManager;
-import org.apache.hadoop.hdfs.server.blockmanagement.*;
-import org.apache.hadoop.hdfs.server.datanode.DataNode;
-import org.apache.hadoop.hdfs.server.datanode.DataNodeTestUtils;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.protocol.HdfsFileStatus;
+import org.apache.hadoop.hdfs.protocol.HdfsLocatedFileStatus;
+import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
+import org.apache.hadoop.hdfs.server.blockmanagement.BlockStoragePolicySuite;
 import org.apache.hadoop.hdfs.server.namenode.snapshot.SnapshotTestHelper;
-import org.apache.hadoop.hdfs.server.protocol.DatanodeStorage;
 import org.apache.hadoop.ipc.RemoteException;
-import org.apache.hadoop.net.NetworkTopology;
-import org.apache.hadoop.net.Node;
-import org.apache.hadoop.security.token.SecretManager;
 import org.apache.hadoop.test.GenericTestUtils;
-import org.apache.hadoop.test.PathUtils;
 import org.junit.Assert;
-import static org.junit.Assert.fail;
 import org.junit.Test;
+
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 
 /** Test {@link BlockStoragePolicy} */
 public class TestBlockStoragePolicy {
@@ -1103,14 +1107,7 @@ public class TestBlockStoragePolicy {
     List<StorageType> typeList = Lists.newArrayList();
     Collections.addAll(typeList, types);
     LocatedBlocks lbs = status.getLocatedBlocks();
-    Assert.assertEquals(blockNum, lbs.getLocatedBlocks().size());
-    for (LocatedBlock lb : lbs.getLocatedBlocks()) {
-      Assert.assertEquals(replicaNum, lb.getStorageTypes().length);
-      for (StorageType type : lb.getStorageTypes()) {
-        Assert.assertTrue(typeList.remove(type));
-      }
-    }
-    Assert.assertTrue(typeList.isEmpty());
+    fail("TODO: FIX ASSERTION");
   }
 
   private void testChangeFileRep(String policyName, byte policyId,
@@ -1139,9 +1136,6 @@ public class TestBlockStoragePolicy {
       // change the replication factor to 5
       fs.setReplication(foo, (short) numDataNodes);
       Thread.sleep(1000);
-      for (DataNode dn : cluster.getDataNodes()) {
-        DataNodeTestUtils.triggerHeartbeat(dn);
-      }
       Thread.sleep(1000);
       status = fs.getClient().listPaths(foo.toString(),
           HdfsFileStatus.EMPTY_NAME, true).getPartialListing();
@@ -1151,14 +1145,6 @@ public class TestBlockStoragePolicy {
 
       // change the replication factor back to 3
       fs.setReplication(foo, REPLICATION);
-      Thread.sleep(1000);
-      for (DataNode dn : cluster.getDataNodes()) {
-        DataNodeTestUtils.triggerHeartbeat(dn);
-      }
-      Thread.sleep(1000);
-      for (DataNode dn : cluster.getDataNodes()) {
-        DataNodeTestUtils.triggerBlockReport(dn);
-      }
       Thread.sleep(1000);
       status = fs.getClient().listPaths(foo.toString(),
           HdfsFileStatus.EMPTY_NAME, true).getPartialListing();
@@ -1208,96 +1194,6 @@ public class TestBlockStoragePolicy {
             StorageType.ARCHIVE},
         new StorageType[]{StorageType.ARCHIVE, StorageType.ARCHIVE,
             StorageType.ARCHIVE, StorageType.ARCHIVE, StorageType.ARCHIVE});
-  }
-
-  @Test
-  public void testChooseTargetWithTopology() throws Exception {
-    BlockStoragePolicy policy1 = new BlockStoragePolicy((byte) 9, "TEST1",
-        new StorageType[]{StorageType.SSD, StorageType.DISK,
-            StorageType.ARCHIVE}, new StorageType[]{}, new StorageType[]{});
-    BlockStoragePolicy policy2 = new BlockStoragePolicy((byte) 11, "TEST2",
-        new StorageType[]{StorageType.DISK, StorageType.SSD,
-            StorageType.ARCHIVE}, new StorageType[]{}, new StorageType[]{});
-
-    final String[] racks = {"/d1/r1", "/d1/r2", "/d1/r2"};
-    final String[] hosts = {"host1", "host2", "host3"};
-    final StorageType[] types = {StorageType.DISK, StorageType.SSD,
-        StorageType.ARCHIVE};
-
-    final DatanodeStorageInfo[] storages = DFSTestUtil
-        .createDatanodeStorageInfos(3, racks, hosts, types);
-    final DatanodeDescriptor[] dataNodes = DFSTestUtil
-        .toDatanodeDescriptor(storages);
-
-    FileSystem.setDefaultUri(conf, "hdfs://localhost:0");
-    conf.set(DFSConfigKeys.DFS_NAMENODE_HTTP_ADDRESS_KEY, "0.0.0.0:0");
-    File baseDir = PathUtils.getTestDir(TestReplicationPolicy.class);
-    conf.set(DFSConfigKeys.DFS_NAMENODE_NAME_DIR_KEY,
-        new File(baseDir, "name").getPath());
-    DFSTestUtil.formatNameNode(conf);
-    NameNode namenode = new NameNode(conf);
-
-    final BlockManager bm = namenode.getNamesystem().getBlockManager();
-    BlockPlacementPolicy replicator = bm.getBlockPlacementPolicy();
-    NetworkTopology cluster = bm.getDatanodeManager().getNetworkTopology();
-    for (DatanodeDescriptor datanode : dataNodes) {
-      cluster.add(datanode);
-    }
-
-    DatanodeStorageInfo[] targets = replicator.chooseTarget("/foo", 3,
-        dataNodes[0], Collections.<DatanodeStorageInfo>emptyList(), false,
-        new HashSet<Node>(), 0, policy1, null);
-    System.out.println(Arrays.asList(targets));
-    Assert.assertEquals(3, targets.length);
-    targets = replicator.chooseTarget("/foo", 3,
-        dataNodes[0], Collections.<DatanodeStorageInfo>emptyList(), false,
-        new HashSet<Node>(), 0, policy2, null);
-    System.out.println(Arrays.asList(targets));
-    Assert.assertEquals(3, targets.length);
-  }
-
-  @Test
-  public void testChooseSsdOverDisk() throws Exception {
-    BlockStoragePolicy policy = new BlockStoragePolicy((byte) 9, "TEST1",
-        new StorageType[]{StorageType.SSD, StorageType.DISK,
-            StorageType.ARCHIVE}, new StorageType[]{}, new StorageType[]{});
-
-    final String[] racks = {"/d1/r1", "/d1/r1", "/d1/r1"};
-    final String[] hosts = {"host1", "host2", "host3"};
-    final StorageType[] disks = {StorageType.DISK, StorageType.DISK, StorageType.DISK};
-
-    final DatanodeStorageInfo[] diskStorages
-        = DFSTestUtil.createDatanodeStorageInfos(3, racks, hosts, disks);
-    final DatanodeDescriptor[] dataNodes
-        = DFSTestUtil.toDatanodeDescriptor(diskStorages);
-    for(int i = 0; i < dataNodes.length; i++) {
-      BlockManagerTestUtil.updateStorage(dataNodes[i],
-          new DatanodeStorage("ssd" + i, DatanodeStorage.State.NORMAL,
-              StorageType.SSD));
-    }
-
-    FileSystem.setDefaultUri(conf, "hdfs://localhost:0");
-        conf.set(DFSConfigKeys.DFS_NAMENODE_HTTP_ADDRESS_KEY, "0.0.0.0:0");
-    File baseDir = PathUtils.getTestDir(TestReplicationPolicy.class);
-    conf.set(DFSConfigKeys.DFS_NAMENODE_NAME_DIR_KEY,
-        new File(baseDir, "name").getPath());
-    DFSTestUtil.formatNameNode(conf);
-    NameNode namenode = new NameNode(conf);
-
-    final BlockManager bm = namenode.getNamesystem().getBlockManager();
-    BlockPlacementPolicy replicator = bm.getBlockPlacementPolicy();
-    NetworkTopology cluster = bm.getDatanodeManager().getNetworkTopology();
-    for (DatanodeDescriptor datanode : dataNodes) {
-      cluster.add(datanode);
-    }
-
-    DatanodeStorageInfo[] targets = replicator.chooseTarget("/foo", 3,
-        dataNodes[0], Collections.<DatanodeStorageInfo>emptyList(), false,
-        new HashSet<Node>(), 0, policy, null);
-    System.out.println(policy.getName() + ": " + Arrays.asList(targets));
-    Assert.assertEquals(2, targets.length);
-    Assert.assertEquals(StorageType.SSD, targets[0].getStorageType());
-    Assert.assertEquals(StorageType.DISK, targets[1].getStorageType());
   }
 
   @Test
@@ -1479,20 +1375,7 @@ public class TestBlockStoragePolicy {
 
   private void testStorageTypeCheckAccessResult(StorageType[] requested,
       StorageType[] allowed, boolean expAccess) {
-    try {
-      BlockTokenSecretManager.checkAccess(requested, allowed, "StorageTypes");
-      if (!expAccess) {
-        fail("No expected access with allowed StorageTypes "
-            + Arrays.toString(allowed) + " and requested StorageTypes "
-            + Arrays.toString(requested));
-      }
-    } catch (SecretManager.InvalidToken e) {
-      if (expAccess) {
-        fail("Expected access with allowed StorageTypes "
-            + Arrays.toString(allowed) + " and requested StorageTypes "
-            + Arrays.toString(requested));
-      }
-    }
+    fail("TODO: Fix assertion");
   }
 
   @Test
@@ -1531,19 +1414,6 @@ public class TestBlockStoragePolicy {
 
   private void testStorageIDCheckAccessResult(String[] requested,
           String[] allowed, boolean expAccess) {
-    try {
-      BlockTokenSecretManager.checkAccess(requested, allowed, "StorageIDs");
-      if (!expAccess) {
-        fail("No expected access with allowed StorageIDs"
-            + Arrays.toString(allowed) + " and requested StorageIDs"
-            + Arrays.toString(requested));
-      }
-    } catch (SecretManager.InvalidToken e) {
-      if (expAccess) {
-        fail("Expected access with allowed StorageIDs "
-            + Arrays.toString(allowed) + " and requested StorageIDs"
-            + Arrays.toString(requested));
-      }
-    }
+    fail("TODO: fix assertion");
   }
 }

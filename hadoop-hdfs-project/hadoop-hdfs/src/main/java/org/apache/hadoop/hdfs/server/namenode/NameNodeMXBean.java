@@ -67,13 +67,6 @@ public interface NameNodeMXBean {
   public long getTotal();
 
   /**
-   * Gets capacity of the provided storage mounted, in bytes.
-   *
-   * @return the total raw bytes present in the provided storage.
-   */
-  public long getProvidedCapacity();
-
-  /**
    * Gets the safemode status
    * 
    * @return the safemode status
@@ -95,14 +88,6 @@ public interface NameNodeMXBean {
    * (e.g. if there is no upgrade or the upgrade is finalized), returns null.
    */
   public RollingUpgradeInfo.Bean getRollingUpgradeStatus();
-
-  /**
-   * Gets total used space by data nodes for non DFS purposes such as storing
-   * temporary files on the local file system
-   * 
-   * @return the non dfs space of the cluster
-   */
-  public long getNonDfsUsedSpace();
   
   /**
    * Gets the total used space by data nodes as percentage of total capacity
@@ -120,47 +105,11 @@ public interface NameNodeMXBean {
   public float getPercentRemaining();
 
   /**
-   * Returns the amount of cache used by the datanode (in bytes).
-   */
-  public long getCacheUsed();
-
-  /**
-   * Returns the total cache capacity of the datanode (in bytes).
-   */
-  public long getCacheCapacity();
-  
-  /**
-   * Get the total space used by the block pools of this namenode
-   */
-  public long getBlockPoolUsedSpace();
-  
-  /**
-   * Get the total space used by the block pool as percentage of total capacity
-   */
-  public float getPercentBlockPoolUsed();
-    
-  /**
    * Gets the total numbers of blocks on the cluster.
    * 
    * @return the total number of blocks of the cluster
    */
   public long getTotalBlocks();
-  
-  /**
-   * Gets the total number of missing blocks on the cluster
-   * 
-   * @return the total number of missing blocks on the cluster
-   */
-  public long getNumberOfMissingBlocks();
-  
-  /**
-   * Gets the total number of missing blocks on the cluster with
-   * replication factor 1
-   *
-   * @return the total number of missing blocks on the cluster with
-   * replication factor 1
-   */
-  public long getNumberOfMissingBlocksWithReplicationFactorOne();
 
   /**
    * Gets the total number of snapshottable dirs in the system.
@@ -175,34 +124,6 @@ public interface NameNodeMXBean {
    * @return the number of threads
    */
   public int getThreads();
-
-  /**
-   * Gets the live node information of the cluster.
-   * 
-   * @return the live node information
-   */
-  public String getLiveNodes();
-  
-  /**
-   * Gets the dead node information of the cluster.
-   * 
-   * @return the dead node information
-   */
-  public String getDeadNodes();
-  
-  /**
-   * Gets the decommissioning node information of the cluster.
-   * 
-   * @return the decommissioning node information
-   */
-  public String getDecomNodes();
-
-  /**
-   * Gets the information on nodes entering maintenance.
-   *
-   * @return the information on nodes entering maintenance
-   */
-  String getEnteringMaintenanceNodes();
 
   /**
    * Gets the cluster id.
@@ -225,13 +146,6 @@ public interface NameNodeMXBean {
    * @return the name dir status information, as a JSON string.
    */
   public String getNameDirStatuses();
-
-  /**
-   * Get Max, Median, Min and Standard Deviation of DataNodes usage.
-   *
-   * @return the DataNode usage information, as a JSON string.
-   */
-  public String getNodeUsage();
 
   /**
    * Get status information about the journals of the NN.
@@ -266,20 +180,6 @@ public interface NameNodeMXBean {
    */
   public String getCorruptFiles();
 
-  /**
-   * Get the number of distinct versions of live datanodes
-   * 
-   * @return the number of distinct versions of live datanodes
-   */
-  public int getDistinctVersionCount();
-
-  /**
-   * Get the number of live datanodes for each distinct versions
-   * 
-   * @return the number of live datanodes for each distinct versions
-   */
-  public Map<String, Integer> getDistinctVersions();
-  
   /**
    * Get namenode directory size.
    */

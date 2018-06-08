@@ -17,7 +17,6 @@
  */
 package org.apache.hadoop.hdfs.server.namenode;
 
-import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_DATANODE_DATA_DIR_KEY;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_NAMENODE_CHECKPOINT_DIR_KEY;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_NAMENODE_NAME_DIR_KEY;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_NAMENODE_SUPPORT_ALLOW_FORMAT_KEY;
@@ -80,7 +79,6 @@ public class TestAllowFormat {
 
     // Set multiple name directories.
     config.set(DFS_NAMENODE_NAME_DIR_KEY, nameDir1.getPath() + "," + nameDir2.getPath());
-    config.set(DFS_DATANODE_DATA_DIR_KEY, new File(DFS_BASE_DIR, "data").getPath());
 
     config.set(DFS_NAMENODE_CHECKPOINT_DIR_KEY,new File(DFS_BASE_DIR, "secondary").getPath());
 

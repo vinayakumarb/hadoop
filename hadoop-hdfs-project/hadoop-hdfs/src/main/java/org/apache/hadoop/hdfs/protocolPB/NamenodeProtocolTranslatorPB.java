@@ -22,15 +22,9 @@ import java.io.IOException;
 
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
-import org.apache.hadoop.hdfs.protocol.DatanodeID;
-import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsServerProtos.NamenodeCommandProto;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsServerProtos.VersionRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.NamenodeProtocolProtos.EndCheckpointRequestProto;
-import org.apache.hadoop.hdfs.protocol.proto.NamenodeProtocolProtos.ErrorReportRequestProto;
-import org.apache.hadoop.hdfs.protocol.proto.NamenodeProtocolProtos.GetBlockKeysRequestProto;
-import org.apache.hadoop.hdfs.protocol.proto.NamenodeProtocolProtos.GetBlockKeysResponseProto;
-import org.apache.hadoop.hdfs.protocol.proto.NamenodeProtocolProtos.GetBlocksRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.NamenodeProtocolProtos.GetEditLogManifestRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.NamenodeProtocolProtos.GetMostRecentCheckpointTxIdRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.NamenodeProtocolProtos.GetTransactionIdRequestProto;
@@ -38,12 +32,9 @@ import org.apache.hadoop.hdfs.protocol.proto.NamenodeProtocolProtos.IsRollingUpg
 import org.apache.hadoop.hdfs.protocol.proto.NamenodeProtocolProtos.IsRollingUpgradeResponseProto;
 import org.apache.hadoop.hdfs.protocol.proto.NamenodeProtocolProtos.IsUpgradeFinalizedRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.NamenodeProtocolProtos.IsUpgradeFinalizedResponseProto;
-import org.apache.hadoop.hdfs.protocol.proto.NamenodeProtocolProtos.RegisterRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.NamenodeProtocolProtos.RollEditLogRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.NamenodeProtocolProtos.StartCheckpointRequestProto;
-import org.apache.hadoop.hdfs.security.token.block.ExportedBlockKeys;
 import org.apache.hadoop.hdfs.server.namenode.CheckpointSignature;
-import org.apache.hadoop.hdfs.server.protocol.BlocksWithLocations;
 import org.apache.hadoop.hdfs.server.protocol.NamenodeCommand;
 import org.apache.hadoop.hdfs.server.protocol.NamenodeProtocol;
 import org.apache.hadoop.hdfs.server.protocol.NamenodeRegistration;
@@ -73,8 +64,6 @@ public class NamenodeProtocolTranslatorPB implements NamenodeProtocol,
   /*
    * Protobuf requests with no parameters instantiated only once
    */
-  private static final GetBlockKeysRequestProto VOID_GET_BLOCKKEYS_REQUEST = 
-      GetBlockKeysRequestProto.newBuilder().build();
   private static final GetTransactionIdRequestProto VOID_GET_TRANSACTIONID_REQUEST = 
       GetTransactionIdRequestProto.newBuilder().build();
   private static final RollEditLogRequestProto VOID_ROLL_EDITLOG_REQUEST = 
@@ -96,32 +85,6 @@ public class NamenodeProtocolTranslatorPB implements NamenodeProtocol,
   @Override
   public Object getUnderlyingProxyObject() {
     return rpcProxy;
-  }
-
-  @Override
-  public BlocksWithLocations getBlocks(DatanodeInfo datanode, long size, long
-      minBlockSize)
-      throws IOException {
-    GetBlocksRequestProto req = GetBlocksRequestProto.newBuilder()
-        .setDatanode(PBHelperClient.convert((DatanodeID)datanode)).setSize(size)
-        .setMinBlockSize(minBlockSize).build();
-    try {
-      return PBHelper.convert(rpcProxy.getBlocks(NULL_CONTROLLER, req)
-          .getBlocks());
-    } catch (ServiceException e) {
-      throw ProtobufHelper.getRemoteException(e);
-    }
-  }
-
-  @Override
-  public ExportedBlockKeys getBlockKeys() throws IOException {
-    try {
-      GetBlockKeysResponseProto rsp = rpcProxy.getBlockKeys(NULL_CONTROLLER,
-          VOID_GET_BLOCKKEYS_REQUEST);
-      return rsp.hasKeys() ? PBHelper.convert(rsp.getKeys()) : null;
-    } catch (ServiceException e) {
-      throw ProtobufHelper.getRemoteException(e);
-    }
   }
 
   @Override
@@ -159,33 +122,6 @@ public class NamenodeProtocolTranslatorPB implements NamenodeProtocol,
     try {
       return PBHelper.convert(rpcProxy.versionRequest(NULL_CONTROLLER,
           VOID_VERSION_REQUEST).getInfo());
-    } catch (ServiceException e) {
-      throw ProtobufHelper.getRemoteException(e);
-    }
-  }
-
-  @Override
-  public void errorReport(NamenodeRegistration registration, int errorCode,
-      String msg) throws IOException {
-    ErrorReportRequestProto req = ErrorReportRequestProto.newBuilder()
-        .setErrorCode(errorCode).setMsg(msg)
-        .setRegistration(PBHelper.convert(registration)).build();
-    try {
-      rpcProxy.errorReport(NULL_CONTROLLER, req);
-    } catch (ServiceException e) {
-      throw ProtobufHelper.getRemoteException(e);
-    }
-  }
-
-  @Override
-  public NamenodeRegistration registerSubordinateNamenode(
-      NamenodeRegistration registration) throws IOException {
-    RegisterRequestProto req = RegisterRequestProto.newBuilder()
-        .setRegistration(PBHelper.convert(registration)).build();
-    try {
-      return PBHelper.convert(
-          rpcProxy.registerSubordinateNamenode(NULL_CONTROLLER, req)
-          .getRegistration());
     } catch (ServiceException e) {
       throw ProtobufHelper.getRemoteException(e);
     }

@@ -78,16 +78,6 @@ public class MembershipStatsPBImpl extends MembershipStats
   }
 
   @Override
-  public void setProvidedSpace(long capacity) {
-    this.translator.getBuilder().setProvidedSpace(capacity);
-  }
-
-  @Override
-  public long getProvidedSpace() {
-    return this.translator.getProtoOrBuilder().getProvidedSpace();
-  }
-
-  @Override
   public void setNumOfFiles(long files) {
     this.translator.getBuilder().setNumOfFiles(files);
   }
@@ -108,37 +98,6 @@ public class MembershipStatsPBImpl extends MembershipStats
   }
 
   @Override
-  public void setNumOfBlocksMissing(long blocks) {
-    this.translator.getBuilder().setNumOfBlocksMissing(blocks);
-  }
-
-  @Override
-  public long getNumOfBlocksMissing() {
-    return this.translator.getProtoOrBuilder().getNumOfBlocksMissing();
-  }
-
-  @Override
-  public void setNumOfBlocksPendingReplication(long blocks) {
-    this.translator.getBuilder().setNumOfBlocksPendingReplication(blocks);
-  }
-
-  @Override
-  public long getNumOfBlocksPendingReplication() {
-    return this.translator.getProtoOrBuilder()
-        .getNumOfBlocksPendingReplication();
-  }
-
-  @Override
-  public void setNumOfBlocksUnderReplicated(long blocks) {
-    this.translator.getBuilder().setNumOfBlocksUnderReplicated(blocks);
-  }
-
-  @Override
-  public long getNumOfBlocksUnderReplicated() {
-    return this.translator.getProtoOrBuilder().getNumOfBlocksUnderReplicated();
-  }
-
-  @Override
   public void setNumOfBlocksPendingDeletion(long blocks) {
     this.translator.getBuilder().setNumOfBlocksPendingDeletion(blocks);
   }
@@ -146,56 +105,5 @@ public class MembershipStatsPBImpl extends MembershipStats
   @Override
   public long getNumOfBlocksPendingDeletion() {
     return this.translator.getProtoOrBuilder().getNumOfBlocksPendingDeletion();
-  }
-
-  @Override
-  public void setNumOfActiveDatanodes(int nodes) {
-    this.translator.getBuilder().setNumOfActiveDatanodes(nodes);
-  }
-
-  @Override
-  public int getNumOfActiveDatanodes() {
-    return this.translator.getProtoOrBuilder().getNumOfActiveDatanodes();
-  }
-
-  @Override
-  public void setNumOfDeadDatanodes(int nodes) {
-    this.translator.getBuilder().setNumOfDeadDatanodes(nodes);
-  }
-
-  @Override
-  public int getNumOfDeadDatanodes() {
-    return this.translator.getProtoOrBuilder().getNumOfDeadDatanodes();
-  }
-
-  @Override
-  public void setNumOfDecommissioningDatanodes(int nodes) {
-    this.translator.getBuilder().setNumOfDecommissioningDatanodes(nodes);
-  }
-
-  @Override
-  public int getNumOfDecommissioningDatanodes() {
-    return this.translator.getProtoOrBuilder()
-        .getNumOfDecommissioningDatanodes();
-  }
-
-  @Override
-  public void setNumOfDecomActiveDatanodes(int nodes) {
-    this.translator.getBuilder().setNumOfDecomActiveDatanodes(nodes);
-  }
-
-  @Override
-  public int getNumOfDecomActiveDatanodes() {
-    return this.translator.getProtoOrBuilder().getNumOfDecomActiveDatanodes();
-  }
-
-  @Override
-  public void setNumOfDecomDeadDatanodes(int nodes) {
-    this.translator.getBuilder().setNumOfDecomDeadDatanodes(nodes);
-  }
-
-  @Override
-  public int getNumOfDecomDeadDatanodes() {
-    return this.translator.getProtoOrBuilder().getNumOfDecomDeadDatanodes();
   }
 }

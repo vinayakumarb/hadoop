@@ -159,15 +159,6 @@ public class NameNodeHttpServer {
 
     httpServer = builder.build();
 
-    if (policy.isHttpsEnabled()) {
-      // assume same ssl port for all datanodes
-      InetSocketAddress datanodeSslPort = NetUtils.createSocketAddr(conf.getTrimmed(
-          DFSConfigKeys.DFS_DATANODE_HTTPS_ADDRESS_KEY, infoHost + ":"
-              + DFSConfigKeys.DFS_DATANODE_HTTPS_DEFAULT_PORT));
-      httpServer.setAttribute(DFSConfigKeys.DFS_DATANODE_HTTPS_PORT_KEY,
-          datanodeSslPort.getPort());
-    }
-
     initWebHdfs(conf, bindAddress.getHostName(), httpServer,
         NamenodeWebHdfsMethods.class.getPackage().getName());
 

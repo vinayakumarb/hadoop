@@ -26,8 +26,6 @@ import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
 
-import com.google.common.base.Preconditions;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -37,41 +35,14 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.DFSTestUtil;
-import org.apache.hadoop.hdfs.DFSUtilClient;
 import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
-import org.apache.hadoop.hdfs.protocol.Block;
-import org.apache.hadoop.hdfs.protocol.BlockListAsLongs;
-import org.apache.hadoop.hdfs.protocol.BlockListAsLongs.BlockReportReplica;
 import org.apache.hadoop.hdfs.protocol.ClientProtocol;
-import org.apache.hadoop.hdfs.protocol.DatanodeID;
-import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
-import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants;
-import org.apache.hadoop.hdfs.protocol.LocatedBlock;
-import org.apache.hadoop.hdfs.protocolPB.DatanodeProtocolClientSideTranslatorPB;
-import org.apache.hadoop.hdfs.security.token.block.ExportedBlockKeys;
-import org.apache.hadoop.hdfs.server.blockmanagement.BlockManagerTestUtil;
-import org.apache.hadoop.hdfs.server.datanode.DataNode;
-import org.apache.hadoop.hdfs.server.datanode.DataStorage;
-import org.apache.hadoop.hdfs.server.protocol.BlockCommand;
-import org.apache.hadoop.hdfs.server.protocol.BlockReportContext;
-import org.apache.hadoop.hdfs.server.protocol.DatanodeCommand;
-import org.apache.hadoop.hdfs.server.protocol.DatanodeProtocol;
-import org.apache.hadoop.hdfs.server.protocol.DatanodeRegistration;
-import org.apache.hadoop.hdfs.server.protocol.DatanodeStorage;
 import org.apache.hadoop.hdfs.server.protocol.NamenodeProtocol;
 import org.apache.hadoop.hdfs.server.protocol.NamenodeProtocols;
 import org.apache.hadoop.hdfs.server.protocol.NamespaceInfo;
-import org.apache.hadoop.hdfs.server.protocol.ReceivedDeletedBlockInfo;
-import org.apache.hadoop.hdfs.server.protocol.SlowDiskReports;
-import org.apache.hadoop.hdfs.server.protocol.SlowPeerReports;
-import org.apache.hadoop.hdfs.server.protocol.StorageBlockReport;
-import org.apache.hadoop.hdfs.server.protocol.StorageReceivedDeletedBlocks;
-import org.apache.hadoop.hdfs.server.protocol.StorageReport;
 import org.apache.hadoop.io.EnumSetWritable;
-import org.apache.hadoop.ipc.RemoteException;
-import org.apache.hadoop.net.DNS;
 import org.apache.hadoop.net.NetworkTopology;
 import org.apache.hadoop.security.Groups;
 import org.apache.hadoop.security.RefreshUserMappingsProtocol;
@@ -83,7 +54,6 @@ import org.apache.hadoop.util.StringUtils;
 import org.apache.hadoop.util.Time;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
-import org.apache.hadoop.util.VersionInfo;
 import org.apache.log4j.Level;
 import org.apache.log4j.LogManager;
 
@@ -112,7 +82,6 @@ public class NNThroughputBenchmark implements Tool {
   static NameNode nameNode;
   static NamenodeProtocol nameNodeProto;
   static ClientProtocol clientProto;
-  static DatanodeProtocol dataNodeProto;
   static RefreshUserMappingsProtocol refreshUserMappingsProto;
   static String bpid = null;
 
@@ -120,7 +89,6 @@ public class NNThroughputBenchmark implements Tool {
     config = conf;
     // We do not need many handlers, since each thread simulates a handler
     // by calling name-node methods directly
-    config.setInt(DFSConfigKeys.DFS_DATANODE_HANDLER_COUNT_KEY, 1);
     // Turn off minimum block size verification
     config.setInt(DFSConfigKeys.DFS_NAMENODE_MIN_BLOCK_SIZE_KEY, 0);
     // set exclude file
@@ -885,524 +853,6 @@ public class NNThroughputBenchmark implements Tool {
     }
   }
 
-  /**
-   * Minimal data-node simulator.
-   */
-  private static class TinyDatanode implements Comparable<String> {
-    private static final long DF_CAPACITY = 100*1024*1024;
-    private static final long DF_USED = 0;
-    
-    NamespaceInfo nsInfo;
-    DatanodeRegistration dnRegistration;
-    DatanodeStorage storage; //only one storage 
-    final List<BlockReportReplica> blocks;
-    int nrBlocks; // actual number of blocks
-    BlockListAsLongs blockReportList;
-    final int dnIdx;
-
-    private static int getNodePort(int num) throws IOException {
-      int port = 1 + num;
-      Preconditions.checkState(port < Short.MAX_VALUE);
-      return port;
-    }
-
-    TinyDatanode(int dnIdx, int blockCapacity) throws IOException {
-      this.dnIdx = dnIdx;
-      this.blocks = Arrays.asList(new BlockReportReplica[blockCapacity]);
-      this.nrBlocks = 0;
-    }
-
-    @Override
-    public String toString() {
-      return dnRegistration.toString();
-    }
-
-    String getXferAddr() {
-      return dnRegistration.getXferAddr();
-    }
-
-    void register() throws IOException {
-      // get versions from the namenode
-      nsInfo = nameNodeProto.versionRequest();
-      dnRegistration = new DatanodeRegistration(
-          new DatanodeID(DNS.getDefaultIP("default"),
-              DNS.getDefaultHost("default", "default"),
-              DataNode.generateUuid(), getNodePort(dnIdx),
-              DFSConfigKeys.DFS_DATANODE_HTTP_DEFAULT_PORT,
-              DFSConfigKeys.DFS_DATANODE_HTTPS_DEFAULT_PORT,
-              DFSConfigKeys.DFS_DATANODE_IPC_DEFAULT_PORT),
-          new DataStorage(nsInfo),
-          new ExportedBlockKeys(), VersionInfo.getVersion());
-      // register datanode
-      dnRegistration = dataNodeProto.registerDatanode(dnRegistration);
-      dnRegistration.setNamespaceInfo(nsInfo);
-      //first block reports
-      storage = new DatanodeStorage(DatanodeStorage.generateUuid());
-      final StorageBlockReport[] reports = {
-          new StorageBlockReport(storage, BlockListAsLongs.EMPTY)
-      };
-      dataNodeProto.blockReport(dnRegistration, bpid, reports,
-              new BlockReportContext(1, 0, System.nanoTime(), 0L, true));
-    }
-
-    /**
-     * Send a heartbeat to the name-node.
-     * Ignore reply commands.
-     */
-    void sendHeartbeat() throws IOException {
-      // register datanode
-      // TODO:FEDERATION currently a single block pool is supported
-      StorageReport[] rep = { new StorageReport(storage, false,
-          DF_CAPACITY, DF_USED, DF_CAPACITY - DF_USED, DF_USED, 0L) };
-      DatanodeCommand[] cmds = dataNodeProto.sendHeartbeat(dnRegistration, rep,
-          0L, 0L, 0, 0, 0, null, true,
-          SlowPeerReports.EMPTY_REPORT, SlowDiskReports.EMPTY_REPORT)
-          .getCommands();
-      if(cmds != null) {
-        for (DatanodeCommand cmd : cmds ) {
-          if(LOG.isDebugEnabled()) {
-            LOG.debug("sendHeartbeat Name-node reply: " + cmd.getAction());
-          }
-        }
-      }
-    }
-
-    boolean addBlock(Block blk) {
-      if(nrBlocks == blocks.size()) {
-        if(LOG.isDebugEnabled()) {
-          LOG.debug("Cannot add block: datanode capacity = " + blocks.size());
-        }
-        return false;
-      }
-      blocks.set(nrBlocks, new BlockReportReplica(blk));
-      nrBlocks++;
-      return true;
-    }
-
-    void formBlockReport() {
-      // fill remaining slots with blocks that do not exist
-      for (int idx = blocks.size()-1; idx >= nrBlocks; idx--) {
-        Block block = new Block(blocks.size() - idx, 0, 0);
-        blocks.set(idx, new BlockReportReplica(block));
-      }
-      blockReportList = BlockListAsLongs.encode(blocks);
-    }
-
-    BlockListAsLongs getBlockReportList() {
-      return blockReportList;
-    }
-
-    @Override
-    public int compareTo(String xferAddr) {
-      return getXferAddr().compareTo(xferAddr);
-    }
-
-    /**
-     * Send a heartbeat to the name-node and replicate blocks if requested.
-     */
-    @SuppressWarnings("unused") // keep it for future blockReceived benchmark
-    int replicateBlocks() throws IOException {
-      // register datanode
-      StorageReport[] rep = { new StorageReport(storage,
-          false, DF_CAPACITY, DF_USED, DF_CAPACITY - DF_USED, DF_USED, 0) };
-      DatanodeCommand[] cmds = dataNodeProto.sendHeartbeat(dnRegistration,
-          rep, 0L, 0L, 0, 0, 0, null, true,
-          SlowPeerReports.EMPTY_REPORT, SlowDiskReports.EMPTY_REPORT)
-          .getCommands();
-      if (cmds != null) {
-        for (DatanodeCommand cmd : cmds) {
-          if (cmd.getAction() == DatanodeProtocol.DNA_TRANSFER) {
-            // Send a copy of a block to another datanode
-            BlockCommand bcmd = (BlockCommand)cmd;
-            return transferBlocks(bcmd.getBlocks(), bcmd.getTargets(),
-                                  bcmd.getTargetStorageIDs());
-          }
-        }
-      }
-      return 0;
-    }
-
-    /**
-     * Transfer blocks to another data-node.
-     * Just report on behalf of the other data-node
-     * that the blocks have been received.
-     */
-    private int transferBlocks( Block blocks[], 
-                                DatanodeInfo xferTargets[][],
-                                String targetStorageIDs[][]
-                              ) throws IOException {
-      for(int i = 0; i < blocks.length; i++) {
-        DatanodeInfo blockTargets[] = xferTargets[i];
-        for(int t = 0; t < blockTargets.length; t++) {
-          DatanodeInfo dnInfo = blockTargets[t];
-          String targetStorageID = targetStorageIDs[i][t];
-          DatanodeRegistration receivedDNReg;
-          receivedDNReg = new DatanodeRegistration(dnInfo,
-            new DataStorage(nsInfo),
-            new ExportedBlockKeys(), VersionInfo.getVersion());
-          ReceivedDeletedBlockInfo[] rdBlocks = {
-            new ReceivedDeletedBlockInfo(
-                  blocks[i], ReceivedDeletedBlockInfo.BlockStatus.RECEIVED_BLOCK,
-                  null) };
-          StorageReceivedDeletedBlocks[] report = { new StorageReceivedDeletedBlocks(
-              new DatanodeStorage(targetStorageID), rdBlocks) };
-          dataNodeProto.blockReceivedAndDeleted(receivedDNReg, bpid, report);
-        }
-      }
-      return blocks.length;
-    }
-  }
-
-  /**
-   * Block report statistics.
-   * 
-   * Each thread here represents its own data-node.
-   * Data-nodes send the same block report each time.
-   * The block report may contain missing or non-existing blocks.
-   */
-  class BlockReportStats extends OperationStatsBase {
-    static final String OP_BLOCK_REPORT_NAME = "blockReport";
-    static final String OP_BLOCK_REPORT_USAGE = 
-      "-op blockReport [-datanodes T] [-reports N] " +
-      "[-blocksPerReport B] [-blocksPerFile F]";
-
-    private int blocksPerReport;
-    private int blocksPerFile;
-    private TinyDatanode[] datanodes; // array of data-nodes sorted by name
-
-    BlockReportStats(List<String> args) {
-      super();
-      numThreads = 10;
-      numOpsRequired = 30;
-      this.blocksPerReport = 100;
-      this.blocksPerFile = 10;
-      // set heartbeat interval to 3 min, so that expiration were 40 min
-      config.setLong(DFSConfigKeys.DFS_HEARTBEAT_INTERVAL_KEY, 3 * 60);
-      parseArguments(args);
-      // adjust replication to the number of data-nodes
-      this.replication = (short)Math.min(replication, getNumDatanodes());
-    }
-
-    /**
-     * Each thread pretends its a data-node here.
-     */
-    private int getNumDatanodes() {
-      return numThreads;
-    }
-
-    @Override
-    String getOpName() {
-      return OP_BLOCK_REPORT_NAME;
-    }
-
-    @Override
-    void parseArguments(List<String> args) {
-      boolean ignoreUnrelatedOptions = verifyOpArgument(args);
-      for (int i = 2; i < args.size(); i++) {       // parse command line
-        if(args.get(i).equals("-reports")) {
-          if(i+1 == args.size())  printUsage();
-          numOpsRequired = Integer.parseInt(args.get(++i));
-        } else if(args.get(i).equals("-datanodes")) {
-          if(i+1 == args.size())  printUsage();
-          numThreads = Integer.parseInt(args.get(++i));
-        } else if(args.get(i).equals("-blocksPerReport")) {
-          if(i+1 == args.size())  printUsage();
-          blocksPerReport = Integer.parseInt(args.get(++i));
-        } else if(args.get(i).equals("-blocksPerFile")) {
-          if(i+1 == args.size())  printUsage();
-          blocksPerFile = Integer.parseInt(args.get(++i));
-        } else if(!ignoreUnrelatedOptions)
-          printUsage();
-      }
-    }
-
-    @Override
-    void generateInputs(int[] ignore) throws IOException {
-      int nrDatanodes = getNumDatanodes();
-      int nrBlocks = (int)Math.ceil((double)blocksPerReport * nrDatanodes 
-                                    / replication);
-      int nrFiles = (int)Math.ceil((double)nrBlocks / blocksPerFile);
-      datanodes = new TinyDatanode[nrDatanodes];
-      // create data-nodes
-      for(int idx=0; idx < nrDatanodes; idx++) {
-        datanodes[idx] = new TinyDatanode(idx, blocksPerReport);
-        datanodes[idx].register();
-        datanodes[idx].sendHeartbeat();
-      }
-
-      // create files 
-      LOG.info("Creating " + nrFiles + " files with " + blocksPerFile + " blocks each.");
-      FileNameGenerator nameGenerator;
-      nameGenerator = new FileNameGenerator(getBaseDir(), 100);
-      String clientName = getClientName(007);
-      clientProto.setSafeMode(HdfsConstants.SafeModeAction.SAFEMODE_LEAVE,
-          false);
-      for(int idx=0; idx < nrFiles; idx++) {
-        String fileName = nameGenerator.getNextFileName("ThroughputBench");
-        clientProto.create(fileName, FsPermission.getDefault(), clientName,
-            new EnumSetWritable<CreateFlag>(EnumSet.of(CreateFlag.CREATE, CreateFlag.OVERWRITE)), true, replication,
-            BLOCK_SIZE, CryptoProtocolVersion.supported(), null);
-        ExtendedBlock lastBlock = addBlocks(fileName, clientName);
-        clientProto.complete(fileName, clientName, lastBlock, HdfsConstants.GRANDFATHER_INODE_ID);
-      }
-      // prepare block reports
-      for(int idx=0; idx < nrDatanodes; idx++) {
-        datanodes[idx].formBlockReport();
-      }
-    }
-
-    private ExtendedBlock addBlocks(String fileName, String clientName)
-    throws IOException {
-      ExtendedBlock prevBlock = null;
-      for(int jdx = 0; jdx < blocksPerFile; jdx++) {
-        LocatedBlock loc = addBlock(fileName, clientName,
-            prevBlock, null, HdfsConstants.GRANDFATHER_INODE_ID, null);
-        prevBlock = loc.getBlock();
-        for(DatanodeInfo dnInfo : loc.getLocations()) {
-          int dnIdx = dnInfo.getXferPort() - 1;
-          datanodes[dnIdx].addBlock(loc.getBlock().getLocalBlock());
-          ReceivedDeletedBlockInfo[] rdBlocks = { new ReceivedDeletedBlockInfo(
-              loc.getBlock().getLocalBlock(),
-              ReceivedDeletedBlockInfo.BlockStatus.RECEIVED_BLOCK, null) };
-          StorageReceivedDeletedBlocks[] report = { new StorageReceivedDeletedBlocks(
-              new DatanodeStorage(datanodes[dnIdx].storage.getStorageID()),
-              rdBlocks) };
-          dataNodeProto.blockReceivedAndDeleted(datanodes[dnIdx].dnRegistration,
-              bpid, report);
-        }
-        // IBRs are asynchronously processed by NameNode. The next
-        // ClientProtocol#addBlock() may throw NotReplicatedYetException.
-      }
-      return prevBlock;
-    }
-
-    /**
-     * Retry ClientProtocol.addBlock() if it throws NotReplicatedYetException.
-     * Because addBlock() also commits the previous block,
-     * it fails if enough IBRs are not processed by NameNode.
-     */
-    private LocatedBlock addBlock(String src, String clientName,
-        ExtendedBlock previous, DatanodeInfo[] excludeNodes, long fileId,
-        String[] favoredNodes) throws IOException {
-      for (int i = 0; i < 30; i++) {
-        try {
-          return clientProto.addBlock(src, clientName,
-              previous, excludeNodes, fileId, favoredNodes, null);
-        } catch (NotReplicatedYetException|RemoteException e) {
-          if (e instanceof RemoteException) {
-            String className = ((RemoteException) e).getClassName();
-            if (!className.equals(NotReplicatedYetException.class.getName())) {
-              throw e;
-            }
-          }
-          try {
-            Thread.sleep(100);
-          } catch (InterruptedException ie) {
-            LOG.warn("interrupted while retrying addBlock.", ie);
-          }
-        }
-      }
-      throw new IOException("failed to add block.");
-    }
-
-    /**
-     * Does not require the argument
-     */
-    @Override
-    String getExecutionArgument(int daemonId) {
-      return null;
-    }
-
-    @Override
-    long executeOp(int daemonId, int inputIdx, String ignore) throws IOException {
-      assert daemonId < numThreads : "Wrong daemonId.";
-      TinyDatanode dn = datanodes[daemonId];
-      long start = Time.now();
-      StorageBlockReport[] report = { new StorageBlockReport(
-          dn.storage, dn.getBlockReportList()) };
-      dataNodeProto.blockReport(dn.dnRegistration, bpid, report,
-          new BlockReportContext(1, 0, System.nanoTime(), 0L, true));
-      long end = Time.now();
-      return end-start;
-    }
-
-    @Override
-    void printResults() {
-      String blockDistribution = "";
-      String delim = "(";
-      for(int idx=0; idx < getNumDatanodes(); idx++) {
-        blockDistribution += delim + datanodes[idx].nrBlocks;
-        delim = ", ";
-      }
-      blockDistribution += ")";
-      LOG.info("--- " + getOpName() + " inputs ---");
-      LOG.info("reports = " + numOpsRequired);
-      LOG.info("datanodes = " + numThreads + " " + blockDistribution);
-      LOG.info("blocksPerReport = " + blocksPerReport);
-      LOG.info("blocksPerFile = " + blocksPerFile);
-      printStats();
-    }
-  }   // end BlockReportStats
-
-  /**
-   * Measures how fast redundancy monitor can compute data-node work.
-   *
-   * It runs only one thread until no more work can be scheduled.
-   */
-  class ReplicationStats extends OperationStatsBase {
-    static final String OP_REPLICATION_NAME = "replication";
-    static final String OP_REPLICATION_USAGE = 
-      "-op replication [-datanodes T] [-nodesToDecommission D] " +
-      "[-nodeReplicationLimit C] [-totalBlocks B] [-replication R]";
-
-    private final BlockReportStats blockReportObject;
-    private int numDatanodes;
-    private int nodesToDecommission;
-    private int nodeReplicationLimit;
-    private int totalBlocks;
-    private int numDecommissionedBlocks;
-    private int numPendingBlocks;
-
-    ReplicationStats(List<String> args) {
-      super();
-      numThreads = 1;
-      numDatanodes = 10;
-      nodesToDecommission = 1;
-      nodeReplicationLimit = 100;
-      totalBlocks = 100;
-      parseArguments(args);
-      // number of operations is 4 times the number of decommissioned
-      // blocks divided by the number of needed replications scanned 
-      // by the redundancy monitor in one iteration
-      numOpsRequired = (totalBlocks*replication*nodesToDecommission*2)
-            / (numDatanodes*numDatanodes);
-
-      String[] blkReportArgs = {
-        "-op", "blockReport",
-        "-datanodes", String.valueOf(numDatanodes),
-        "-blocksPerReport", String.valueOf(totalBlocks*replication/numDatanodes),
-        "-blocksPerFile", String.valueOf(numDatanodes)};
-      blockReportObject = new BlockReportStats(Arrays.asList(blkReportArgs));
-      numDecommissionedBlocks = 0;
-      numPendingBlocks = 0;
-    }
-
-    @Override
-    String getOpName() {
-      return OP_REPLICATION_NAME;
-    }
-
-    @Override
-    void parseArguments(List<String> args) {
-      boolean ignoreUnrelatedOptions = verifyOpArgument(args);
-      for (int i = 2; i < args.size(); i++) {       // parse command line
-        if(args.get(i).equals("-datanodes")) {
-          if(i+1 == args.size())  printUsage();
-          numDatanodes = Integer.parseInt(args.get(++i));
-        } else if(args.get(i).equals("-nodesToDecommission")) {
-          if(i+1 == args.size())  printUsage();
-          nodesToDecommission = Integer.parseInt(args.get(++i));
-        } else if(args.get(i).equals("-nodeReplicationLimit")) {
-          if(i+1 == args.size())  printUsage();
-          nodeReplicationLimit = Integer.parseInt(args.get(++i));
-        } else if(args.get(i).equals("-totalBlocks")) {
-          if(i+1 == args.size())  printUsage();
-          totalBlocks = Integer.parseInt(args.get(++i));
-        } else if(args.get(i).equals("-replication")) {
-          if(i+1 == args.size())  printUsage();
-          replication = Short.parseShort(args.get(++i));
-        } else if(!ignoreUnrelatedOptions)
-          printUsage();
-      }
-    }
-
-    @Override
-    void generateInputs(int[] ignore) throws IOException {
-      final FSNamesystem namesystem = nameNode.getNamesystem();
-
-      // start data-nodes; create a bunch of files; generate block reports.
-      blockReportObject.generateInputs(ignore);
-      // stop redundancy monitor thread.
-      BlockManagerTestUtil.stopRedundancyThread(namesystem.getBlockManager());
-
-      // report blocks once
-      int nrDatanodes = blockReportObject.getNumDatanodes();
-      for(int idx=0; idx < nrDatanodes; idx++) {
-        blockReportObject.executeOp(idx, 0, null);
-      }
-      // decommission data-nodes
-      decommissionNodes();
-      // set node replication limit
-      BlockManagerTestUtil.setNodeReplicationLimit(namesystem.getBlockManager(),
-          nodeReplicationLimit);
-    }
-
-    private void decommissionNodes() throws IOException {
-      String excludeFN = config.get(DFSConfigKeys.DFS_HOSTS_EXCLUDE, "exclude");
-      FileOutputStream excludeFile = new FileOutputStream(excludeFN);
-      excludeFile.getChannel().truncate(0L);
-      int nrDatanodes = blockReportObject.getNumDatanodes();
-      numDecommissionedBlocks = 0;
-      for(int i=0; i < nodesToDecommission; i++) {
-        TinyDatanode dn = blockReportObject.datanodes[nrDatanodes-1-i];
-        numDecommissionedBlocks += dn.nrBlocks;
-        excludeFile.write(dn.getXferAddr().getBytes());
-        excludeFile.write('\n');
-        LOG.info("Datanode " + dn + " is decommissioned.");
-      }
-      excludeFile.close();
-      clientProto.refreshNodes();
-    }
-
-    /**
-     * Does not require the argument
-     */
-    @Override
-    String getExecutionArgument(int daemonId) {
-      return null;
-    }
-
-    @Override
-    long executeOp(int daemonId, int inputIdx, String ignore) throws IOException {
-      assert daemonId < numThreads : "Wrong daemonId.";
-      long start = Time.now();
-      // compute data-node work
-      int work = BlockManagerTestUtil.getComputedDatanodeWork(
-          nameNode.getNamesystem().getBlockManager());
-      long end = Time.now();
-      numPendingBlocks += work;
-      if(work == 0)
-        daemons.get(daemonId).terminate();
-      return end-start;
-    }
-
-    @Override
-    void printResults() {
-      String blockDistribution = "";
-      String delim = "(";
-      for(int idx=0; idx < blockReportObject.getNumDatanodes(); idx++) {
-        blockDistribution += delim + blockReportObject.datanodes[idx].nrBlocks;
-        delim = ", ";
-      }
-      blockDistribution += ")";
-      LOG.info("--- " + getOpName() + " inputs ---");
-      LOG.info("numOpsRequired = " + numOpsRequired);
-      LOG.info("datanodes = " + numDatanodes + " " + blockDistribution);
-      LOG.info("decommissioned datanodes = " + nodesToDecommission);
-      LOG.info("datanode replication limit = " + nodeReplicationLimit);
-      LOG.info("total blocks = " + totalBlocks);
-      printStats();
-      LOG.info("decommissioned blocks = " + numDecommissionedBlocks);
-      LOG.info("pending replications = " + numPendingBlocks);
-      LOG.info("replications per sec: " + getBlocksPerSecond());
-    }
-
-    private double getBlocksPerSecond() {
-      return elapsedTime == 0 ? 0 : 1000*(double)numPendingBlocks / elapsedTime;
-    }
-
-  }   // end ReplicationStats
-
   static void printUsage() {
     System.err.println("Usage: NNThroughputBenchmark"
         + "\n\t"    + OperationStatsBase.OP_ALL_USAGE
@@ -1412,8 +862,6 @@ public class NNThroughputBenchmark implements Tool {
         + " | \n\t" + DeleteFileStats.OP_DELETE_USAGE
         + " | \n\t" + FileStatusStats.OP_FILE_STATUS_USAGE
         + " | \n\t" + RenameFileStats.OP_RENAME_USAGE
-        + " | \n\t" + BlockReportStats.OP_BLOCK_REPORT_USAGE
-        + " | \n\t" + ReplicationStats.OP_REPLICATION_USAGE
         + " | \n\t" + CleanAllStats.OP_CLEAN_USAGE
         + " | \n\t" + GENERAL_OPTIONS_USAGE
     );
@@ -1480,19 +928,6 @@ public class NNThroughputBenchmark implements Tool {
         opStat = new RenameFileStats(args);
         ops.add(opStat);
       }
-      if(runAll || BlockReportStats.OP_BLOCK_REPORT_NAME.equals(type)) {
-        opStat = new BlockReportStats(args);
-        ops.add(opStat);
-      }
-      if(runAll || ReplicationStats.OP_REPLICATION_NAME.equals(type)) {
-        if (nnUri.getScheme() != null && nnUri.getScheme().equals("hdfs")) {
-          LOG.warn("The replication test is ignored as it does not support " +
-              "standalone namenode in another process or on another host. ");
-        } else {
-          opStat = new ReplicationStats(args);
-          ops.add(opStat);
-        }
-      }
       if(runAll || CleanAllStats.OP_CLEAN_NAME.equals(type)) {
         opStat = new CleanAllStats(args);
         ops.add(opStat);
@@ -1509,7 +944,6 @@ public class NNThroughputBenchmark implements Tool {
         NamenodeProtocols nnProtos = nameNode.getRpcServer();
         nameNodeProto = nnProtos;
         clientProto = nnProtos;
-        dataNodeProto = nnProtos;
         refreshUserMappingsProto = nnProtos;
         bpid = nameNode.getNamesystem().getBlockPoolId();
       } else {
@@ -1518,8 +952,6 @@ public class NNThroughputBenchmark implements Tool {
         nameNodeProto = DFSTestUtil.getNamenodeProtocolProxy(config, nnUri,
             UserGroupInformation.getCurrentUser());
         clientProto = dfs.getClient().getNamenode();
-        dataNodeProto = new DatanodeProtocolClientSideTranslatorPB(
-            DFSUtilClient.getNNAddress(nnUri), config);
         refreshUserMappingsProto =
             DFSTestUtil.getRefreshUserMappingsProtocolProxy(config, nnUri);
         getBlockPoolId(dfs);

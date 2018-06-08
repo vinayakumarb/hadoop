@@ -17,23 +17,16 @@
  */
 package org.apache.hadoop.hdfs.server.namenode;
 
-import com.google.common.base.Supplier;
+import java.lang.management.ManagementFactory;
+import javax.management.MBeanServer;
+import javax.management.ObjectName;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hdfs.server.blockmanagement.DatanodeManager;
-import org.apache.hadoop.hdfs.server.datanode.DataNode;
-import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
-import org.apache.hadoop.test.GenericTestUtils;
 import org.junit.Assert;
 import org.junit.Test;
-
-import javax.management.MBeanServer;
-import javax.management.ObjectName;
-import java.lang.management.ManagementFactory;
-import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Class for testing {@link NameNodeStatusMXBean} implementation.
@@ -79,67 +72,6 @@ public class TestNameNodeStatusMXBean {
       long lastHATransitionTime = (long)mbs.getAttribute(mxbeanName,
           "LastHATransitionTime");
       Assert.assertEquals(nn.getLastHATransitionTime(), lastHATransitionTime);
-
-      // Get attribute "BytesWithFutureGenerationStamps"
-      long bytesWithFutureGenerationStamps = (long)mbs.getAttribute(
-          mxbeanName, "BytesWithFutureGenerationStamps");
-      Assert.assertEquals(nn.getBytesWithFutureGenerationStamps(),
-          bytesWithFutureGenerationStamps);
-
-      // Get attribute "SlowPeersReport"
-      String slowPeersReport = (String)mbs.getAttribute(mxbeanName,
-          "SlowPeersReport");
-      Assert.assertEquals(nn.getSlowPeersReport(), slowPeersReport);
-
-      // Get attribute "SlowDisksReport"
-      String slowDisksReport = (String)mbs.getAttribute(mxbeanName,
-          "SlowDisksReport");
-      Assert.assertEquals(nn.getSlowDisksReport(), slowDisksReport);
-    } finally {
-      if (cluster != null) {
-        cluster.shutdown();
-      }
-    }
-  }
-
-  @Test
-  public void testNameNodeMXBeanSlowDisksEnabled() throws Exception {
-    Configuration conf = new Configuration();
-    conf.setInt(
-        DFSConfigKeys.DFS_DATANODE_FILEIO_PROFILING_SAMPLING_PERCENTAGE_KEY,
-        100);
-    conf.setTimeDuration(
-        DFSConfigKeys.DFS_DATANODE_OUTLIERS_REPORT_INTERVAL_KEY,
-        1000, TimeUnit.MILLISECONDS);
-    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).build();
-
-    try {
-      List<DataNode> datanodes = cluster.getDataNodes();
-      Assert.assertEquals(datanodes.size(), 1);
-      DataNode datanode = datanodes.get(0);
-      String slowDiskPath = "test/data1/slowVolume";
-      datanode.getDiskMetrics().addSlowDiskForTesting(slowDiskPath, null);
-
-      NameNode nn = cluster.getNameNode();
-      DatanodeManager datanodeManager = nn.getNamesystem().getBlockManager()
-          .getDatanodeManager();
-
-      MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-      ObjectName mxbeanName = new ObjectName(
-          "Hadoop:service=NameNode,name=NameNodeStatus");
-
-      GenericTestUtils.waitFor(new Supplier<Boolean>() {
-        @Override
-        public Boolean get() {
-          return (datanodeManager.getSlowDisksReport() != null);
-        }
-      }, 1000, 100000);
-
-      String slowDisksReport = (String)mbs.getAttribute(
-          mxbeanName, "SlowDisksReport");
-      Assert.assertEquals(datanodeManager.getSlowDisksReport(),
-          slowDisksReport);
-      Assert.assertTrue(slowDisksReport.contains(slowDiskPath));
     } finally {
       if (cluster != null) {
         cluster.shutdown();

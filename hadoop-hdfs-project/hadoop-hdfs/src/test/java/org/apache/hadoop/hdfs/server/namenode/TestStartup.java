@@ -30,7 +30,6 @@ import static org.junit.Assert.fail;
 
 import java.io.File;
 import java.io.IOException;
-import java.lang.management.ManagementFactory;
 import java.net.InetAddress;
 import java.net.URI;
 import java.nio.file.Paths;
@@ -41,7 +40,6 @@ import java.util.List;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.fs.Path;
@@ -49,23 +47,16 @@ import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.fs.permission.PermissionStatus;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.DFSTestUtil;
-import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.hadoop.hdfs.LogVerificationAppender;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
-import org.apache.hadoop.hdfs.StripedFileTestUtil;
-import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
-import org.apache.hadoop.hdfs.protocol.ErasureCodingPolicy;
-import org.apache.hadoop.hdfs.protocol.HdfsConstants.DatanodeReportType;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants.SafeModeAction;
-import org.apache.hadoop.hdfs.server.blockmanagement.BlockManagerTestUtil;
 import org.apache.hadoop.hdfs.server.common.InconsistentFSStateException;
 import org.apache.hadoop.hdfs.server.common.Storage;
 import org.apache.hadoop.hdfs.server.common.Storage.StorageDirectory;
 import org.apache.hadoop.hdfs.server.namenode.NNStorage.NameNodeDirType;
 import org.apache.hadoop.hdfs.server.namenode.NNStorage.NameNodeFile;
 import org.apache.hadoop.hdfs.server.protocol.NamenodeProtocols;
-import org.apache.hadoop.hdfs.util.HostsFileWriter;
 import org.apache.hadoop.hdfs.util.MD5FileUtils;
 import org.apache.hadoop.io.MD5Hash;
 import org.apache.hadoop.test.GenericTestUtils;
@@ -77,9 +68,6 @@ import org.apache.log4j.Logger;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import javax.management.MBeanServer;
-import javax.management.ObjectName;
 
 /**
  * Startup and checkpoint tests
@@ -110,11 +98,6 @@ public class TestStartup {
     LOG.info("--hdfsdir is " + hdfsDir.getAbsolutePath());
     config.set(DFSConfigKeys.DFS_NAMENODE_NAME_DIR_KEY,
         fileAsURI(new File(hdfsDir, "name")).toString());
-    config.set(DFSConfigKeys.DFS_DATANODE_DATA_DIR_KEY,
-        new File(hdfsDir, "data").getPath());
-    config.set(DFSConfigKeys.DFS_DATANODE_ADDRESS_KEY, "0.0.0.0:0");
-    config.set(DFSConfigKeys.DFS_DATANODE_HTTP_ADDRESS_KEY, "0.0.0.0:0");
-    config.set(DFSConfigKeys.DFS_DATANODE_IPC_ADDRESS_KEY, "0.0.0.0:0");
     config.set(DFSConfigKeys.DFS_NAMENODE_CHECKPOINT_DIR_KEY,
         fileAsURI(new File(hdfsDir, "secondary")).toString());
     config.set(DFSConfigKeys.DFS_NAMENODE_SECONDARY_HTTP_ADDRESS_KEY,
@@ -571,57 +554,6 @@ public class TestStartup {
     }
   }
 
-  @Test(timeout=30000)
-  public void testCorruptImageFallbackLostECPolicy() throws IOException {
-    final ErasureCodingPolicy defaultPolicy = StripedFileTestUtil
-        .getDefaultECPolicy();
-    final String policy = defaultPolicy.getName();
-    final Path f1 = new Path("/f1");
-
-    MiniDFSCluster cluster = new MiniDFSCluster.Builder(config)
-        .numDataNodes(0)
-        .format(true)
-        .build();
-    try {
-      cluster.waitActive();
-      DistributedFileSystem fs = cluster.getFileSystem();
-      fs.enableErasureCodingPolicy(policy);
-      // set root directory to use the default ec policy
-      Path srcECDir = new Path("/");
-      fs.setErasureCodingPolicy(srcECDir,
-          defaultPolicy.getName());
-
-      // create a file which will use the default ec policy
-      fs.create(f1);
-      FileStatus fs1 = fs.getFileStatus(f1);
-      assertTrue(fs1.isErasureCoded());
-      ErasureCodingPolicy fs1Policy = fs.getErasureCodingPolicy(f1);
-      assertEquals(fs1Policy, defaultPolicy);
-    } finally {
-      cluster.close();
-    }
-
-    // Delete a single md5sum
-    corruptFSImageMD5(false);
-    // Should still be able to start
-    cluster = new MiniDFSCluster.Builder(config)
-        .numDataNodes(0)
-        .format(false)
-        .build();
-    try {
-      cluster.waitActive();
-      ErasureCodingPolicy[] ecPolicies = cluster.getNameNode()
-          .getNamesystem().getErasureCodingPolicyManager().getEnabledPolicies();
-      DistributedFileSystem fs = cluster.getFileSystem();
-      // make sure the ec policy of the file is still correct
-      assertEquals(fs.getErasureCodingPolicy(f1), defaultPolicy);
-      // make sure after fsimage fallback, enabled ec policies are not cleared.
-      assertTrue(ecPolicies.length == 1);
-    } finally {
-      cluster.shutdown();
-    }
-  }
-
   /**
    * This test tests hosts include list contains host names.  After namenode
    * restarts, the still alive datanodes should not have any trouble in getting
@@ -650,15 +582,6 @@ public class TestStartup {
       NamenodeProtocols nn = cluster.getNameNodeRpc();
       assertNotNull(nn);
       assertTrue(cluster.isDataNodeUp());
-      
-      DatanodeInfo[] info = nn.getDatanodeReport(DatanodeReportType.LIVE);
-      for (int i = 0 ; i < 5 && info.length != numDatanodes; i++) {
-        Thread.sleep(HEARTBEAT_INTERVAL * 1000);
-        info = nn.getDatanodeReport(DatanodeReportType.LIVE);
-      }
-      assertEquals("Number of live nodes should be "+numDatanodes, numDatanodes, 
-          info.length);
-      
     } catch (IOException e) {
       fail(StringUtils.stringifyException(e));
       throw e;
@@ -754,39 +677,4 @@ public class TestStartup {
       }
     }
   }
-
-  /**
-   * Verify the following scenario.
-   * 1. NN restarts.
-   * 2. Heartbeat RPC will retry and succeed. NN asks DN to reregister.
-   * 3. After reregistration completes, DN will send Heartbeat, followed by
-   *    Blockreport.
-   * 4. NN will mark DatanodeStorageInfo#blockContentsStale to false.
-   * @throws Exception
-   */
-  @Test(timeout = 60000)
-  public void testStorageBlockContentsStaleAfterNNRestart() throws Exception {
-    MiniDFSCluster dfsCluster = null;
-    try {
-      Configuration config = new Configuration();
-      dfsCluster = new MiniDFSCluster.Builder(config).numDataNodes(1).build();
-      dfsCluster.waitActive();
-      dfsCluster.restartNameNode(true);
-      BlockManagerTestUtil.checkHeartbeat(
-          dfsCluster.getNamesystem().getBlockManager());
-      MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-      ObjectName mxbeanNameFsns = new ObjectName(
-          "Hadoop:service=NameNode,name=FSNamesystemState");
-      Integer numStaleStorages = (Integer) (mbs.getAttribute(
-          mxbeanNameFsns, "NumStaleStorages"));
-      assertEquals(0, numStaleStorages.intValue());
-    } finally {
-      if (dfsCluster != null) {
-        dfsCluster.shutdown();
-      }
-    }
-
-    return;
-  }
-
 }

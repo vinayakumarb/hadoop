@@ -44,7 +44,6 @@ import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.security.PrivilegedExceptionAction;
 import java.util.Arrays;
 import java.util.Random;
@@ -66,7 +65,6 @@ import org.apache.hadoop.fs.FsServerDefaults;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.RemoteIterator;
 import org.apache.hadoop.fs.StorageType;
-import org.apache.hadoop.fs.contract.ContractTestUtils;
 import org.apache.hadoop.fs.permission.AclEntry;
 import org.apache.hadoop.fs.permission.AclEntryScope;
 import org.apache.hadoop.fs.permission.AclEntryType;
@@ -82,8 +80,6 @@ import org.apache.hadoop.hdfs.TestDFSClientRetries;
 import org.apache.hadoop.hdfs.TestFileCreation;
 import org.apache.hadoop.hdfs.client.HdfsClientConfigKeys;
 import org.apache.hadoop.hdfs.protocol.BlockStoragePolicy;
-import org.apache.hadoop.hdfs.protocol.ErasureCodingPolicy;
-import org.apache.hadoop.hdfs.protocol.SystemErasureCodingPolicies;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants;
 import org.apache.hadoop.hdfs.protocol.SnapshotDiffReport;
 import static org.apache.hadoop.hdfs.protocol.SnapshotDiffReport.DiffType;
@@ -509,75 +505,6 @@ public class TestWebHDFS {
         GenericTestUtils.assertExceptionContains(
             "Directory is not a snapshottable directory", e);
       }
-    } finally {
-      if (cluster != null) {
-        cluster.shutdown();
-      }
-    }
-  }
-
-  @Test (timeout = 60000)
-  public void testWebHdfsErasureCodingFiles() throws Exception {
-    MiniDFSCluster cluster = null;
-    final Configuration conf = WebHdfsTestUtil.createConf();
-    try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(3).build();
-      cluster.waitActive();
-      final DistributedFileSystem dfs = cluster.getFileSystem();
-      dfs.enableErasureCodingPolicy(SystemErasureCodingPolicies.getByID(
-          SystemErasureCodingPolicies.XOR_2_1_POLICY_ID).getName());
-      final WebHdfsFileSystem webHdfs = WebHdfsTestUtil
-          .getWebHdfsFileSystem(conf, WebHdfsConstants.WEBHDFS_SCHEME);
-
-      final Path ecDir = new Path("/ec");
-      dfs.mkdirs(ecDir);
-      dfs.setErasureCodingPolicy(ecDir,
-          SystemErasureCodingPolicies.getByID(
-              SystemErasureCodingPolicies.XOR_2_1_POLICY_ID).getName());
-      final Path ecFile = new Path(ecDir, "ec-file.log");
-      DFSTestUtil.createFile(dfs, ecFile, 1024 * 10, (short) 1, 0xFEED);
-
-      final Path normalDir = new Path("/dir");
-      dfs.mkdirs(normalDir);
-      final Path normalFile = new Path(normalDir, "file.log");
-      DFSTestUtil.createFile(dfs, normalFile, 1024 * 10, (short) 1, 0xFEED);
-
-      FileStatus expectedECDirStatus = dfs.getFileStatus(ecDir);
-      FileStatus actualECDirStatus = webHdfs.getFileStatus(ecDir);
-      Assert.assertEquals(expectedECDirStatus.isErasureCoded(),
-          actualECDirStatus.isErasureCoded());
-      ContractTestUtils.assertErasureCoded(dfs, ecDir);
-      assertTrue(ecDir+ " should have erasure coding set in " +
-              "FileStatus#toString(): " + actualECDirStatus,
-          actualECDirStatus.toString().contains("isErasureCoded=true"));
-
-      FileStatus expectedECFileStatus = dfs.getFileStatus(ecFile);
-      FileStatus actualECFileStatus = webHdfs.getFileStatus(ecFile);
-      Assert.assertEquals(expectedECFileStatus.isErasureCoded(),
-          actualECFileStatus.isErasureCoded());
-      ContractTestUtils.assertErasureCoded(dfs, ecFile);
-      assertTrue(ecFile+ " should have erasure coding set in " +
-              "FileStatus#toString(): " + actualECFileStatus,
-          actualECFileStatus.toString().contains("isErasureCoded=true"));
-
-      FileStatus expectedNormalDirStatus = dfs.getFileStatus(normalDir);
-      FileStatus actualNormalDirStatus = webHdfs.getFileStatus(normalDir);
-      Assert.assertEquals(expectedNormalDirStatus.isErasureCoded(),
-          actualNormalDirStatus.isErasureCoded());
-      ContractTestUtils.assertNotErasureCoded(dfs, normalDir);
-      assertTrue(normalDir + " should have erasure coding unset in " +
-              "FileStatus#toString(): " + actualNormalDirStatus,
-          actualNormalDirStatus.toString().contains("isErasureCoded=false"));
-
-      FileStatus expectedNormalFileStatus = dfs.getFileStatus(normalFile);
-      FileStatus actualNormalFileStatus = webHdfs.getFileStatus(normalDir);
-      Assert.assertEquals(expectedNormalFileStatus.isErasureCoded(),
-          actualNormalFileStatus.isErasureCoded());
-      ContractTestUtils.assertNotErasureCoded(dfs, normalFile);
-      assertTrue(normalFile + " should have erasure coding unset in " +
-              "FileStatus#toString(): " + actualNormalFileStatus,
-          actualNormalFileStatus.toString().contains("isErasureCoded=false"));
-
     } finally {
       if (cluster != null) {
         cluster.shutdown();
@@ -1650,84 +1577,6 @@ public class TestWebHDFS {
     } finally {
       cluster.shutdown();
     }
-  }
-
-  /**
-   * Tests that the LISTSTATUS ang GETFILESTATUS WebHDFS calls return the
-   * ecPolicy for EC files.
-   */
-  @Test(timeout=300000)
-  public void testECPolicyInFileStatus() throws Exception {
-    final Configuration conf = WebHdfsTestUtil.createConf();
-    final ErasureCodingPolicy ecPolicy = SystemErasureCodingPolicies
-        .getByID(SystemErasureCodingPolicies.RS_3_2_POLICY_ID);
-    final String ecPolicyName = ecPolicy.getName();
-    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
-        .numDataNodes(5)
-        .build();
-    cluster.waitActive();
-    final DistributedFileSystem fs = cluster.getFileSystem();
-
-    // Create an EC dir and write a test file in it
-    final Path ecDir = new Path("/ec");
-    Path ecFile = new Path(ecDir, "ec_file.txt");
-    Path nonEcFile = new Path(ecDir, "non_ec_file.txt");
-    fs.mkdirs(ecDir);
-
-    // Create a non-EC file before enabling ec policy
-    DFSTestUtil.createFile(fs, nonEcFile, 1024, (short) 1, 0);
-
-    fs.enableErasureCodingPolicy(ecPolicyName);
-    fs.setErasureCodingPolicy(ecDir, ecPolicyName);
-
-    // Create a EC file
-    DFSTestUtil.createFile(fs, ecFile, 1024, (short) 1, 0);
-
-    // Query webhdfs REST API to list statuses of files/directories in ecDir
-    InetSocketAddress addr = cluster.getNameNode().getHttpAddress();
-    URL listStatusUrl = new URL("http", addr.getHostString(), addr.getPort(),
-        WebHdfsFileSystem.PATH_PREFIX + ecDir.toString() + "?op=LISTSTATUS");
-
-    HttpURLConnection conn = (HttpURLConnection) listStatusUrl.openConnection();
-    conn.setRequestMethod("GET");
-    conn.setInstanceFollowRedirects(false);
-    String listStatusResponse = IOUtils.toString(conn.getInputStream(),
-        StandardCharsets.UTF_8);
-    Assert.assertEquals("Response wasn't " + HttpURLConnection.HTTP_OK,
-        HttpURLConnection.HTTP_OK, conn.getResponseCode());
-
-    // Verify that ecPolicy is set in the ListStatus response for ec file
-    String ecpolicyForECfile = getECPolicyFromFileStatusJson(
-        getFileStatusJson(listStatusResponse, ecFile.getName()));
-    assertEquals("EC policy for ecFile should match the set EC policy",
-        ecpolicyForECfile, ecPolicyName);
-
-    // Verify that ecPolicy is not set in the ListStatus response for non-ec
-    // file
-    String ecPolicyForNonECfile = getECPolicyFromFileStatusJson(
-        getFileStatusJson(listStatusResponse, nonEcFile.getName()));
-    assertEquals("EC policy for nonEcFile should be null (not set)",
-        ecPolicyForNonECfile, null);
-
-    // Query webhdfs REST API to get fileStatus for ecFile
-    URL getFileStatusUrl = new URL("http", addr.getHostString(), addr.getPort(),
-        WebHdfsFileSystem.PATH_PREFIX + ecFile.toString() +
-            "?op=GETFILESTATUS");
-
-    conn = (HttpURLConnection) getFileStatusUrl.openConnection();
-    conn.setRequestMethod("GET");
-    conn.setInstanceFollowRedirects(false);
-    String getFileStatusResponse = IOUtils.toString(conn.getInputStream(),
-        StandardCharsets.UTF_8);
-    Assert.assertEquals("Response wasn't " + HttpURLConnection.HTTP_OK,
-        HttpURLConnection.HTTP_OK, conn.getResponseCode());
-
-    // Verify that ecPolicy is set in getFileStatus response for ecFile
-    JSONObject fileStatusObject = new JSONObject(getFileStatusResponse)
-        .getJSONObject("FileStatus");
-    ecpolicyForECfile = getECPolicyFromFileStatusJson(fileStatusObject);
-    assertEquals("EC policy for ecFile should match the set EC policy",
-        ecpolicyForECfile, ecPolicyName);
   }
 
   /**

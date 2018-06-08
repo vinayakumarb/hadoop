@@ -31,7 +31,6 @@ import org.apache.hadoop.hdfs.protocol.LayoutVersion.Feature;
 import org.apache.hadoop.hdfs.protocol.LayoutVersion.LayoutFeature;
 import org.apache.hadoop.hdfs.server.common.HdfsServerConstants.NodeType;
 import org.apache.hadoop.hdfs.server.common.Storage.StorageDirectory;
-import org.apache.hadoop.hdfs.server.datanode.DataNodeLayoutVersion;
 import org.apache.hadoop.hdfs.server.namenode.NameNodeLayoutVersion;
 
 import com.google.common.base.Joiner;
@@ -224,13 +223,11 @@ public class StorageInfo {
   }
 
   public int getServiceLayoutVersion() {
-    return storageType == NodeType.DATA_NODE ? HdfsServerConstants.DATANODE_LAYOUT_VERSION
-        : HdfsServerConstants.NAMENODE_LAYOUT_VERSION;
+    return HdfsServerConstants.NAMENODE_LAYOUT_VERSION;
   }
 
   public Map<Integer, SortedSet<LayoutFeature>> getServiceLayoutFeatureMap() {
-    return storageType == NodeType.DATA_NODE? DataNodeLayoutVersion.FEATURES
-        : NameNodeLayoutVersion.FEATURES;
+    return NameNodeLayoutVersion.FEATURES;
   }
   
   protected static String getProperty(Properties props, StorageDirectory sd,

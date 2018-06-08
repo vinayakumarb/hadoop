@@ -17,7 +17,6 @@
  */
 package org.apache.hadoop.hdfs.server.namenode;
 
-import org.apache.hadoop.hdfs.server.protocol.SlowDiskReports;
 import static org.mockito.Mockito.spy;
 
 import java.io.File;
@@ -29,22 +28,16 @@ import org.apache.hadoop.fs.UnresolvedLinkException;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.fs.permission.PermissionStatus;
 import org.apache.hadoop.hdfs.DFSTestUtil;
-import org.apache.hadoop.hdfs.protocol.DatanodeID;
 import org.apache.hadoop.hdfs.protocol.HdfsFileStatus;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
 import org.apache.hadoop.hdfs.security.token.delegation.DelegationTokenSecretManager;
-import org.apache.hadoop.hdfs.server.blockmanagement.BlockManagerTestUtil;
-import org.apache.hadoop.hdfs.server.blockmanagement.DatanodeDescriptor;
 import org.apache.hadoop.hdfs.server.common.Storage.StorageDirectory;
 import org.apache.hadoop.hdfs.server.namenode.FSDirectory.DirOp;
 import org.apache.hadoop.hdfs.server.namenode.FSEditLogOp.MkdirOp;
 import org.apache.hadoop.hdfs.server.namenode.LeaseManager.Lease;
 import org.apache.hadoop.hdfs.server.namenode.ha.EditLogTailer;
-import org.apache.hadoop.hdfs.server.protocol.DatanodeRegistration;
-import org.apache.hadoop.hdfs.server.protocol.HeartbeatResponse;
 import org.apache.hadoop.hdfs.server.protocol.NamenodeCommand;
 import org.apache.hadoop.hdfs.server.protocol.NamenodeRegistration;
-import org.apache.hadoop.hdfs.server.protocol.SlowPeerReports;
 import org.apache.hadoop.ipc.Server;
 import org.apache.hadoop.ipc.StandbyException;
 import org.apache.hadoop.security.AccessControlException;
@@ -125,14 +118,6 @@ public class NameNodeAdapter {
     return ns.getDelegationTokenSecretManager();
   }
 
-  public static HeartbeatResponse sendHeartBeat(DatanodeRegistration nodeReg,
-      DatanodeDescriptor dd, FSNamesystem namesystem) throws IOException {
-    return namesystem.handleHeartbeat(nodeReg,
-        BlockManagerTestUtil.getStorageReportsForDatanode(dd),
-        dd.getCacheCapacity(), dd.getCacheRemaining(), 0, 0, 0, null, true,
-        SlowPeerReports.EMPTY_REPORT, SlowDiskReports.EMPTY_REPORT);
-  }
-
   public static boolean setReplication(final FSNamesystem ns,
       final String src, final short replication) throws IOException {
     return ns.setReplication(src, replication);
@@ -176,19 +161,6 @@ public class NameNodeAdapter {
   }
 
   /**
-   * Return the datanode descriptor for the given datanode.
-   */
-  public static DatanodeDescriptor getDatanode(final FSNamesystem ns,
-      DatanodeID id) throws IOException {
-    ns.readLock();
-    try {
-      return ns.getBlockManager().getDatanodeManager().getDatanode(id);
-    } finally {
-      ns.readUnlock();
-    }
-  }
-  
-  /**
    * Return the FSNamesystem stats
    */
   public static long[] getStats(final FSNamesystem fsn) {
@@ -208,12 +180,6 @@ public class NameNodeAdapter {
           fsnSpy.getBlockManager(), "namesystem", fsnSpy, true);
       FieldUtils.writeDeclaredField(
           fsnSpy.getLeaseManager(), "fsnamesystem", fsnSpy, true);
-      FieldUtils.writeDeclaredField(
-          fsnSpy.getBlockManager().getDatanodeManager(),
-          "namesystem", fsnSpy, true);
-      FieldUtils.writeDeclaredField(
-          BlockManagerTestUtil.getHeartbeatManager(fsnSpy.getBlockManager()),
-          "namesystem", fsnSpy, true);
     } catch (IllegalAccessException e) {
       throw new RuntimeException("Cannot set spy FSNamesystem", e);
     } finally {

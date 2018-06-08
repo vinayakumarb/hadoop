@@ -51,9 +51,7 @@ import org.apache.hadoop.hdfs.protocol.LayoutVersion;
 import org.apache.hadoop.hdfs.protocol.LayoutVersion.Feature;
 import org.apache.hadoop.hdfs.server.blockmanagement.BlockIdManager;
 import org.apache.hadoop.hdfs.server.blockmanagement.BlockInfo;
-import org.apache.hadoop.hdfs.server.blockmanagement.BlockInfoContiguous;
 import org.apache.hadoop.hdfs.server.blockmanagement.BlockManager;
-import org.apache.hadoop.hdfs.protocol.BlockType;
 import org.apache.hadoop.hdfs.server.common.HdfsServerConstants;
 import org.apache.hadoop.hdfs.server.common.HdfsServerConstants.StartupOption;
 import org.apache.hadoop.hdfs.server.common.InconsistentFSStateException;
@@ -431,8 +429,6 @@ public class FSImageFormat {
 
         loadSecretManagerState(in);
 
-        loadCacheManagerState(in);
-
         // make sure to read to the end of file
         boolean eof = (in.read() == -1);
         assert eof : "Should have reached the end of image file " + curFile;
@@ -753,9 +749,9 @@ public class FSImageFormat {
       // file
       
       // read blocks
-      BlockInfo[] blocks = new BlockInfoContiguous[numBlocks];
+      BlockInfo[] blocks = new BlockInfo[numBlocks];
       for (int j = 0; j < numBlocks; j++) {
-        blocks[j] = new BlockInfoContiguous(replication);
+        blocks[j] = new BlockInfo(replication);
         blocks[j].readFields(in);
       }
 
@@ -777,7 +773,7 @@ public class FSImageFormat {
             if (blocks.length > 0) {
               BlockInfo lastBlk = blocks[blocks.length - 1];
               lastBlk.convertToBlockUnderConstruction(
-                  HdfsServerConstants.BlockUCState.UNDER_CONSTRUCTION, null);
+                  HdfsServerConstants.BlockUCState.UNDER_CONSTRUCTION);
             }
           }
         }
@@ -791,7 +787,7 @@ public class FSImageFormat {
       }
 
       INodeFile file = new INodeFile(inodeId, localName, permissions,
-          modificationTime, atime, (BlockInfoContiguous[]) blocks,
+          modificationTime, atime, blocks,
           replication, blockSize);
       if (underConstruction) {
         file.toUnderConstruction(clientName, clientMachine);
@@ -897,8 +893,8 @@ public class FSImageFormat {
       final long preferredBlockSize = in.readLong();
 
       return new INodeFileAttributes.SnapshotCopy(name, permissions, null,
-          modificationTime, accessTime, replication, null, preferredBlockSize,
-          (byte) 0, null, BlockType.CONTIGUOUS);
+          modificationTime, accessTime, replication, preferredBlockSize,
+          (byte) 0, null);
     }
 
     public INodeDirectoryAttributes loadINodeDirectoryAttributes(DataInput in)
@@ -984,15 +980,6 @@ public class FSImageFormat {
         return; 
       }
       namesystem.loadSecretManagerStateCompat(in);
-    }
-
-    private void loadCacheManagerState(DataInput in) throws IOException {
-      int imgVersion = getLayoutVersion();
-      if (!NameNodeLayoutVersion.supports(
-          LayoutVersion.Feature.CACHING, imgVersion)) {
-        return;
-      }
-      namesystem.getCacheManager().loadStateCompat(in);
     }
 
     private int getLayoutVersion() {
@@ -1304,8 +1291,6 @@ public class FSImageFormat {
 
         context.checkCancelled();
         sourceNamesystem.saveSecretManagerStateCompat(out, sdPath);
-        context.checkCancelled();
-        sourceNamesystem.getCacheManager().saveStateCompat(out, sdPath);
         context.checkCancelled();
         out.flush();
         context.checkCancelled();

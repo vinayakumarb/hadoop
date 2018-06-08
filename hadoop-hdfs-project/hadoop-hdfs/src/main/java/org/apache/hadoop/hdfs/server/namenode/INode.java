@@ -447,7 +447,7 @@ public abstract class INode implements INodeAttributes, Diff.Element<byte[]> {
         snapshotFileCount(snapshotCounts.getFileCount()).
         snapshotDirectoryCount(snapshotCounts.getDirectoryCount()).
         snapshotSpaceConsumed(snapshotCounts.getStoragespace()).
-        erasureCodingPolicy(summary.getErasureCodingPolicyName(this)).
+        erasureCodingPolicy("").
         build();
   }
 

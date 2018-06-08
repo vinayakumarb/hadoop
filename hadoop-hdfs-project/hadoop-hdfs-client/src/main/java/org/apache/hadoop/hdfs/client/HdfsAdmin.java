@@ -23,7 +23,6 @@ import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.crypto.key.KeyProvider;
 import org.apache.hadoop.fs.BlockStoragePolicySpi;
-import org.apache.hadoop.fs.CacheFlag;
 import org.apache.hadoop.fs.FileEncryptionInfo;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -33,14 +32,7 @@ import org.apache.hadoop.fs.permission.FsAction;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hdfs.DFSInotifyEventInputStream;
 import org.apache.hadoop.hdfs.DistributedFileSystem;
-import org.apache.hadoop.hdfs.protocol.AddErasureCodingPolicyResponse;
-import org.apache.hadoop.hdfs.protocol.CacheDirectiveEntry;
-import org.apache.hadoop.hdfs.protocol.CacheDirectiveInfo;
-import org.apache.hadoop.hdfs.protocol.CachePoolEntry;
-import org.apache.hadoop.hdfs.protocol.CachePoolInfo;
 import org.apache.hadoop.hdfs.protocol.EncryptionZone;
-import org.apache.hadoop.hdfs.protocol.ErasureCodingPolicy;
-import org.apache.hadoop.hdfs.protocol.ErasureCodingPolicyInfo;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants.ReencryptAction;
 import org.apache.hadoop.hdfs.protocol.OpenFileEntry;
@@ -173,103 +165,6 @@ public class HdfsAdmin {
    */
   public void disallowSnapshot(Path path) throws IOException {
     dfs.disallowSnapshot(path);
-  }
-
-  /**
-   * Add a new CacheDirectiveInfo.
-   *
-   * @param info Information about a directive to add.
-   * @param flags {@link CacheFlag}s to use for this operation.
-   * @return the ID of the directive that was created.
-   * @throws IOException if the directive could not be added
-   */
-  public long addCacheDirective(CacheDirectiveInfo info,
-      EnumSet<CacheFlag> flags) throws IOException {
-  return dfs.addCacheDirective(info, flags);
-  }
-
-  /**
-   * Modify a CacheDirective.
-   *
-   * @param info Information about the directive to modify. You must set the ID
-   *          to indicate which CacheDirective you want to modify.
-   * @param flags {@link CacheFlag}s to use for this operation.
-   * @throws IOException if the directive could not be modified
-   */
-  public void modifyCacheDirective(CacheDirectiveInfo info,
-      EnumSet<CacheFlag> flags) throws IOException {
-    dfs.modifyCacheDirective(info, flags);
-  }
-
-  /**
-   * Remove a CacheDirective.
-   *
-   * @param id identifier of the CacheDirectiveInfo to remove
-   * @throws IOException if the directive could not be removed
-   */
-  public void removeCacheDirective(long id)
-      throws IOException {
-    dfs.removeCacheDirective(id);
-  }
-
-  /**
-   * List cache directives. Incrementally fetches results from the server.
-   *
-   * @param filter Filter parameters to use when listing the directives, null to
-   *               list all directives visible to us.
-   * @return A RemoteIterator which returns CacheDirectiveInfo objects.
-   */
-  public RemoteIterator<CacheDirectiveEntry> listCacheDirectives(
-      CacheDirectiveInfo filter) throws IOException {
-    return dfs.listCacheDirectives(filter);
-  }
-
-  /**
-   * Add a cache pool.
-   *
-   * @param info
-   *          The request to add a cache pool.
-   * @throws IOException
-   *          If the request could not be completed.
-   */
-  public void addCachePool(CachePoolInfo info) throws IOException {
-    dfs.addCachePool(info);
-  }
-
-  /**
-   * Modify an existing cache pool.
-   *
-   * @param info
-   *          The request to modify a cache pool.
-   * @throws IOException
-   *          If the request could not be completed.
-   */
-  public void modifyCachePool(CachePoolInfo info) throws IOException {
-    dfs.modifyCachePool(info);
-  }
-
-  /**
-   * Remove a cache pool.
-   *
-   * @param poolName
-   *          Name of the cache pool to remove.
-   * @throws IOException
-   *          if the cache pool did not exist, or could not be removed.
-   */
-  public void removeCachePool(String poolName) throws IOException {
-    dfs.removeCachePool(poolName);
-  }
-
-  /**
-   * List all cache pools.
-   *
-   * @return A remote iterator from which you can get CachePoolEntry objects.
-   *          Requests will be made as needed.
-   * @throws IOException
-   *          If there was an error listing cache pools.
-   */
-  public RemoteIterator<CachePoolEntry> listCachePools() throws IOException {
-    return dfs.listCachePools();
   }
 
   /**
@@ -502,103 +397,6 @@ public class HdfsAdmin {
   public Collection<? extends BlockStoragePolicySpi> getAllStoragePolicies()
       throws IOException {
     return dfs.getAllStoragePolicies();
-  }
-
-  /**
-   * Set the source path to the specified erasure coding policy.
-   *
-   * @param path The source path referring to a directory.
-   * @param ecPolicyName The erasure coding policy name for the directory.
-   *
-   * @throws IOException
-   * @throws HadoopIllegalArgumentException if the specified EC policy is not
-   * enabled on the cluster
-   */
-  public void setErasureCodingPolicy(final Path path,
-      final String ecPolicyName) throws IOException {
-    dfs.setErasureCodingPolicy(path, ecPolicyName);
-  }
-
-  /**
-   * Get the erasure coding policy information for the specified path
-   *
-   * @param path
-   * @return Returns the policy information if file or directory on the path is
-   *          erasure coded. Null otherwise.
-   * @throws IOException
-   */
-  public ErasureCodingPolicy getErasureCodingPolicy(final Path path)
-      throws IOException {
-    return dfs.getErasureCodingPolicy(path);
-  }
-
-  /**
-   * Get the Erasure coding policies supported.
-   *
-   * @throws IOException
-   */
-  public ErasureCodingPolicyInfo[] getErasureCodingPolicies()
-      throws IOException {
-    return dfs.getClient().getErasureCodingPolicies();
-  }
-
-  /**
-   * Unset erasure coding policy from the directory.
-   *
-   * @param path The source path referring to a directory.
-   * @throws IOException
-   */
-  public void unsetErasureCodingPolicy(final Path path) throws IOException {
-    dfs.unsetErasureCodingPolicy(path);
-  }
-
-  /**
-   * Add Erasure coding policies to HDFS. For each policy input, schema and
-   * cellSize are musts, name and id are ignored. They will be automatically
-   * created and assigned by Namenode once the policy is successfully added,
-   * and will be returned in the response; policy states will be set to
-   * DISABLED automatically.
-   *
-   * @param policies The user defined ec policy list to add.
-   * @return Return the response list of adding operations.
-   * @throws IOException
-   */
-  public AddErasureCodingPolicyResponse[] addErasureCodingPolicies(
-      ErasureCodingPolicy[] policies)  throws IOException {
-    return dfs.addErasureCodingPolicies(policies);
-  }
-
-  /**
-   * Remove erasure coding policy.
-   *
-   * @param ecPolicyName The name of the policy to be removed.
-   * @throws IOException
-   */
-  public void removeErasureCodingPolicy(String ecPolicyName)
-      throws IOException {
-    dfs.removeErasureCodingPolicy(ecPolicyName);
-  }
-
-  /**
-   * Enable erasure coding policy.
-   *
-   * @param ecPolicyName The name of the policy to be enabled.
-   * @throws IOException
-   */
-  public void enableErasureCodingPolicy(String ecPolicyName)
-      throws IOException {
-    dfs.enableErasureCodingPolicy(ecPolicyName);
-  }
-
-  /**
-   * Disable erasure coding policy.
-   *
-   * @param ecPolicyName The name of the policy to be disabled.
-   * @throws IOException
-   */
-  public void disableErasureCodingPolicy(String ecPolicyName)
-      throws IOException {
-    dfs.disableErasureCodingPolicy(ecPolicyName);
   }
 
   /**

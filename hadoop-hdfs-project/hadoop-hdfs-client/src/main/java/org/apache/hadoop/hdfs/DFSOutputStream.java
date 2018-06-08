@@ -52,7 +52,6 @@ import org.apache.hadoop.hdfs.protocol.SnapshotAccessControlException;
 import org.apache.hadoop.hdfs.protocol.UnresolvedPathException;
 import org.apache.hadoop.hdfs.protocol.datatransfer.PacketHeader;
 import org.apache.hadoop.hdfs.protocol.datatransfer.PacketReceiver;
-import org.apache.hadoop.hdfs.security.token.block.BlockTokenIdentifier;
 import org.apache.hadoop.hdfs.server.datanode.CachingStrategy;
 import org.apache.hadoop.hdfs.server.namenode.NotReplicatedYetException;
 import org.apache.hadoop.hdfs.server.namenode.RetryStartFileException;
@@ -62,7 +61,6 @@ import org.apache.hadoop.io.EnumSetWritable;
 import org.apache.hadoop.io.MultipleIOException;
 import org.apache.hadoop.ipc.RemoteException;
 import org.apache.hadoop.security.AccessControlException;
-import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.util.DataChecksum;
 import org.apache.hadoop.util.DataChecksum.Type;
 import org.apache.hadoop.util.Progressable;
@@ -154,23 +152,6 @@ public class DFSOutputStream extends FSOutputSummer
     }
   }
 
-  //
-  // returns the list of targets, if any, that is being currently used.
-  //
-  @VisibleForTesting
-  public synchronized DatanodeInfo[] getPipeline() {
-    if (getStreamer().streamerClosed()) {
-      return null;
-    }
-    DatanodeInfo[] currentNodes = getStreamer().getNodes();
-    if (currentNodes == null) {
-      return null;
-    }
-    DatanodeInfo[] value = new DatanodeInfo[currentNodes.length];
-    System.arraycopy(currentNodes, 0, value, 0, currentNodes.length);
-    return value;
-  }
-
   /**
    * @return the object for computing checksum.
    *         The type is NULL if checksum is not computed.
@@ -257,7 +238,7 @@ public class DFSOutputStream extends FSOutputSummer
   static DFSOutputStream newStreamForCreate(DFSClient dfsClient, String src,
       FsPermission masked, EnumSet<CreateFlag> flag, boolean createParent,
       short replication, long blockSize, Progressable progress,
-      DataChecksum checksum, String[] favoredNodes, String ecPolicyName)
+      DataChecksum checksum, String[] favoredNodes)
       throws IOException {
     try (TraceScope ignored =
              dfsClient.newPathTraceScope("newStreamForCreate", src)) {
@@ -272,7 +253,7 @@ public class DFSOutputStream extends FSOutputSummer
         try {
           stat = dfsClient.namenode.create(src, masked, dfsClient.clientName,
               new EnumSetWritable<>(flag), createParent, replication,
-              blockSize, SUPPORTED_CRYPTO_VERSIONS, ecPolicyName);
+              blockSize, SUPPORTED_CRYPTO_VERSIONS, null);
           break;
         } catch (RemoteException re) {
           IOException e = re.unwrapRemoteException(
@@ -303,13 +284,8 @@ public class DFSOutputStream extends FSOutputSummer
       }
       Preconditions.checkNotNull(stat, "HdfsFileStatus should not be null!");
       final DFSOutputStream out;
-      if(stat.getErasureCodingPolicy() != null) {
-        out = new DFSStripedOutputStream(dfsClient, src, stat,
-            flag, progress, checksum, favoredNodes);
-      } else {
-        out = new DFSOutputStream(dfsClient, src, stat,
-            flag, progress, checksum, favoredNodes, true);
-      }
+      out = new DFSOutputStream(dfsClient, src, stat, flag, progress, checksum,
+          favoredNodes, true);
       out.start();
       return out;
     }
@@ -335,7 +311,6 @@ public class DFSOutputStream extends FSOutputSummer
           checksum, cachingStrategy, byteArrayManager);
       getStreamer().setBytesCurBlock(lastBlock.getBlockSize());
       adjustPacketChunkSize(stat);
-      getStreamer().setPipelineInConstruction(lastBlock);
     } else {
       computePacketChunkSize(dfsClient.getConf().getWritePacketSize(),
           bytesPerChecksum);
@@ -386,10 +361,6 @@ public class DFSOutputStream extends FSOutputSummer
       EnumSet<CreateFlag> flags, Progressable progress, LocatedBlock lastBlock,
       HdfsFileStatus stat, DataChecksum checksum, String[] favoredNodes)
       throws IOException {
-    if(stat.getErasureCodingPolicy() != null) {
-      throw new IOException(
-          "Not support appending to a striping layout file yet.");
-    }
     try (TraceScope ignored =
              dfsClient.newPathTraceScope("newStreamForAppend", src)) {
       final DFSOutputStream out = new DFSOutputStream(dfsClient, src, flags,
@@ -754,14 +725,7 @@ public class DFSOutputStream extends FSOutputSummer
   public synchronized int getCurrentBlockReplication() throws IOException {
     dfsClient.checkOpen();
     checkClosed();
-    if (getStreamer().streamerClosed()) {
-      return blockReplication; // no pipeline, return repl factor of file
-    }
-    DatanodeInfo[] currentNodes = getStreamer().getNodes();
-    if (currentNodes == null) {
-      return blockReplication; // no pipeline, return repl factor of file
-    }
-    return currentNodes.length;
+    return getStreamer().getStat().getReplication();
   }
 
   /**
@@ -1002,13 +966,6 @@ public class DFSOutputStream extends FSOutputSummer
     return fileEncryptionInfo;
   }
 
-  /**
-   * Returns the access token currently used by streamer, for testing only
-   */
-  synchronized Token<BlockTokenIdentifier> getBlockToken() {
-    return getStreamer().getBlockToken();
-  }
-
   protected long flushInternalWithoutWaitingAck() throws IOException {
     long toWaitFor;
     synchronized (this) {
@@ -1065,8 +1022,8 @@ public class DFSOutputStream extends FSOutputSummer
     return getClass().getSimpleName() + ":" + streamer;
   }
 
-  static LocatedBlock addBlock(DatanodeInfo[] excludedNodes,
-      DFSClient dfsClient, String src, ExtendedBlock prevBlock, long fileId,
+  static LocatedBlock addBlock(DFSClient dfsClient, String src,
+      ExtendedBlock prevBlock, long fileId,
       String[] favoredNodes, EnumSet<AddBlockFlag> allocFlags)
       throws IOException {
     final DfsClientConf conf = dfsClient.getConf();
@@ -1076,7 +1033,7 @@ public class DFSOutputStream extends FSOutputSummer
     while (true) {
       try {
         return dfsClient.namenode.addBlock(src, dfsClient.clientName, prevBlock,
-            excludedNodes, fileId, favoredNodes, allocFlags);
+            DatanodeInfo.EMPTY_ARRAY, fileId, favoredNodes, allocFlags);
       } catch (RemoteException e) {
         IOException ue = e.unwrapRemoteException(FileNotFoundException.class,
             AccessControlException.class,

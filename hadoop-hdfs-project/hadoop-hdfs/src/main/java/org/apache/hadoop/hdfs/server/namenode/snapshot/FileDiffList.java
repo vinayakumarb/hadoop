@@ -18,7 +18,6 @@
 package org.apache.hadoop.hdfs.server.namenode.snapshot;
 
 import org.apache.hadoop.hdfs.server.blockmanagement.BlockInfo;
-import org.apache.hadoop.hdfs.server.blockmanagement.BlockInfoContiguous;
 import org.apache.hadoop.hdfs.server.common.HdfsServerConstants;
 import org.apache.hadoop.hdfs.server.namenode.INode;
 import org.apache.hadoop.hdfs.server.namenode.INode.BlocksMapUpdateInfo;
@@ -113,7 +112,7 @@ public class FileDiffList extends
       earlierDiff.setBlocks(removedBlocks);
     }
     BlockInfo[] earlierBlocks =
-        (earlierDiff == null ? new BlockInfoContiguous[]{} : earlierDiff.getBlocks());
+        (earlierDiff == null ? new BlockInfo[]{} : earlierDiff.getBlocks());
     // Find later snapshot (or file itself) with blocks
     BlockInfo[] laterBlocks = findLaterSnapshotBlocks(removed.getSnapshotId());
     laterBlocks = (laterBlocks == null) ? file.getBlocks() : laterBlocks;

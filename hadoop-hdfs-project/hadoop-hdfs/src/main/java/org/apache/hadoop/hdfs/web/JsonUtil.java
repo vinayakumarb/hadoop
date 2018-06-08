@@ -17,8 +17,13 @@
  */
 package org.apache.hadoop.hdfs.web;
 
-import com.google.common.collect.ImmutableMap;
-import org.apache.hadoop.fs.BlockLocation;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+
 import org.apache.hadoop.fs.ContentSummary;
 import org.apache.hadoop.fs.FileChecksum;
 import org.apache.hadoop.fs.FileStatus;
@@ -32,17 +37,23 @@ import org.apache.hadoop.fs.permission.AclStatus;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hdfs.DFSUtilClient;
 import org.apache.hadoop.hdfs.XAttrHelper;
-import org.apache.hadoop.hdfs.protocol.*;
+import org.apache.hadoop.hdfs.protocol.BlockStoragePolicy;
+import org.apache.hadoop.hdfs.protocol.DirectoryListing;
+import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
+import org.apache.hadoop.hdfs.protocol.HdfsConstants;
+import org.apache.hadoop.hdfs.protocol.HdfsFileStatus;
+import org.apache.hadoop.hdfs.protocol.LocatedBlock;
+import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
+import org.apache.hadoop.hdfs.protocol.SnapshotDiffReport;
+import org.apache.hadoop.hdfs.protocol.SnapshottableDirectoryStatus;
 import org.apache.hadoop.ipc.RemoteException;
 import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.security.token.TokenIdentifier;
 import org.apache.hadoop.util.StringUtils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
-
-import java.io.IOException;
-import java.util.*;
 
 /** JSON Utilities */
 public class JsonUtil {
@@ -133,15 +144,6 @@ public class JsonUtil {
     if (status.isEncrypted()) {
       m.put("encBit", true);
     }
-    if (status.isErasureCoded()) {
-      m.put("ecBit", true);
-      if (status.getErasureCodingPolicy() != null) {
-        // to maintain backward comparability
-        m.put("ecPolicy", status.getErasureCodingPolicy().getName());
-        // to re-construct HdfsFileStatus object via WebHdfs
-        m.put("ecPolicyObj", getEcPolicyAsMap(status.getErasureCodingPolicy()));
-      }
-    }
     if (status.isSnapshotEnabled()) {
       m.put("snapshotEnabled", status.isSnapshotEnabled());
     }
@@ -154,21 +156,6 @@ public class JsonUtil {
     m.put("childrenNum", status.getChildrenNum());
     m.put("storagePolicy", status.getStoragePolicy());
     return m;
-  }
-
-  private static Map<String, Object> getEcPolicyAsMap(
-      final ErasureCodingPolicy ecPolicy) {
-    /** Convert an ErasureCodingPolicy to a map. */
-    ImmutableMap.Builder<String, Object> builder = ImmutableMap.builder();
-    builder.put("name", ecPolicy.getName())
-        .put("cellSize", ecPolicy.getCellSize())
-        .put("numDataUnits", ecPolicy.getNumDataUnits())
-        .put("numParityUnits", ecPolicy.getNumParityUnits())
-        .put("codecName", ecPolicy.getCodecName())
-        .put("id", ecPolicy.getId())
-        .put("extraOptions", ecPolicy.getSchema().getExtraOptions());
-    return builder.build();
-
   }
 
   /** Convert an ExtendedBlock to a Json map. */
@@ -184,76 +171,7 @@ public class JsonUtil {
     m.put("generationStamp", extendedblock.getGenerationStamp());
     return m;
   }
-
-  /** Convert a DatanodeInfo to a Json map. */
-  static Map<String, Object> toJsonMap(final DatanodeInfo datanodeinfo) {
-    if (datanodeinfo == null) {
-      return null;
-    }
-
-    // TODO: Fix storageID
-    final Map<String, Object> m = new TreeMap<String, Object>();
-    m.put("ipAddr", datanodeinfo.getIpAddr());
-    // 'name' is equivalent to ipAddr:xferPort. Older clients (1.x, 0.23.x) 
-    // expects this instead of the two fields.
-    m.put("name", datanodeinfo.getXferAddr());
-    m.put("hostName", datanodeinfo.getHostName());
-    m.put("storageID", datanodeinfo.getDatanodeUuid());
-    m.put("xferPort", datanodeinfo.getXferPort());
-    m.put("infoPort", datanodeinfo.getInfoPort());
-    m.put("infoSecurePort", datanodeinfo.getInfoSecurePort());
-    m.put("ipcPort", datanodeinfo.getIpcPort());
-
-    m.put("capacity", datanodeinfo.getCapacity());
-    m.put("dfsUsed", datanodeinfo.getDfsUsed());
-    m.put("remaining", datanodeinfo.getRemaining());
-    m.put("blockPoolUsed", datanodeinfo.getBlockPoolUsed());
-    m.put("cacheCapacity", datanodeinfo.getCacheCapacity());
-    m.put("cacheUsed", datanodeinfo.getCacheUsed());
-    m.put("lastUpdate", datanodeinfo.getLastUpdate());
-    m.put("lastUpdateMonotonic", datanodeinfo.getLastUpdateMonotonic());
-    m.put("xceiverCount", datanodeinfo.getXceiverCount());
-    m.put("networkLocation", datanodeinfo.getNetworkLocation());
-    m.put("adminState", datanodeinfo.getAdminState().name());
-    if (datanodeinfo.getUpgradeDomain() != null) {
-      m.put("upgradeDomain", datanodeinfo.getUpgradeDomain());
-    }
-    m.put("lastBlockReportTime", datanodeinfo.getLastBlockReportTime());
-    m.put("lastBlockReportMonotonic",
-        datanodeinfo.getLastBlockReportMonotonic());
-    return m;
-  }
-
-  /** Convert a DatanodeInfo[] to a Json array. */
-  private static Object[] toJsonArray(final DatanodeInfo[] array) {
-    if (array == null) {
-      return null;
-    } else if (array.length == 0) {
-      return EMPTY_OBJECT_ARRAY;
-    } else {
-      final Object[] a = new Object[array.length];
-      for(int i = 0; i < array.length; i++) {
-        a[i] = toJsonMap(array[i]);
-      }
-      return a;
-    }
-  }
-
-  /** Convert a StorageType[] to a Json array. */
-  private static Object[] toJsonArray(final StorageType[] array) {
-    if (array == null) {
-      return null;
-    } else if (array.length == 0) {
-      return EMPTY_OBJECT_ARRAY;
-    } else {
-      final Object[] a = new Object[array.length];
-      for(int i = 0; i < array.length; i++) {
-        a[i] = array[i];
-      }
-      return a;
-    }
-  }
-
+  
   /** Convert a LocatedBlock to a Json map. */
   private static Map<String, Object> toJsonMap(final LocatedBlock locatedblock
       ) throws IOException {
@@ -262,13 +180,8 @@ public class JsonUtil {
     }
  
     final Map<String, Object> m = new TreeMap<String, Object>();
-    m.put("blockToken", toJsonMap(locatedblock.getBlockToken()));
-    m.put("isCorrupt", locatedblock.isCorrupt());
     m.put("startOffset", locatedblock.getStartOffset());
     m.put("block", toJsonMap(locatedblock.getBlock()));
-    m.put("storageTypes", toJsonArray(locatedblock.getStorageTypes()));
-    m.put("locations", toJsonArray(locatedblock.getLocations()));
-    m.put("cachedLocations", toJsonArray(locatedblock.getCachedLocations()));
     return m;
   }
 

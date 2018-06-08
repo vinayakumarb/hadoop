@@ -23,7 +23,6 @@ import org.apache.hadoop.cli.util.CLITestCmd;
 import org.apache.hadoop.cli.util.CommandExecutor;
 import org.apache.hadoop.cli.util.ErasureCodingCliCmdExecutor;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hdfs.tools.ECAdmin;
 
 public class CLITestCmdErasureCoding extends CLITestCmd {
   public CLITestCmdErasureCoding(String str, CLICommandTypes type) {

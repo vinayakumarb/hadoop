@@ -21,6 +21,7 @@ import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.fs.permission.PermissionStatus;
 import org.apache.hadoop.hdfs.protocol.BlockType;
 import org.apache.hadoop.hdfs.server.namenode.INodeFile.HeaderFormat;
+import org.apache.hadoop.io.erasurecode.ErasureCodeConstants;
 
 /**
  * The attributes of a file.
@@ -56,12 +57,13 @@ public interface INodeFileAttributes extends INodeAttributes {
 
     public SnapshotCopy(byte[] name, PermissionStatus permissions,
         AclFeature aclFeature, long modificationTime, long accessTime,
-        Short replication, Byte ecPolicyID, long preferredBlockSize,
-        byte storagePolicyID, XAttrFeature xAttrsFeature, BlockType blockType) {
+        Short replication, long preferredBlockSize, byte storagePolicyID,
+        XAttrFeature xAttrsFeature) {
       super(name, permissions, aclFeature, modificationTime, accessTime, 
           xAttrsFeature);
-      final long layoutRedundancy = HeaderFormat.getBlockLayoutRedundancy(
-          blockType, replication, ecPolicyID);
+      final long layoutRedundancy = HeaderFormat
+          .getBlockLayoutRedundancy(BlockType.CONTIGUOUS, replication,
+              ErasureCodeConstants.REPLICATION_POLICY_ID);
       header = HeaderFormat.toLong(preferredBlockSize, layoutRedundancy,
           storagePolicyID);
     }

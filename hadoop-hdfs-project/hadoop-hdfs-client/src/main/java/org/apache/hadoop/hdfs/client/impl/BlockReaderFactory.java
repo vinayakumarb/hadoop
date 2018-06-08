@@ -359,18 +359,10 @@ public class BlockReaderFactory implements ShortCircuitReplicaCreator {
     final ShortCircuitConf scConf = conf.getShortCircuitConf();
     try {
       if (scConf.isShortCircuitLocalReads() && allowShortCircuitLocalReads) {
-        if (clientContext.getUseLegacyBlockReaderLocal()) {
-          reader = getLegacyBlockReaderLocal();
-          if (reader != null) {
-            LOG.trace("{}: returning new legacy block reader local.", this);
-            return reader;
-          }
-        } else {
-          reader = getBlockReaderLocal();
-          if (reader != null) {
-            LOG.trace("{}: returning new block reader local.", this);
-            return reader;
-          }
+        reader = getBlockReaderLocal();
+        if (reader != null) {
+          LOG.trace("{}: returning new block reader local.", this);
+          return reader;
         }
       }
       if (scConf.isDomainSocketDataTraffic()) {
@@ -425,51 +417,6 @@ public class BlockReaderFactory implements ShortCircuitReplicaCreator {
             cls.getName(), t);
       }
     }
-    return null;
-  }
-
-
-  /**
-   * Get {@link BlockReaderLocalLegacy} for short circuited local reads.
-   * This block reader implements the path-based style of local reads
-   * first introduced in HDFS-2246.
-   */
-  private BlockReader getLegacyBlockReaderLocal() throws IOException {
-    LOG.trace("{}: trying to construct BlockReaderLocalLegacy", this);
-    if (!DFSUtilClient.isLocalAddress(inetSocketAddress)) {
-      LOG.trace("{}: can't construct BlockReaderLocalLegacy because the address"
-          + "{} is not local", this, inetSocketAddress);
-      return null;
-    }
-    if (clientContext.getDisableLegacyBlockReaderLocal()) {
-      PerformanceAdvisory.LOG.debug("{}: can't construct " +
-          "BlockReaderLocalLegacy because " +
-          "disableLegacyBlockReaderLocal is set.", this);
-      return null;
-    }
-    IOException ioe;
-    try {
-      return BlockReaderLocalLegacy.newBlockReader(conf,
-          userGroupInformation, configuration, fileName, block, token,
-          datanode, startOffset, length, storageType, tracer);
-    } catch (RemoteException remoteException) {
-      ioe = remoteException.unwrapRemoteException(
-                InvalidToken.class, AccessControlException.class);
-    } catch (IOException e) {
-      ioe = e;
-    }
-    if ((!(ioe instanceof AccessControlException)) &&
-        isSecurityException(ioe)) {
-      // Handle security exceptions.
-      // We do not handle AccessControlException here, since
-      // BlockReaderLocalLegacy#newBlockReader uses that exception to indicate
-      // that the user is not in dfs.block.local-path-access.user, a condition
-      // which requires us to disable legacy SCR.
-      throw ioe;
-    }
-    LOG.warn(this + ": error creating legacy BlockReaderLocal.  " +
-        "Disabling legacy local reads.", ioe);
-    clientContext.setDisableLegacyBlockReaderLocal();
     return null;
   }
 

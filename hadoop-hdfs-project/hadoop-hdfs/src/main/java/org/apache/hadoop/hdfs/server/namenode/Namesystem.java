@@ -36,8 +36,6 @@ public interface Namesystem extends RwLock, SafeMode {
 
   boolean isInSnapshot(long blockCollectionID);
 
-  CacheManager getCacheManager();
-
   HAContext getHAContext();
 
   /**

@@ -22,7 +22,6 @@ import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_ADMIN;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_CLIENT_HTTPS_NEED_AUTH_DEFAULT;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_CLIENT_HTTPS_NEED_AUTH_KEY;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_HA_NAMENODE_ID_KEY;
-import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_NAMENODE_BACKUP_ADDRESS_KEY;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_NAMENODE_HTTPS_ADDRESS_DEFAULT;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_NAMENODE_HTTPS_ADDRESS_KEY;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_NAMENODE_HTTP_ADDRESS_DEFAULT;
@@ -502,25 +501,6 @@ public class DFSUtil {
     }
 
     return journalNodeList;
-  }
-
-  /**
-   * Returns list of InetSocketAddress corresponding to  backup node rpc 
-   * addresses from the configuration.
-   * 
-   * @param conf configuration
-   * @return list of InetSocketAddresses
-   * @throws IOException on error
-   */
-  public static Map<String, Map<String, InetSocketAddress>> getBackupNodeAddresses(
-      Configuration conf) throws IOException {
-    Map<String, Map<String, InetSocketAddress>> addressList = DFSUtilClient.getAddresses(
-        conf, null, DFS_NAMENODE_BACKUP_ADDRESS_KEY);
-    if (addressList.isEmpty()) {
-      throw new IOException("Incorrect configuration: backup node address "
-          + DFS_NAMENODE_BACKUP_ADDRESS_KEY + " is not configured.");
-    }
-    return addressList;
   }
 
   /**
@@ -1085,15 +1065,7 @@ public class DFSUtil {
   public static String getNamenodeNameServiceId(Configuration conf) {
     return getNameServiceId(conf, DFS_NAMENODE_RPC_ADDRESS_KEY);
   }
-  
-  /**
-   * Get nameservice Id for the BackupNode based on backup node RPC address
-   * matching the local node address.
-   */
-  public static String getBackupNameServiceId(Configuration conf) {
-    return getNameServiceId(conf, DFS_NAMENODE_BACKUP_ADDRESS_KEY);
-  }
-  
+
   /**
    * Get nameservice Id for the secondary node based on secondary http address
    * matching the local node address.

@@ -54,16 +54,9 @@ public class NameNodeMetrics {
   MutableCounterLong filesDeleted;
   @Metric MutableCounterLong fileInfoOps;
   @Metric MutableCounterLong addBlockOps;
-  @Metric MutableCounterLong getAdditionalDatanodeOps;
   @Metric MutableCounterLong createSymlinkOps;
   @Metric MutableCounterLong getLinkTargetOps;
   @Metric MutableCounterLong filesInGetListingOps;
-  @Metric ("Number of successful re-replications")
-  MutableCounterLong successfulReReplications;
-  @Metric ("Number of times we failed to schedule a block re-replication.")
-  MutableCounterLong numTimesReReplicationNotScheduled;
-  @Metric("Number of timed out block re-replications")
-  MutableCounterLong timeoutReReplications;
   @Metric("Number of allowSnapshot operations")
   MutableCounterLong allowSnapshotOps;
   @Metric("Number of disallowSnapshot operations")
@@ -78,12 +71,6 @@ public class NameNodeMetrics {
   MutableCounterLong listSnapshottableDirOps;
   @Metric("Number of snapshotDiffReport operations")
   MutableCounterLong snapshotDiffReportOps;
-  @Metric("Number of blockReceivedAndDeleted calls")
-  MutableCounterLong blockReceivedAndDeletedOps;
-  @Metric("Number of blockReports and blockReceivedAndDeleted queued")
-  MutableGaugeInt blockOpsQueued;
-  @Metric("Number of blockReports and blockReceivedAndDeleted batch processed")
-  MutableCounterLong blockOpsBatched;
 
   @Metric("Number of file system operations")
   public long totalFileOps(){
@@ -92,7 +79,6 @@ public class NameNodeMetrics {
       createFileOps.value() +
       filesAppended.value() +
       addBlockOps.value() +
-      getAdditionalDatanodeOps.value() +
       filesRenamed.value() +
       filesTruncated.value() +
       deleteFileOps.value() +
@@ -117,11 +103,6 @@ public class NameNodeMetrics {
   MutableCounterLong transactionsBatchedInSync;
   @Metric("Journal transactions batched in sync")
   final MutableQuantiles[] numTransactionsBatchedInSync;
-  @Metric("Number of blockReports from individual storages")
-  MutableRate storageBlockReport;
-  final MutableQuantiles[] storageBlockReportQuantiles;
-  @Metric("Cache report") MutableRate cacheReport;
-  final MutableQuantiles[] cacheReportQuantiles;
   @Metric("Generate EDEK time") private MutableRate generateEDEKTime;
   private final MutableQuantiles[] generateEDEKTimeQuantiles;
   @Metric("Warm-up EDEK time") private MutableRate warmUpEDEKTime;
@@ -151,8 +132,6 @@ public class NameNodeMetrics {
     final int len = intervals.length;
     syncsQuantiles = new MutableQuantiles[len];
     numTransactionsBatchedInSync = new MutableQuantiles[len];
-    storageBlockReportQuantiles = new MutableQuantiles[len];
-    cacheReportQuantiles = new MutableQuantiles[len];
     generateEDEKTimeQuantiles = new MutableQuantiles[len];
     warmUpEDEKTimeQuantiles = new MutableQuantiles[len];
     resourceCheckTimeQuantiles = new MutableQuantiles[len];
@@ -166,12 +145,6 @@ public class NameNodeMetrics {
           "numTransactionsBatchedInSync" + interval + "s",
           "Number of Transactions batched in sync", "ops",
           "count", interval);
-      storageBlockReportQuantiles[i] = registry.newQuantiles(
-          "storageBlockReport" + interval + "s",
-          "Storage block report", "ops", "latency", interval);
-      cacheReportQuantiles[i] = registry.newQuantiles(
-          "cacheReport" + interval + "s",
-          "Cache report", "ops", "latency", interval);
       generateEDEKTimeQuantiles[i] = registry.newQuantiles(
           "generateEDEKTime" + interval + "s",
           "Generate EDEK time", "ops", "latency", interval);
@@ -223,10 +196,6 @@ public class NameNodeMetrics {
 
   public void incrAddBlockOps() {
     addBlockOps.incr();
-  }
-  
-  public void incrGetAdditionalDatanodeOps() {
-    getAdditionalDatanodeOps.incr();
   }
 
   public void incrFilesRenamed() {
@@ -292,18 +261,6 @@ public class NameNodeMetrics {
   public void incrSnapshotDiffReportOps() {
     snapshotDiffReportOps.incr();
   }
-  
-  public void incrBlockReceivedAndDeletedOps() {
-    blockReceivedAndDeletedOps.incr();
-  }
-
-  public void setBlockOpsQueued(int size) {
-    blockOpsQueued.set(size);
-  }
-
-  public void addBlockOpsBatched(int count) {
-    blockOpsBatched.incr(count);
-  }
 
   public void addTransaction(long latency) {
     transactions.add(latency);
@@ -316,18 +273,6 @@ public class NameNodeMetrics {
     }
   }
 
-  public void incSuccessfulReReplications() {
-    successfulReReplications.incr();
-  }
-
-  public void incNumTimesReReplicationNotScheduled() {
-    numTimesReReplicationNotScheduled.incr();
-  }
-
-  public void incTimeoutReReplications() {
-    timeoutReReplications.incr();
-  }
-
   public void addSync(long elapsed) {
     syncs.add(elapsed);
     for (MutableQuantiles q : syncsQuantiles) {
@@ -337,20 +282,6 @@ public class NameNodeMetrics {
 
   public void setFsImageLoadTime(long elapsed) {
     fsImageLoadTime.set((int) elapsed);
-  }
-
-  public void addStorageBlockReport(long latency) {
-    storageBlockReport.add(latency);
-    for (MutableQuantiles q : storageBlockReportQuantiles) {
-      q.add(latency);
-    }
-  }
-
-  public void addCacheBlockReport(long latency) {
-    cacheReport.add(latency);
-    for (MutableQuantiles q : cacheReportQuantiles) {
-      q.add(latency);
-    }
   }
 
   public void setSafeModeTime(long elapsed) {

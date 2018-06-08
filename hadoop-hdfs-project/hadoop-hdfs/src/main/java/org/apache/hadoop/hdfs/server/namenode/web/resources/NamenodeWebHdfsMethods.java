@@ -84,11 +84,7 @@ import org.apache.hadoop.hdfs.protocol.SnapshottableDirectoryStatus;
 import org.apache.hadoop.hdfs.protocolPB.PBHelperClient;
 import org.apache.hadoop.hdfs.security.token.delegation.DelegationTokenIdentifier;
 import org.apache.hadoop.hdfs.security.token.delegation.DelegationTokenSecretManager;
-import org.apache.hadoop.hdfs.server.blockmanagement.BlockManager;
-import org.apache.hadoop.hdfs.server.blockmanagement.DatanodeDescriptor;
-import org.apache.hadoop.hdfs.server.blockmanagement.DatanodeStorageInfo;
 import org.apache.hadoop.hdfs.server.common.JspHelper;
-import org.apache.hadoop.hdfs.server.namenode.FSNamesystem;
 import org.apache.hadoop.hdfs.server.namenode.NameNode;
 import org.apache.hadoop.hdfs.server.protocol.NamenodeProtocols;
 import org.apache.hadoop.hdfs.web.JsonUtil;
@@ -101,14 +97,11 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.ipc.ExternalCall;
 import org.apache.hadoop.ipc.RetriableException;
 import org.apache.hadoop.net.Node;
-import org.apache.hadoop.net.NodeBase;
 import org.apache.hadoop.security.Credentials;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.security.token.TokenIdentifier;
-import org.apache.hadoop.util.StringUtils;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Charsets;
 import com.google.common.collect.Lists;
 import com.sun.jersey.spi.container.ResourceFilters;
@@ -253,72 +246,6 @@ public class NamenodeWebHdfsMethods {
     namenode.queueExternalCall(call);
   }
 
-  @VisibleForTesting
-  static DatanodeInfo chooseDatanode(final NameNode namenode,
-      final String path, final HttpOpParam.Op op, final long openOffset,
-      final long blocksize, final String excludeDatanodes,
-      final String remoteAddr, final HdfsFileStatus status) throws IOException {
-    FSNamesystem fsn = namenode.getNamesystem();
-    if (fsn == null) {
-      throw new IOException("Namesystem has not been initialized yet.");
-    }
-    final BlockManager bm = fsn.getBlockManager();
-    
-    HashSet<Node> excludes = new HashSet<Node>();
-    if (excludeDatanodes != null) {
-      for (String host : StringUtils
-          .getTrimmedStringCollection(excludeDatanodes)) {
-        int idx = host.indexOf(":");
-        if (idx != -1) {          
-          excludes.add(bm.getDatanodeManager().getDatanodeByXferAddr(
-              host.substring(0, idx), Integer.parseInt(host.substring(idx + 1))));
-        } else {
-          excludes.add(bm.getDatanodeManager().getDatanodeByHost(host));
-        }
-      }
-    }
-
-    if (op == PutOpParam.Op.CREATE) {
-      //choose a datanode near to client 
-      final DatanodeDescriptor clientNode = bm.getDatanodeManager(
-          ).getDatanodeByHost(remoteAddr);
-      if (clientNode != null) {
-        final DatanodeStorageInfo[] storages = bm.chooseTarget4WebHDFS(
-            path, clientNode, excludes, blocksize);
-        if (storages.length > 0) {
-          return storages[0].getDatanodeDescriptor();
-        }
-      }
-    } else if (op == GetOpParam.Op.OPEN
-        || op == GetOpParam.Op.GETFILECHECKSUM
-        || op == PostOpParam.Op.APPEND) {
-      //choose a datanode containing a replica 
-      final NamenodeProtocols np = getRPCServer(namenode);
-      if (status == null) {
-        throw new FileNotFoundException("File " + path + " not found.");
-      }
-      final long len = status.getLen();
-      if (op == GetOpParam.Op.OPEN) {
-        if (openOffset < 0L || (openOffset >= len && len > 0)) {
-          throw new IOException("Offset=" + openOffset
-              + " out of the range [0, " + len + "); " + op + ", path=" + path);
-        }
-      }
-
-      if (len > 0) {
-        final long offset = op == GetOpParam.Op.OPEN? openOffset: len - 1;
-        final LocatedBlocks locations = np.getBlockLocations(path, offset, 1);
-        final int count = locations.locatedBlockCount();
-        if (count > 0) {
-          return bestNode(locations.get(0).getLocations(), excludes);
-        }
-      }
-    }
-
-    return (DatanodeDescriptor)bm.getDatanodeManager().getNetworkTopology(
-        ).chooseRandom(NodeBase.ROOT, excludes);
-  }
-
   /**
    * Choose the datanode to redirect the request. Note that the nodes have been
    * sorted based on availability and network distances, thus it is sufficient
@@ -356,7 +283,7 @@ public class NamenodeWebHdfsMethods {
       final String path, final HttpOpParam.Op op, final long openOffset,
       final long blocksize, final String excludeDatanodes,
       final Param<?, ?>... parameters) throws URISyntaxException, IOException {
-    final DatanodeInfo dn;
+    final DatanodeInfo dn = null;
     final NamenodeProtocols np = getRPCServer(namenode);
     HdfsFileStatus status = null;
     if (op == GetOpParam.Op.OPEN
@@ -364,8 +291,6 @@ public class NamenodeWebHdfsMethods {
         || op == PostOpParam.Op.APPEND) {
       status = np.getFileInfo(path);
     }
-    dn = chooseDatanode(namenode, path, op, openOffset, blocksize,
-        excludeDatanodes, remoteAddr, status);
     if (dn == null) {
       throw new IOException("Failed to find datanode, suggest to check cluster"
           + " health. excludeDatanodes=" + excludeDatanodes);

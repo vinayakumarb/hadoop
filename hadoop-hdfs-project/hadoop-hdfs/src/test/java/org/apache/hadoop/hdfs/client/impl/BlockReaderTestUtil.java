@@ -48,12 +48,7 @@ import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.security.token.block.BlockTokenIdentifier;
-import org.apache.hadoop.hdfs.server.blockmanagement.CacheReplicationMonitor;
 import org.apache.hadoop.hdfs.server.datanode.CachingStrategy;
-import org.apache.hadoop.hdfs.server.datanode.DataNode;
-import org.apache.hadoop.hdfs.server.datanode.ShortCircuitRegistry;
-import org.apache.hadoop.hdfs.server.datanode.fsdataset.impl.FsDatasetCache;
-import org.apache.hadoop.hdfs.server.namenode.CacheManager;
 import org.apache.hadoop.hdfs.shortcircuit.DfsClientShmManager;
 import org.apache.hadoop.hdfs.shortcircuit.ShortCircuitCache;
 import org.apache.hadoop.hdfs.shortcircuit.ShortCircuitReplica;
@@ -189,19 +184,15 @@ public class BlockReaderTestUtil {
       LocatedBlock testBlock, int offset, long lenToRead) throws IOException {
     InetSocketAddress targetAddr = null;
     ExtendedBlock block = testBlock.getBlock();
-    DatanodeInfo[] nodes = testBlock.getLocations();
-    targetAddr = NetUtils.createSocketAddr(nodes[0].getXferAddr());
 
     return new BlockReaderFactory(fs.getClient().getConf()).
       setInetSocketAddress(targetAddr).
       setBlock(block).
       setFileName(targetAddr.toString()+ ":" + block.getBlockId()).
-      setBlockToken(testBlock.getBlockToken()).
       setStartOffset(offset).
       setLength(lenToRead).
       setVerifyChecksum(true).
       setClientName("BlockReaderTestUtil").
-      setDatanodeInfo(nodes[0]).
       setClientCacheContext(ClientContext.getFromConf(fs.getConf())).
       setCachingStrategy(CachingStrategy.newDefaultStrategy()).
       setConfiguration(fs.getConf()).
@@ -230,24 +221,6 @@ public class BlockReaderTestUtil {
       build();
   }
 
-  /**
-   * Get a DataNode that serves our testBlock.
-   */
-  public DataNode getDataNode(LocatedBlock testBlock) {
-    DatanodeInfo[] nodes = testBlock.getLocations();
-    int ipcport = nodes[0].getIpcPort();
-    return cluster.getDataNode(ipcport);
-  }
-
-  public static void enableHdfsCachingTracing() {
-    LogManager.getLogger(CacheReplicationMonitor.class.getName()).setLevel(
-        Level.TRACE);
-    LogManager.getLogger(CacheManager.class.getName()).setLevel(
-        Level.TRACE);
-    LogManager.getLogger(FsDatasetCache.class.getName()).setLevel(
-        Level.TRACE);
-  }
-
   public static void enableBlockReaderFactoryTracing() {
     LogManager.getLogger(BlockReaderFactory.class.getName()).setLevel(
         Level.TRACE);
@@ -256,17 +229,6 @@ public class BlockReaderTestUtil {
     LogManager.getLogger(ShortCircuitReplica.class.getName()).setLevel(
         Level.TRACE);
     LogManager.getLogger(BlockReaderLocal.class.getName()).setLevel(
-        Level.TRACE);
-  }
-
-  public static void enableShortCircuitShmTracing() {
-    LogManager.getLogger(DfsClientShmManager.class.getName()).setLevel(
-        Level.TRACE);
-    LogManager.getLogger(ShortCircuitRegistry.class.getName()).setLevel(
-        Level.TRACE);
-    LogManager.getLogger(ShortCircuitShm.class.getName()).setLevel(
-        Level.TRACE);
-    LogManager.getLogger(DataNode.class.getName()).setLevel(
         Level.TRACE);
   }
 }

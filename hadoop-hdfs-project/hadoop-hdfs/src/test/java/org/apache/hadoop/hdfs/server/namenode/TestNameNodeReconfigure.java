@@ -32,7 +32,6 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.ReconfigurationException;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
-import org.apache.hadoop.hdfs.server.blockmanagement.DatanodeManager;
 
 import static org.apache.hadoop.fs.CommonConfigurationKeysPublic.HADOOP_CALLER_CONTEXT_ENABLED_KEY;
 import static org.apache.hadoop.fs.CommonConfigurationKeysPublic.HADOOP_CALLER_CONTEXT_ENABLED_DEFAULT;
@@ -138,114 +137,6 @@ public class TestNameNodeReconfigure {
         .getClientRpcServer().isClientBackoffEnabled());
     assertEquals(property + " has wrong value", expected, nameNode.getConf()
         .getBoolean(property, IPC_BACKOFF_ENABLE_DEFAULT));
-  }
-
-  /**
-   * Test to reconfigure interval of heart beat check and re-check.
-   */
-  @Test
-  public void testReconfigureHearbeatCheck() throws ReconfigurationException {
-    final NameNode nameNode = cluster.getNameNode();
-    final DatanodeManager datanodeManager = nameNode.namesystem
-        .getBlockManager().getDatanodeManager();
-    // change properties
-    nameNode.reconfigureProperty(DFS_HEARTBEAT_INTERVAL_KEY, "" + 6);
-    nameNode.reconfigureProperty(DFS_NAMENODE_HEARTBEAT_RECHECK_INTERVAL_KEY,
-        "" + (10 * 60 * 1000));
-
-    // try invalid values
-    try {
-      nameNode.reconfigureProperty(DFS_HEARTBEAT_INTERVAL_KEY, "text");
-      fail("ReconfigurationException expected");
-    } catch (ReconfigurationException expected) {
-      assertTrue(expected.getCause() instanceof NumberFormatException);
-    }
-    try {
-      nameNode.reconfigureProperty(DFS_NAMENODE_HEARTBEAT_RECHECK_INTERVAL_KEY,
-          "text");
-      fail("ReconfigurationException expected");
-    } catch (ReconfigurationException expected) {
-      assertTrue(expected.getCause() instanceof NumberFormatException);
-    }
-
-    // verify change
-    assertEquals(
-        DFS_HEARTBEAT_INTERVAL_KEY + " has wrong value",
-        6,
-        nameNode.getConf().getLong(DFS_HEARTBEAT_INTERVAL_KEY,
-            DFS_HEARTBEAT_INTERVAL_DEFAULT));
-    assertEquals(DFS_HEARTBEAT_INTERVAL_KEY + " has wrong value", 6,
-        datanodeManager.getHeartbeatInterval());
-
-    assertEquals(
-        DFS_NAMENODE_HEARTBEAT_RECHECK_INTERVAL_KEY + " has wrong value",
-        10 * 60 * 1000,
-        nameNode.getConf().getInt(DFS_NAMENODE_HEARTBEAT_RECHECK_INTERVAL_KEY,
-            DFS_NAMENODE_HEARTBEAT_RECHECK_INTERVAL_DEFAULT));
-    assertEquals(DFS_NAMENODE_HEARTBEAT_RECHECK_INTERVAL_KEY
-        + " has wrong value", 10 * 60 * 1000,
-        datanodeManager.getHeartbeatRecheckInterval());
-
-    // change to a value with time unit
-    nameNode.reconfigureProperty(DFS_HEARTBEAT_INTERVAL_KEY, "1m");
-
-    assertEquals(
-        DFS_HEARTBEAT_INTERVAL_KEY + " has wrong value",
-        60,
-        nameNode.getConf().getLong(DFS_HEARTBEAT_INTERVAL_KEY,
-            DFS_HEARTBEAT_INTERVAL_DEFAULT));
-    assertEquals(DFS_HEARTBEAT_INTERVAL_KEY + " has wrong value", 60,
-        datanodeManager.getHeartbeatInterval());
-
-    // revert to defaults
-    nameNode.reconfigureProperty(DFS_HEARTBEAT_INTERVAL_KEY, null);
-    nameNode.reconfigureProperty(DFS_NAMENODE_HEARTBEAT_RECHECK_INTERVAL_KEY,
-        null);
-
-    // verify defaults
-    assertEquals(DFS_HEARTBEAT_INTERVAL_KEY + " has wrong value", null,
-        nameNode.getConf().get(DFS_HEARTBEAT_INTERVAL_KEY));
-    assertEquals(DFS_HEARTBEAT_INTERVAL_KEY + " has wrong value",
-        DFS_HEARTBEAT_INTERVAL_DEFAULT, datanodeManager.getHeartbeatInterval());
-
-    assertEquals(DFS_NAMENODE_HEARTBEAT_RECHECK_INTERVAL_KEY
-        + " has wrong value", null,
-        nameNode.getConf().get(DFS_NAMENODE_HEARTBEAT_RECHECK_INTERVAL_KEY));
-    assertEquals(DFS_NAMENODE_HEARTBEAT_RECHECK_INTERVAL_KEY
-        + " has wrong value", DFS_NAMENODE_HEARTBEAT_RECHECK_INTERVAL_DEFAULT,
-        datanodeManager.getHeartbeatRecheckInterval());
-  }
-
-  @Test
-  public void testBlockInvalidateLimitAfterReconfigured()
-      throws ReconfigurationException {
-    final NameNode nameNode = cluster.getNameNode();
-    final DatanodeManager datanodeManager = nameNode.namesystem
-        .getBlockManager().getDatanodeManager();
-
-    assertEquals(DFS_BLOCK_INVALIDATE_LIMIT_KEY + " is not correctly set",
-        customizedBlockInvalidateLimit,
-        datanodeManager.getBlockInvalidateLimit());
-
-    nameNode.reconfigureProperty(DFS_HEARTBEAT_INTERVAL_KEY,
-        Integer.toString(6));
-
-    // 20 * 6 = 120 < 500
-    // Invalid block limit should stay same as before after reconfiguration.
-    assertEquals(DFS_BLOCK_INVALIDATE_LIMIT_KEY
-            + " is not honored after reconfiguration",
-        customizedBlockInvalidateLimit,
-        datanodeManager.getBlockInvalidateLimit());
-
-    nameNode.reconfigureProperty(DFS_HEARTBEAT_INTERVAL_KEY,
-        Integer.toString(50));
-
-    // 20 * 50 = 1000 > 500
-    // Invalid block limit should be reset to 1000
-    assertEquals(DFS_BLOCK_INVALIDATE_LIMIT_KEY
-            + " is not reconfigured correctly",
-        1000,
-        datanodeManager.getBlockInvalidateLimit());
   }
 
   @After

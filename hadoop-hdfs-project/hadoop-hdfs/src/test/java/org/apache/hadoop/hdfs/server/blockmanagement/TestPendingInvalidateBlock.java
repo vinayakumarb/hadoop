@@ -29,7 +29,6 @@ import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.apache.hadoop.hdfs.MiniDFSCluster.DataNodeProperties;
 import org.apache.hadoop.hdfs.protocol.ClientProtocol;
-import org.apache.hadoop.hdfs.server.datanode.DataNodeTestUtils;
 import org.apache.hadoop.test.GenericTestUtils;
 import org.apache.log4j.Level;
 import org.junit.After;
@@ -63,7 +62,6 @@ public class TestPendingInvalidateBlock {
     // block deletion pending period
     conf.setLong(DFSConfigKeys.DFS_NAMENODE_STARTUP_DELAY_BLOCK_DELETION_SEC_KEY, 5L);
     // set the block report interval to 2s
-    conf.setLong(DFSConfigKeys.DFS_BLOCKREPORT_INTERVAL_MSEC_KEY, 2000);
     conf.setLong(DFSConfigKeys.DFS_HEARTBEAT_INTERVAL_KEY, 1);
     conf.setInt(DFSConfigKeys.DFS_NAMENODE_REDUNDANCY_INTERVAL_SECONDS_KEY, 1);
     // disable the RPC timeout for debug
@@ -86,8 +84,6 @@ public class TestPendingInvalidateBlock {
   public void testPendingDeletion() throws Exception {
     final Path foo = new Path("/foo");
     DFSTestUtil.createFile(dfs, foo, BLOCKSIZE, REPLICATION, 0);
-    DFSTestUtil.waitForReplication(dfs, foo, REPLICATION, 10000);
-
     // restart NN
     cluster.restartNameNode(true);
     InvalidateBlocks invalidateBlocks =
@@ -147,11 +143,6 @@ public class TestPendingInvalidateBlock {
       files[i] = new Path("/file" + i);
       DFSTestUtil.createFile(dfs, files[i], BLOCKSIZE, REPLICATION, i);
     }
-    // wait until all DataNodes have replicas
-    waitForReplication();
-    for (int i = REPLICATION - 1; i >= 0; i--) {
-      dnprops[i] = cluster.stopDataNode(i);
-    }
     Thread.sleep(2000);
     // delete 2 files, we still have 3 files remaining so that we can cover
     // every DN storage
@@ -176,9 +167,6 @@ public class TestPendingInvalidateBlock {
     }
     cluster.waitActive();
 
-    for (int i = 0; i < REPLICATION; i++) {
-      DataNodeTestUtils.triggerBlockReport(cluster.getDataNodes().get(i));
-    }
     Thread.sleep(2000);
     // make sure we have received block reports by checking the total block #
     Assert.assertEquals(3, cluster.getNamesystem().getBlocksTotal());
@@ -188,18 +176,6 @@ public class TestPendingInvalidateBlock {
     waitForNumPendingDeletionBlocks(0);
     Assert.assertEquals(3, cluster.getNamesystem().getBlocksTotal());
     Assert.assertEquals(0, cluster.getNamesystem().getPendingDeletionBlocks());
-  }
-
-  private long waitForReplication() throws Exception {
-    for (int i = 0; i < 10; i++) {
-      long ur = cluster.getNamesystem().getUnderReplicatedBlocks();
-      if (ur == 0) {
-        return 0;
-      } else {
-        Thread.sleep(1000);
-      }
-    }
-    return cluster.getNamesystem().getUnderReplicatedBlocks();
   }
 
   private void waitForNumPendingDeletionBlocks(final int numBlocks)

@@ -114,9 +114,6 @@ public class TestHAAppend {
       int rc = ToolRunner.run(new DFSck(cluster.getConfiguration(1)),
           new String[] { "/", "-files", "-blocks" });
       assertEquals(0, rc);
-      
-      assertEquals("CorruptBlocks should be empty.", 0, cluster.getNameNode(1)
-          .getNamesystem().getCorruptReplicaBlocks());
 
       AppendTestUtil.checkFullFile(fs, fileToAppend, data.length, data,
           fileToAppend.toString());

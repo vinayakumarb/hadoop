@@ -45,9 +45,6 @@ import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.hadoop.hdfs.client.HdfsClientConfigKeys;
 import org.apache.hadoop.hdfs.protocol.ClientProtocol;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants;
-import org.apache.hadoop.hdfs.server.aliasmap.InMemoryAliasMap;
-import org.apache.hadoop.hdfs.server.aliasmap.InMemoryLevelDBAliasMapServer;
-import org.apache.hadoop.hdfs.server.blockmanagement.DatanodeManager;
 import org.apache.hadoop.hdfs.server.common.HdfsServerConstants.NamenodeRole;
 import org.apache.hadoop.hdfs.server.common.HdfsServerConstants.RollingUpgradeStartupOption;
 import org.apache.hadoop.hdfs.server.common.HdfsServerConstants.StartupOption;
@@ -61,7 +58,6 @@ import org.apache.hadoop.hdfs.server.namenode.ha.StandbyState;
 import org.apache.hadoop.hdfs.server.namenode.metrics.NameNodeMetrics;
 import org.apache.hadoop.hdfs.server.namenode.startupprogress.StartupProgress;
 import org.apache.hadoop.hdfs.server.namenode.startupprogress.StartupProgressMetrics;
-import org.apache.hadoop.hdfs.server.protocol.DatanodeProtocol;
 import org.apache.hadoop.hdfs.server.protocol.JournalProtocol;
 import org.apache.hadoop.hdfs.server.protocol.NamenodeProtocol;
 import org.apache.hadoop.hdfs.server.protocol.NamenodeProtocols;
@@ -122,9 +118,6 @@ import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_HA_FENCE_METHODS_KEY;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_HA_NAMENODE_ID_KEY;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_HA_ZKFC_PORT_KEY;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_METRICS_PERCENTILES_INTERVALS_KEY;
-import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_NAMENODE_BACKUP_ADDRESS_KEY;
-import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_NAMENODE_BACKUP_HTTP_ADDRESS_KEY;
-import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_NAMENODE_BACKUP_SERVICE_RPC_ADDRESS_KEY;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_NAMENODE_CHECKPOINT_DIR_KEY;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_NAMENODE_CHECKPOINT_EDITS_DIR_KEY;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_NAMENODE_EDITS_DIR_KEY;
@@ -192,11 +185,6 @@ import static org.apache.hadoop.fs.CommonConfigurationKeys.IPC_BACKOFF_ENABLE_DE
  * direct use by authors of DFS client code.  End-users should instead use the
  * {@link org.apache.hadoop.fs.FileSystem} class.
  *
- * NameNode also implements the
- * {@link org.apache.hadoop.hdfs.server.protocol.DatanodeProtocol} interface,
- * used by DataNodes that actually store DFS data blocks.  These
- * methods are invoked repeatedly and automatically by all the
- * DataNodes in a DFS deployment.
  *
  * NameNode also implements the
  * {@link org.apache.hadoop.hdfs.server.protocol.NamenodeProtocol} interface,
@@ -209,8 +197,6 @@ public class NameNode extends ReconfigurableBase implements
   static{
     HdfsConfiguration.init();
   }
-
-  private InMemoryLevelDBAliasMapServer levelDBAliasMapServer;
 
   /**
    * Categories of operations supported by the namenode.
@@ -267,9 +253,6 @@ public class NameNode extends ReconfigurableBase implements
     DFS_NAMENODE_SECONDARY_HTTP_ADDRESS_KEY,
     DFS_NAMENODE_SECONDARY_HTTPS_ADDRESS_KEY,
     DFS_SECONDARY_NAMENODE_KEYTAB_FILE_KEY,
-    DFS_NAMENODE_BACKUP_ADDRESS_KEY,
-    DFS_NAMENODE_BACKUP_HTTP_ADDRESS_KEY,
-    DFS_NAMENODE_BACKUP_SERVICE_RPC_ADDRESS_KEY,
     DFS_NAMENODE_KERBEROS_PRINCIPAL_KEY,
     DFS_NAMENODE_KERBEROS_INTERNAL_SPNEGO_PRINCIPAL_KEY,
     DFS_HA_FENCE_METHODS_KEY,
@@ -296,8 +279,6 @@ public class NameNode extends ReconfigurableBase implements
           HADOOP_CALLER_CONTEXT_ENABLED_KEY));
 
   private static final String USAGE = "Usage: hdfs namenode ["
-      + StartupOption.BACKUP.getName() + "] | \n\t["
-      + StartupOption.CHECKPOINT.getName() + "] | \n\t["
       + StartupOption.FORMAT.getName() + " ["
       + StartupOption.CLUSTERID.getName() + " cid ] ["
       + StartupOption.FORCE.getName() + "] ["
@@ -325,9 +306,7 @@ public class NameNode extends ReconfigurableBase implements
   public long getProtocolVersion(String protocol, 
                                  long clientVersion) throws IOException {
     if (protocol.equals(ClientProtocol.class.getName())) {
-      return ClientProtocol.versionID; 
-    } else if (protocol.equals(DatanodeProtocol.class.getName())){
-      return DatanodeProtocol.versionID;
+      return ClientProtocol.versionID;
     } else if (protocol.equals(NamenodeProtocol.class.getName())){
       return NamenodeProtocol.versionID;
     } else if (protocol.equals(RefreshAuthorizationPolicyProtocol.class.getName())){
@@ -692,7 +671,6 @@ public class NameNode extends ReconfigurableBase implements
     }
 
     loadNamesystem(conf);
-    startAliasMapServerIfNecessary(conf);
 
     rpcServer = createRpcServer(conf);
 
@@ -713,19 +691,6 @@ public class NameNode extends ReconfigurableBase implements
 
     startCommonServices(conf);
     startMetricsLogger(conf);
-  }
-
-  private void startAliasMapServerIfNecessary(Configuration conf)
-      throws IOException {
-    if (conf.getBoolean(DFSConfigKeys.DFS_NAMENODE_PROVIDED_ENABLED,
-        DFSConfigKeys.DFS_NAMENODE_PROVIDED_ENABLED_DEFAULT)
-        && conf.getBoolean(DFSConfigKeys.DFS_PROVIDED_ALIASMAP_INMEMORY_ENABLED,
-            DFSConfigKeys.DFS_PROVIDED_ALIASMAP_INMEMORY_ENABLED_DEFAULT)) {
-      levelDBAliasMapServer = new InMemoryLevelDBAliasMapServer(
-          InMemoryAliasMap::init, namesystem.getBlockPoolId());
-      levelDBAliasMapServer.setConf(conf);
-      levelDBAliasMapServer.start();
-    }
   }
 
   private void initReconfigurableBackoffKey() {
@@ -885,9 +850,7 @@ public class NameNode extends ReconfigurableBase implements
    * <ul> 
    * <li>{@link StartupOption#REGULAR REGULAR} - normal name node startup</li>
    * <li>{@link StartupOption#FORMAT FORMAT} - format name node</li>
-   * <li>{@link StartupOption#BACKUP BACKUP} - start backup node</li>
-   * <li>{@link StartupOption#CHECKPOINT CHECKPOINT} - start checkpoint node</li>
-   * <li>{@link StartupOption#UPGRADE UPGRADE} - start the cluster  
+   * <li>{@link StartupOption#UPGRADE UPGRADE} - start the cluster
    * <li>{@link StartupOption#UPGRADEONLY UPGRADEONLY} - upgrade the cluster  
    * upgrade and create a snapshot of the current file system state</li> 
    * <li>{@link StartupOption#RECOVER RECOVERY} - recover name node
@@ -1013,9 +976,6 @@ public class NameNode extends ReconfigurableBase implements
       if (nameNodeStatusBeanName != null) {
         MBeans.unregister(nameNodeStatusBeanName);
         nameNodeStatusBeanName = null;
-      }
-      if (levelDBAliasMapServer != null) {
-        levelDBAliasMapServer.close();
       }
     }
     tracer.close();
@@ -1426,10 +1386,6 @@ public class NameNode extends ReconfigurableBase implements
         startOpt = StartupOption.GENCLUSTERID;
       } else if (StartupOption.REGULAR.getName().equalsIgnoreCase(cmd)) {
         startOpt = StartupOption.REGULAR;
-      } else if (StartupOption.BACKUP.getName().equalsIgnoreCase(cmd)) {
-        startOpt = StartupOption.BACKUP;
-      } else if (StartupOption.CHECKPOINT.getName().equalsIgnoreCase(cmd)) {
-        startOpt = StartupOption.CHECKPOINT;
       } else if (StartupOption.UPGRADE.getName().equalsIgnoreCase(cmd)
           || StartupOption.UPGRADEONLY.getName().equalsIgnoreCase(cmd)) {
         startOpt = StartupOption.UPGRADE.getName().equalsIgnoreCase(cmd) ? 
@@ -1621,11 +1577,6 @@ public class NameNode extends ReconfigurableBase implements
           startOpt.getInteractiveFormat());
       terminate(aborted ? 1 : 0);
       return null; // avoid warning
-    case BACKUP:
-    case CHECKPOINT:
-      NamenodeRole role = startOpt.toNodeRole();
-      DefaultMetricsSystem.initialize(role.toString().replace(" ", ""));
-      return new BackupNode(conf, role);
     case RECOVER:
       NameNode.doRecovery(startOpt, conf);
       return null;
@@ -1830,23 +1781,6 @@ public class NameNode extends ReconfigurableBase implements
     return state.getLastHATransitionTime();
   }
 
-  @Override //NameNodeStatusMXBean
-  public long getBytesWithFutureGenerationStamps() {
-    return getNamesystem().getBytesInFuture();
-  }
-
-  @Override
-  public String getSlowPeersReport() {
-    return namesystem.getBlockManager().getDatanodeManager()
-        .getSlowPeersReport();
-  }
-
-  @Override //NameNodeStatusMXBean
-  public String getSlowDisksReport() {
-    return namesystem.getBlockManager().getDatanodeManager()
-        .getSlowDisksReport();
-  }
-
   /**
    * Shutdown the NN immediately in an ungraceful way. Used when it would be
    * unsafe for the NN to continue operating, e.g. during a failed HA state
@@ -2027,14 +1961,8 @@ public class NameNode extends ReconfigurableBase implements
   @Override // ReconfigurableBase
   protected String reconfigurePropertyImpl(String property, String newVal)
       throws ReconfigurationException {
-    final DatanodeManager datanodeManager = namesystem.getBlockManager()
-        .getDatanodeManager();
 
-    if (property.equals(DFS_HEARTBEAT_INTERVAL_KEY)) {
-      return reconfHeartbeatInterval(datanodeManager, property, newVal);
-    } else if (property.equals(DFS_NAMENODE_HEARTBEAT_RECHECK_INTERVAL_KEY)) {
-      return reconfHeartbeatRecheckInterval(datanodeManager, property, newVal);
-    } else if (property.equals(FS_PROTECTED_DIRECTORIES)) {
+    if (property.equals(FS_PROTECTED_DIRECTORIES)) {
       return reconfProtectedDirectories(newVal);
     } else if (property.equals(HADOOP_CALLER_CONTEXT_ENABLED_KEY)) {
       return reconfCallerContextEnabled(newVal);
@@ -2043,56 +1971,6 @@ public class NameNode extends ReconfigurableBase implements
     } else {
       throw new ReconfigurationException(property, newVal, getConf().get(
           property));
-    }
-  }
-
-  private String reconfHeartbeatInterval(final DatanodeManager datanodeManager,
-      final String property, final String newVal)
-      throws ReconfigurationException {
-    namesystem.writeLock();
-    try {
-      if (newVal == null) {
-        // set to default
-        datanodeManager.setHeartbeatInterval(DFS_HEARTBEAT_INTERVAL_DEFAULT);
-        return String.valueOf(DFS_HEARTBEAT_INTERVAL_DEFAULT);
-      } else {
-        long newInterval = getConf()
-            .getTimeDurationHelper(DFS_HEARTBEAT_INTERVAL_KEY,
-                newVal, TimeUnit.SECONDS);
-        datanodeManager.setHeartbeatInterval(newInterval);
-        return String.valueOf(datanodeManager.getHeartbeatInterval());
-      }
-    } catch (NumberFormatException nfe) {
-      throw new ReconfigurationException(property, newVal, getConf().get(
-          property), nfe);
-    } finally {
-      namesystem.writeUnlock();
-      LOG.info("RECONFIGURE* changed heartbeatInterval to "
-          + datanodeManager.getHeartbeatInterval());
-    }
-  }
-
-  private String reconfHeartbeatRecheckInterval(
-      final DatanodeManager datanodeManager, final String property,
-      final String newVal) throws ReconfigurationException {
-    namesystem.writeLock();
-    try {
-      if (newVal == null) {
-        // set to default
-        datanodeManager.setHeartbeatRecheckInterval(
-            DFS_NAMENODE_HEARTBEAT_RECHECK_INTERVAL_DEFAULT);
-        return String.valueOf(DFS_NAMENODE_HEARTBEAT_RECHECK_INTERVAL_DEFAULT);
-      } else {
-        datanodeManager.setHeartbeatRecheckInterval(Integer.parseInt(newVal));
-        return String.valueOf(datanodeManager.getHeartbeatRecheckInterval());
-      }
-    } catch (NumberFormatException nfe) {
-      throw new ReconfigurationException(property, newVal, getConf().get(
-          property), nfe);
-    } finally {
-      namesystem.writeUnlock();
-      LOG.info("RECONFIGURE* changed heartbeatRecheckInterval to "
-          + datanodeManager.getHeartbeatRecheckInterval());
     }
   }
 

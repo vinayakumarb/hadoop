@@ -125,12 +125,14 @@ public class TestHAStateTransitions {
   private void addCrmThreads(MiniDFSCluster cluster,
       LinkedList<Thread> crmThreads) {
     for (int nn = 0; nn <= 1; nn++) {
-      Thread thread = cluster.getNameNode(nn).getNamesystem().
-          getCacheManager().getCacheReplicationMonitor();
+//      Thread thread = cluster.getNameNode(nn).getNamesystem().
+//          getCacheManager().getCacheReplicationMonitor();
+      Thread thread=null;
       if (thread != null) {
         crmThreads.add(thread);
       }
     }
+    fail("TODO: Add correct asserting ways!!");
   }
 
   /**

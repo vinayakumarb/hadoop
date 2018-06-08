@@ -41,7 +41,6 @@ import org.apache.hadoop.hdfs.DFSUtil;
 import org.apache.hadoop.hdfs.DFSUtilClient;
 import org.apache.hadoop.hdfs.XAttrHelper;
 import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
-import org.apache.hadoop.hdfs.protocol.ErasureCodingPolicy;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants;
 import org.apache.hadoop.hdfs.protocol.HdfsFileStatus;
 import org.apache.hadoop.hdfs.protocol.HdfsFileStatus.Flags;
@@ -70,48 +69,9 @@ public class TestJsonUtil {
   }
 
   @Test
-  public void testHdfsFileStatusWithEcPolicy() throws IOException {
-    final long now = Time.now();
-    final String parent = "/dir";
-    ErasureCodingPolicy dummyEcPolicy = new ErasureCodingPolicy("ecPolicy1",
-        new ECSchema("EcSchema", 1, 1), 1024 * 2, (byte) 1);
-    final HdfsFileStatus status = new HdfsFileStatus.Builder()
-        .length(1001L)
-        .replication(3)
-        .blocksize(1L << 26)
-        .mtime(now)
-        .atime(now + 10)
-        .perm(new FsPermission((short) 0644))
-        .owner("user")
-        .group("group")
-        .symlink(DFSUtil.string2Bytes("bar"))
-        .path(DFSUtil.string2Bytes("foo"))
-        .fileId(HdfsConstants.GRANDFATHER_INODE_ID)
-        .ecPolicy(dummyEcPolicy)
-        .flags(EnumSet.allOf(Flags.class))
-        .build();
-
-    final FileStatus fstatus = toFileStatus(status, parent);
-    System.out.println("status  = " + status);
-    System.out.println("fstatus = " + fstatus);
-    final String json = JsonUtil.toJsonString(status, true);
-    System.out.println("json    = " + json.replace(",", ",\n  "));
-    final HdfsFileStatus s2 =
-        JsonUtilClient.toFileStatus((Map<?, ?>) READER.readValue(json), true);
-    final FileStatus fs2 = toFileStatus(s2, parent);
-    System.out.println("s2      = " + s2);
-    System.out.println("fs2     = " + fs2);
-    Assert.assertEquals(status.getErasureCodingPolicy(),
-        s2.getErasureCodingPolicy());
-    Assert.assertEquals(fstatus, fs2);
-  }
-
-  @Test
   public void testHdfsFileStatusWithoutEcPolicy() throws IOException {
     final long now = Time.now();
     final String parent = "/dir";
-    ErasureCodingPolicy dummyEcPolicy = new ErasureCodingPolicy("ecPolicy1",
-        new ECSchema("EcSchema", 1, 1), 1024 * 2, (byte) 1);
     final HdfsFileStatus status = new HdfsFileStatus.Builder()
         .length(1001L)
         .replication(3)
@@ -125,7 +85,6 @@ public class TestJsonUtil {
         .path(DFSUtil.string2Bytes("foo"))
         .fileId(HdfsConstants.GRANDFATHER_INODE_ID)
         .build();
-    Assert.assertTrue(status.getErasureCodingPolicy() == null);
 
     final FileStatus fstatus = toFileStatus(status, parent);
     System.out.println("status  = " + status);
@@ -139,81 +98,6 @@ public class TestJsonUtil {
     System.out.println("fs2     = " + fs2);
 
     Assert.assertEquals(fstatus, fs2);
-  }
-  
-  @Test
-  public void testToDatanodeInfoWithoutSecurePort() throws Exception {
-    Map<String, Object> response = new HashMap<String, Object>();
-    
-    response.put("ipAddr", "127.0.0.1");
-    response.put("hostName", "localhost");
-    response.put("storageID", "fake-id");
-    response.put("xferPort", 1337l);
-    response.put("infoPort", 1338l);
-    // deliberately don't include an entry for "infoSecurePort"
-    response.put("ipcPort", 1339l);
-    response.put("capacity", 1024l);
-    response.put("dfsUsed", 512l);
-    response.put("remaining", 512l);
-    response.put("blockPoolUsed", 512l);
-    response.put("lastUpdate", 0l);
-    response.put("xceiverCount", 4096l);
-    response.put("networkLocation", "foo.bar.baz");
-    response.put("adminState", "NORMAL");
-    response.put("cacheCapacity", 123l);
-    response.put("cacheUsed", 321l);
-    
-    JsonUtilClient.toDatanodeInfo(response);
-  }
-
-  @Test
-  public void testToDatanodeInfoWithName() throws Exception {
-    Map<String, Object> response = new HashMap<String, Object>();
-
-    // Older servers (1.x, 0.23, etc.) sends 'name' instead of ipAddr
-    // and xferPort.
-    String name = "127.0.0.1:1004";
-    response.put("name", name);
-    response.put("hostName", "localhost");
-    response.put("storageID", "fake-id");
-    response.put("infoPort", 1338l);
-    response.put("ipcPort", 1339l);
-    response.put("capacity", 1024l);
-    response.put("dfsUsed", 512l);
-    response.put("remaining", 512l);
-    response.put("blockPoolUsed", 512l);
-    response.put("lastUpdate", 0l);
-    response.put("xceiverCount", 4096l);
-    response.put("networkLocation", "foo.bar.baz");
-    response.put("adminState", "NORMAL");
-    response.put("cacheCapacity", 123l);
-    response.put("cacheUsed", 321l);
-
-    DatanodeInfo di = JsonUtilClient.toDatanodeInfo(response);
-    Assert.assertEquals(name, di.getXferAddr());
-
-    // The encoded result should contain name, ipAddr and xferPort.
-    Map<String, Object> r = JsonUtil.toJsonMap(di);
-    Assert.assertEquals(name, r.get("name"));
-    Assert.assertEquals("127.0.0.1", r.get("ipAddr"));
-    // In this test, it is Integer instead of Long since json was not actually
-    // involved in constructing the map.
-    Assert.assertEquals(1004, (int)(Integer)r.get("xferPort"));
-
-    // Invalid names
-    String[] badNames = {"127.0.0.1", "127.0.0.1:", ":", "127.0.0.1:sweet", ":123"};
-    for (String badName : badNames) {
-      response.put("name", badName);
-      checkDecodeFailure(response);
-    }
-
-    // Missing both name and ipAddr
-    response.remove("name");
-    checkDecodeFailure(response);
-
-    // Only missing xferPort
-    response.put("ipAddr", "127.0.0.1");
-    checkDecodeFailure(response);
   }
   
   @Test

@@ -19,18 +19,11 @@ package org.apache.hadoop.hdfs.protocolPB;
 
 import java.io.IOException;
 
-import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
-import org.apache.hadoop.hdfs.protocol.DatanodeInfo.DatanodeInfoBuilder;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsServerProtos.VersionRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsServerProtos.VersionResponseProto;
 import org.apache.hadoop.hdfs.protocol.proto.NamenodeProtocolProtos.EndCheckpointRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.NamenodeProtocolProtos.EndCheckpointResponseProto;
-import org.apache.hadoop.hdfs.protocol.proto.NamenodeProtocolProtos.ErrorReportRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.NamenodeProtocolProtos.ErrorReportResponseProto;
-import org.apache.hadoop.hdfs.protocol.proto.NamenodeProtocolProtos.GetBlockKeysRequestProto;
-import org.apache.hadoop.hdfs.protocol.proto.NamenodeProtocolProtos.GetBlockKeysResponseProto;
-import org.apache.hadoop.hdfs.protocol.proto.NamenodeProtocolProtos.GetBlocksRequestProto;
-import org.apache.hadoop.hdfs.protocol.proto.NamenodeProtocolProtos.GetBlocksResponseProto;
 import org.apache.hadoop.hdfs.protocol.proto.NamenodeProtocolProtos.GetEditLogManifestRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.NamenodeProtocolProtos.GetEditLogManifestResponseProto;
 import org.apache.hadoop.hdfs.protocol.proto.NamenodeProtocolProtos.GetMostRecentCheckpointTxIdRequestProto;
@@ -41,18 +34,13 @@ import org.apache.hadoop.hdfs.protocol.proto.NamenodeProtocolProtos.IsRollingUpg
 import org.apache.hadoop.hdfs.protocol.proto.NamenodeProtocolProtos.IsRollingUpgradeResponseProto;
 import org.apache.hadoop.hdfs.protocol.proto.NamenodeProtocolProtos.IsUpgradeFinalizedRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.NamenodeProtocolProtos.IsUpgradeFinalizedResponseProto;
-import org.apache.hadoop.hdfs.protocol.proto.NamenodeProtocolProtos.RegisterRequestProto;
-import org.apache.hadoop.hdfs.protocol.proto.NamenodeProtocolProtos.RegisterResponseProto;
 import org.apache.hadoop.hdfs.protocol.proto.NamenodeProtocolProtos.RollEditLogRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.NamenodeProtocolProtos.RollEditLogResponseProto;
 import org.apache.hadoop.hdfs.protocol.proto.NamenodeProtocolProtos.StartCheckpointRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.NamenodeProtocolProtos.StartCheckpointResponseProto;
-import org.apache.hadoop.hdfs.security.token.block.ExportedBlockKeys;
 import org.apache.hadoop.hdfs.server.namenode.CheckpointSignature;
-import org.apache.hadoop.hdfs.server.protocol.BlocksWithLocations;
 import org.apache.hadoop.hdfs.server.protocol.NamenodeCommand;
 import org.apache.hadoop.hdfs.server.protocol.NamenodeProtocol;
-import org.apache.hadoop.hdfs.server.protocol.NamenodeRegistration;
 import org.apache.hadoop.hdfs.server.protocol.NamespaceInfo;
 import org.apache.hadoop.hdfs.server.protocol.RemoteEditLogManifest;
 
@@ -76,40 +64,6 @@ public class NamenodeProtocolServerSideTranslatorPB implements
 
   public NamenodeProtocolServerSideTranslatorPB(NamenodeProtocol impl) {
     this.impl = impl;
-  }
-
-  @Override
-  public GetBlocksResponseProto getBlocks(RpcController unused,
-      GetBlocksRequestProto request) throws ServiceException {
-    DatanodeInfo dnInfo = new DatanodeInfoBuilder()
-        .setNodeID(PBHelperClient.convert(request.getDatanode()))
-        .build();
-    BlocksWithLocations blocks;
-    try {
-      blocks = impl.getBlocks(dnInfo, request.getSize(),
-          request.getMinBlockSize());
-    } catch (IOException e) {
-      throw new ServiceException(e);
-    }
-    return GetBlocksResponseProto.newBuilder()
-        .setBlocks(PBHelper.convert(blocks)).build();
-  }
-
-  @Override
-  public GetBlockKeysResponseProto getBlockKeys(RpcController unused,
-      GetBlockKeysRequestProto request) throws ServiceException {
-    ExportedBlockKeys keys;
-    try {
-      keys = impl.getBlockKeys();
-    } catch (IOException e) {
-      throw new ServiceException(e);
-    }
-    GetBlockKeysResponseProto.Builder builder = 
-        GetBlockKeysResponseProto.newBuilder();
-    if (keys != null) {
-      builder.setKeys(PBHelper.convert(keys));
-    }
-    return builder.build();
   }
 
   @Override
@@ -149,33 +103,6 @@ public class NamenodeProtocolServerSideTranslatorPB implements
     }
     return RollEditLogResponseProto.newBuilder()
         .setSignature(PBHelper.convert(signature)).build();
-  }
-
-  @Override
-  public ErrorReportResponseProto errorReport(RpcController unused,
-      ErrorReportRequestProto request) throws ServiceException {
-    try {
-      impl.errorReport(PBHelper.convert(request.getRegistration()),
-          request.getErrorCode(), request.getMsg());
-    } catch (IOException e) {
-      throw new ServiceException(e);
-    }
-    return VOID_ERROR_REPORT_RESPONSE;
-  }
-
-  @Override
-  public RegisterResponseProto registerSubordinateNamenode(
-      RpcController unused, RegisterRequestProto request)
-      throws ServiceException {
-    NamenodeRegistration reg;
-    try {
-      reg = impl.registerSubordinateNamenode(
-          PBHelper.convert(request.getRegistration()));
-    } catch (IOException e) {
-      throw new ServiceException(e);
-    }
-    return RegisterResponseProto.newBuilder()
-        .setRegistration(PBHelper.convert(reg)).build();
   }
 
   @Override

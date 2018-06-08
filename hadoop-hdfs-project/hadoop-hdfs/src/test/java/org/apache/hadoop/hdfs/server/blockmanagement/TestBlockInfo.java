@@ -24,7 +24,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hdfs.DFSTestUtil;
 import org.apache.hadoop.hdfs.protocol.Block;
-import org.apache.hadoop.hdfs.server.blockmanagement.DatanodeStorageInfo.AddBlockResult;
 import org.apache.hadoop.hdfs.server.protocol.DatanodeStorage;
 import org.junit.Assert;
 import org.junit.Test;
@@ -43,58 +42,11 @@ public class TestBlockInfo {
 
   @Test
   public void testIsDeleted() {
-    BlockInfo blockInfo = new BlockInfoContiguous((short) 3);
+    BlockInfo blockInfo = new BlockInfo((short) 3);
     BlockCollection bc = Mockito.mock(BlockCollection.class);
     blockInfo.setBlockCollectionId(1000);
     Assert.assertFalse(blockInfo.isDeleted());
     blockInfo.setBlockCollectionId(INVALID_INODE_ID);
     Assert.assertTrue(blockInfo.isDeleted());
-  }
-
-  @Test
-  public void testAddStorage() throws Exception {
-    BlockInfo blockInfo = new BlockInfoContiguous((short) 3);
-
-    final DatanodeStorageInfo storage = DFSTestUtil.createDatanodeStorageInfo(
-        "storageID", "127.0.0.1");
-
-    boolean added = blockInfo.addStorage(storage, blockInfo);
-
-    Assert.assertTrue(added);
-    Assert.assertEquals(storage, blockInfo.getStorageInfo(0));
-  }
-
-  @Test
-  public void testReplaceStorage() throws Exception {
-
-    // Create two dummy storages.
-    final DatanodeStorageInfo storage1 = DFSTestUtil.createDatanodeStorageInfo(
-        "storageID1", "127.0.0.1");
-    final DatanodeStorageInfo storage2 = new DatanodeStorageInfo(
-        storage1.getDatanodeDescriptor(), new DatanodeStorage("storageID2"));
-    final int NUM_BLOCKS = 10;
-    BlockInfo[] blockInfos = new BlockInfo[NUM_BLOCKS];
-
-    // Create a few dummy blocks and add them to the first storage.
-    for (int i = 0; i < NUM_BLOCKS; ++i) {
-      blockInfos[i] = new BlockInfoContiguous((short) 3);
-      storage1.addBlock(blockInfos[i]);
-    }
-
-    // Try to move one of the blocks to a different storage.
-    boolean added =
-        storage2.addBlock(blockInfos[NUM_BLOCKS / 2]) == AddBlockResult.ADDED;
-    Assert.assertThat(added, is(false));
-    Assert.assertThat(blockInfos[NUM_BLOCKS/2].getStorageInfo(0), is(storage2));
-  }
-
-  @Test(expected=IllegalArgumentException.class)
-  public void testAddStorageWithDifferentBlock() throws Exception {
-    BlockInfo blockInfo1 = new BlockInfoContiguous(new Block(1000L), (short) 3);
-    BlockInfo blockInfo2 = new BlockInfoContiguous(new Block(1001L), (short) 3);
-
-    final DatanodeStorageInfo storage = DFSTestUtil.createDatanodeStorageInfo(
-        "storageID", "127.0.0.1");
-    blockInfo1.addStorage(storage, blockInfo2);
   }
 }

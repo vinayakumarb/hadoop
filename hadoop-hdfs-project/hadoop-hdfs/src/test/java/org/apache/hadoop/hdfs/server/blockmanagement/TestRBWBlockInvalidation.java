@@ -17,29 +17,22 @@
  */
 package org.apache.hadoop.hdfs.server.blockmanagement;
 
-import static org.apache.hadoop.test.PlatformAssumptions.assumeNotWindows;
 import static org.junit.Assert.assertEquals;
 
 import java.io.Closeable;
-import java.io.IOException;
 import java.util.List;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
-import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.DFSTestUtil;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.apache.hadoop.hdfs.MiniDFSCluster.DataNodeProperties;
-import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
-import org.apache.hadoop.hdfs.server.datanode.FsDatasetTestUtils.MaterializedReplica;
-import org.apache.hadoop.hdfs.server.namenode.FSNamesystem;
 import org.apache.hadoop.hdfs.server.namenode.ha.HATestUtil;
-import org.apache.hadoop.hdfs.server.namenode.ha.TestDNFencing.RandomDeleterPolicy;
 import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.test.GenericTestUtils;
 import org.junit.Test;
@@ -53,91 +46,7 @@ import com.google.common.collect.Lists;
  */
 public class TestRBWBlockInvalidation {
   private static final Log LOG = LogFactory.getLog(TestRBWBlockInvalidation.class);
-  
-  private static NumberReplicas countReplicas(final FSNamesystem namesystem,
-      ExtendedBlock block) {
-    final BlockManager blockManager = namesystem.getBlockManager();
-    return blockManager.countNodes(blockManager.getStoredBlock(
-        block.getLocalBlock()));
-  }
 
-  /**
-   * Test when a block's replica is removed from RBW folder in one of the
-   * datanode, namenode should ask to invalidate that corrupted block and
-   * schedule replication for one more replica for that under replicated block.
-   */
-  @Test(timeout=600000)
-  public void testBlockInvalidationWhenRBWReplicaMissedInDN()
-      throws IOException, InterruptedException {
-    // This test cannot pass on Windows due to file locking enforcement.  It will
-    // reject the attempt to delete the block file from the RBW folder.
-    assumeNotWindows();
-
-    Configuration conf = new HdfsConfiguration();
-    conf.setInt(DFSConfigKeys.DFS_REPLICATION_KEY, 2);
-    conf.setLong(DFSConfigKeys.DFS_BLOCKREPORT_INTERVAL_MSEC_KEY, 300);
-    conf.setLong(DFSConfigKeys.DFS_DATANODE_DIRECTORYSCAN_INTERVAL_KEY, 1);
-    conf.setLong(DFSConfigKeys.DFS_HEARTBEAT_INTERVAL_KEY, 1);
-    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).numDataNodes(2)
-        .build();
-    FSDataOutputStream out = null;
-    try {
-      final FSNamesystem namesystem = cluster.getNamesystem();
-      FileSystem fs = cluster.getFileSystem();
-      Path testPath = new Path("/tmp/TestRBWBlockInvalidation", "foo1");
-      out = fs.create(testPath, (short) 2);
-      out.writeBytes("HDFS-3157: " + testPath);
-      out.hsync();
-      cluster.startDataNodes(conf, 1, true, null, null, null);
-      ExtendedBlock blk = DFSTestUtil.getFirstBlock(fs, testPath);
-
-      // Delete partial block and its meta information from the RBW folder
-      // of first datanode.
-      MaterializedReplica replica = cluster.getMaterializedReplica(0, blk);
-
-      replica.deleteData();
-      replica.deleteMeta();
-
-      out.close();
-      
-      int liveReplicas = 0;
-      while (true) {
-        if ((liveReplicas = countReplicas(namesystem, blk).liveReplicas()) < 2) {
-          // This confirms we have a corrupt replica
-          LOG.info("Live Replicas after corruption: " + liveReplicas);
-          break;
-        }
-        Thread.sleep(100);
-      }
-      assertEquals("There should be less than 2 replicas in the "
-          + "liveReplicasMap", 1, liveReplicas);
-      
-      while (true) {
-        if ((liveReplicas =
-              countReplicas(namesystem, blk).liveReplicas()) > 1) {
-          //Wait till the live replica count becomes equal to Replication Factor
-          LOG.info("Live Replicas after Rereplication: " + liveReplicas);
-          break;
-        }
-        Thread.sleep(100);
-      }
-      assertEquals("There should be two live replicas", 2, liveReplicas);
-
-      while (true) {
-        Thread.sleep(100);
-        if (countReplicas(namesystem, blk).corruptReplicas() == 0) {
-          LOG.info("Corrupt Replicas becomes 0");
-          break;
-        }
-      }
-    } finally {
-      if (out != null) {
-        out.close();
-      }
-      cluster.shutdown();
-    }
-  }
-  
   /**
    * Regression test for HDFS-4799, a case where, upon restart, if there
    * were RWR replicas with out-of-date genstamps, the NN could accidentally
@@ -146,14 +55,6 @@ public class TestRBWBlockInvalidation {
   @Test(timeout=120000)
   public void testRWRInvalidation() throws Exception {
     Configuration conf = new HdfsConfiguration();
-
-    // Set the deletion policy to be randomized rather than the default.
-    // The default is based on disk space, which isn't controllable
-    // in the context of the test, whereas a random one is more accurate
-    // to what is seen in real clusters (nodes have random amounts of free
-    // space)
-    conf.setClass(DFSConfigKeys.DFS_BLOCK_REPLICATOR_CLASSNAME_KEY,
-        RandomDeleterPolicy.class, BlockPlacementPolicy.class); 
 
     // Speed up the test a bit with faster heartbeats.
     conf.setInt(DFSConfigKeys.DFS_HEARTBEAT_INTERVAL_KEY, 1);
@@ -223,10 +124,7 @@ public class TestRBWBlockInvalidation {
         cluster.waitActive();
         
         // Compute and send invalidations, waiting until they're fully processed.
-        cluster.getNameNode().getNamesystem().getBlockManager()
-          .computeInvalidateWork(2);
         cluster.triggerHeartbeats();
-        HATestUtil.waitForDNDeletions(cluster);
         cluster.triggerDeletionReports();
 
         waitForNumTotalBlocks(cluster, numFiles);

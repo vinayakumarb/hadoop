@@ -71,12 +71,6 @@ public interface FederationMBean {
   long getRemainingCapacity();
 
   /**
-   * Get the total remote storage capacity mounted in the federated cluster.
-   * @return Remote capacity of the federated cluster.
-   */
-  long getProvidedSpace();
-
-  /**
    * Get the number of nameservices in the federation.
    * @return Number of nameservices in the federation.
    */
@@ -95,64 +89,10 @@ public interface FederationMBean {
   int getNumExpiredNamenodes();
 
   /**
-   * Get the number of live datanodes.
-   * @return Number of live datanodes.
-   */
-  int getNumLiveNodes();
-
-  /**
-   * Get the number of dead datanodes.
-   * @return Number of dead datanodes.
-   */
-  int getNumDeadNodes();
-
-  /**
-   * Get the number of decommissioning datanodes.
-   * @return Number of decommissioning datanodes.
-   */
-  int getNumDecommissioningNodes();
-
-  /**
-   * Get the number of live decommissioned datanodes.
-   * @return Number of live decommissioned datanodes.
-   */
-  int getNumDecomLiveNodes();
-
-  /**
-   * Get the number of dead decommissioned datanodes.
-   * @return Number of dead decommissioned datanodes.
-   */
-  int getNumDecomDeadNodes();
-
-  /**
-   * Get Max, Median, Min and Standard Deviation of DataNodes usage.
-   * @return the DataNode usage information, as a JSON string.
-   */
-  String getNodeUsage();
-
-  /**
    * Get the number of blocks in the federation.
    * @return Number of blocks in the federation.
    */
   long getNumBlocks();
-
-  /**
-   * Get the number of missing blocks in the federation.
-   * @return Number of missing blocks in the federation.
-   */
-  long getNumOfMissingBlocks();
-
-  /**
-   * Get the number of pending replication blocks in the federation.
-   * @return Number of pending replication blocks in the federation.
-   */
-  long getNumOfBlocksPendingReplication();
-
-  /**
-   * Get the number of under replicated blocks in the federation.
-   * @return Number of under replicated blocks in the federation.
-   */
-  long getNumOfBlocksUnderReplicated();
 
   /**
    * Get the number of pending deletion blocks in the federation.

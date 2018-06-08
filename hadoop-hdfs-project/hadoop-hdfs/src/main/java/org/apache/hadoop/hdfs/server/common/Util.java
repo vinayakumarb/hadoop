@@ -388,21 +388,4 @@ public final class Util {
     addrsList.removeAll(addrsToExclude);
     return addrsList;
   }
-
-  public static boolean isDiskStatsEnabled(int fileIOSamplingPercentage) {
-    final boolean isEnabled;
-    if (fileIOSamplingPercentage <= 0) {
-      LOG.info(DFSConfigKeys
-          .DFS_DATANODE_FILEIO_PROFILING_SAMPLING_PERCENTAGE_KEY + " set to "
-          + fileIOSamplingPercentage + ". Disabling file IO profiling");
-      isEnabled = false;
-    } else {
-      LOG.info(DFSConfigKeys
-          .DFS_DATANODE_FILEIO_PROFILING_SAMPLING_PERCENTAGE_KEY + " set to "
-          + fileIOSamplingPercentage + ". Enabling file IO profiling");
-      isEnabled = true;
-    }
-
-    return isEnabled;
-  }
 }

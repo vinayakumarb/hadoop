@@ -33,6 +33,7 @@ import io.netty.handler.codec.http.QueryStringDecoder;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hdfs.web.JsonUtil;
+import org.apache.hadoop.hdfs.web.WebHdfsFileSystem;
 import org.apache.hadoop.util.StringUtils;
 
 import java.io.FileNotFoundException;
@@ -50,15 +51,18 @@ import static io.netty.handler.codec.http.HttpResponseStatus.INTERNAL_SERVER_ERR
 import static io.netty.handler.codec.http.HttpResponseStatus.METHOD_NOT_ALLOWED;
 import static io.netty.handler.codec.http.HttpResponseStatus.NOT_FOUND;
 import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
-import static org.apache.hadoop.hdfs.server.datanode.web.webhdfs.WebHdfsHandler.APPLICATION_JSON_UTF8;
-import static org.apache.hadoop.hdfs.server.datanode.web.webhdfs.WebHdfsHandler.WEBHDFS_PREFIX;
-import static org.apache.hadoop.hdfs.server.datanode.web.webhdfs.WebHdfsHandler.WEBHDFS_PREFIX_LENGTH;
 
 /**
  * Implement the read-only WebHDFS API for fsimage.
  */
 class FSImageHandler extends SimpleChannelInboundHandler<HttpRequest> {
   public static final Log LOG = LogFactory.getLog(FSImageHandler.class);
+  public static final String WEBHDFS_PREFIX = WebHdfsFileSystem.PATH_PREFIX;
+  public static final int WEBHDFS_PREFIX_LENGTH = WEBHDFS_PREFIX.length();
+  public static final String APPLICATION_OCTET_STREAM =
+      "application/octet-stream";
+  public static final String APPLICATION_JSON_UTF8 =
+      "application/json; charset=utf-8";
   private final FSImageLoader image;
   private final ChannelGroup activeChannels;
 

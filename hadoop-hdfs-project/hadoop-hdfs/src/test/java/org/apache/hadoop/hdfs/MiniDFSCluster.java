@@ -87,9 +87,6 @@ import org.apache.hadoop.hdfs.protocol.DatanodeID;
 import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants.DatanodeReportType;
-import org.apache.hadoop.hdfs.server.blockmanagement.BlockManagerTestUtil;
-import org.apache.hadoop.hdfs.server.blockmanagement.DatanodeDescriptor;
-import org.apache.hadoop.hdfs.server.blockmanagement.DatanodeManager;
 import org.apache.hadoop.hdfs.server.common.HdfsServerConstants.StartupOption;
 import org.apache.hadoop.hdfs.server.common.Storage;
 import org.apache.hadoop.hdfs.server.common.Util;
@@ -2426,24 +2423,6 @@ public class MiniDFSCluster implements AutoCloseable {
       return false;
     } else {
       return restartDataNode(dnprop, keepPort);
-    }
-  }
-
-  /**
-   * Expire a DataNode heartbeat on the NameNode
-   * @param dnId
-   * @throws IOException
-   */
-  public void setDataNodeDead(DatanodeID dnId) throws IOException {
-    DatanodeDescriptor dnd =
-        NameNodeAdapter.getDatanode(getNamesystem(), dnId);
-    DFSTestUtil.setDatanodeDead(dnd);
-    BlockManagerTestUtil.checkHeartbeat(getNamesystem().getBlockManager());
-  }
-
-  public void setDataNodesDead() throws IOException {
-    for (DataNodeProperties dnp : dataNodes) {
-      setDataNodeDead(dnp.datanode.getDatanodeId());
     }
   }
 

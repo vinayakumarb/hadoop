@@ -42,10 +42,8 @@ import org.apache.hadoop.fs.StorageType;
 import org.apache.hadoop.hdfs.protocol.Block;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.BlockProto;
-import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.BlockTypeProto;
 import org.apache.hadoop.hdfs.protocolPB.PBHelperClient;
 import org.apache.hadoop.hdfs.server.blockmanagement.BlockInfo;
-import org.apache.hadoop.hdfs.server.blockmanagement.BlockInfoContiguous;
 import org.apache.hadoop.hdfs.server.blockmanagement.BlockManager;
 import org.apache.hadoop.hdfs.server.namenode.AclEntryStatusFormat;
 import org.apache.hadoop.hdfs.server.namenode.AclFeature;
@@ -235,18 +233,11 @@ public class FSImageFormatPBSnapshot {
                 fileInPb.getXAttrs(), state.getStringTable()));
           }
 
-          boolean isStriped =
-              (fileInPb.getBlockType() == BlockTypeProto .STRIPED);
-          Short replication =
-              (!isStriped ? (short)fileInPb.getReplication() : null);
-          Byte ecPolicyID =
-              (isStriped ? (byte)fileInPb.getErasureCodingPolicyID() : null);
+          Short replication = (short) fileInPb.getReplication();
           copy = new INodeFileAttributes.SnapshotCopy(pbf.getName()
               .toByteArray(), permission, acl, fileInPb.getModificationTime(),
-              fileInPb.getAccessTime(), replication, ecPolicyID,
-              fileInPb.getPreferredBlockSize(),
-              (byte)fileInPb.getStoragePolicyID(), xAttrs,
-              PBHelperClient.convert(fileInPb.getBlockType()));
+              fileInPb.getAccessTime(), replication, fileInPb.getPreferredBlockSize(),
+              (byte)fileInPb.getStoragePolicyID(), xAttrs);
         }
 
         FileDiff diff = new FileDiff(pbf.getSnapshotId(), copy, null,
@@ -258,8 +249,8 @@ public class FSImageFormatPBSnapshot {
           Block blk = PBHelperClient.convert(bpl.get(j));
           BlockInfo storedBlock = bm.getStoredBlock(blk);
           if(storedBlock == null) {
-            storedBlock = (BlockInfoContiguous) fsn.getBlockManager()
-                .addBlockCollectionWithCheck(new BlockInfoContiguous(blk,
+            storedBlock = fsn.getBlockManager()
+                .addBlockCollectionWithCheck(new BlockInfo(blk,
                     copy.getFileReplication()), file);
           }
           blocks[j] = storedBlock;

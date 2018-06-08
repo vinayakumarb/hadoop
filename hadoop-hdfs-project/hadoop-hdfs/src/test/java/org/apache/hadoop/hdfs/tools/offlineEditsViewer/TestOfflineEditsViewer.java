@@ -211,7 +211,7 @@ public class TestOfflineEditsViewer {
   /**
    * Checks that the edits file has all opCodes
    *
-   * @param filename edits file
+   * @param inFilename edits file
    * @return true is edits (filename) has all opCodes
    */
   private boolean hasAllOpCodes(String inFilename) throws IOException {

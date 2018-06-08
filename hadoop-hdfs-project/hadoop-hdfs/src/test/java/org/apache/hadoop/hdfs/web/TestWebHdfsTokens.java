@@ -205,8 +205,7 @@ public class TestWebHdfsTokens {
 	    
       clusterConf.set(DFSConfigKeys.DFS_HTTP_POLICY_KEY, HttpConfig.Policy.HTTPS_ONLY.name());
       clusterConf.set(DFSConfigKeys.DFS_NAMENODE_HTTPS_ADDRESS_KEY, "localhost:0");
-      clusterConf.set(DFSConfigKeys.DFS_DATANODE_HTTPS_ADDRESS_KEY, "localhost:0");
-	  
+
       File base = new File(baseDir);
       FileUtil.fullyDelete(base);
       base.mkdirs();

@@ -18,15 +18,13 @@
 package org.apache.hadoop.hdfs.tools;
 
 import static org.apache.hadoop.fs.CommonConfigurationKeysPublic.FS_DEFAULT_NAME_KEY;
+import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_HA_NAMENODES_KEY_PREFIX;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_INTERNAL_NAMESERVICES_KEY;
-import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_NAMENODE_BACKUP_ADDRESS_KEY;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_NAMENODE_RPC_ADDRESS_KEY;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_NAMENODE_SECONDARY_HTTP_ADDRESS_KEY;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_NAMENODE_SERVICE_RPC_ADDRESS_KEY;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_NAMENODE_SHARED_EDITS_DIR_KEY;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_NAMESERVICES;
-import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_HA_NAMENODES_KEY_PREFIX;
-
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -40,9 +38,9 @@ import java.net.URISyntaxException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.HashSet;
 import java.util.Set;
 import java.util.StringTokenizer;
 
@@ -53,7 +51,6 @@ import org.apache.hadoop.hdfs.DFSUtil.ConfiguredNNAddress;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.hadoop.hdfs.tools.GetConf.Command;
 import org.apache.hadoop.hdfs.tools.GetConf.CommandHandler;
-import org.apache.hadoop.hdfs.util.HostsFileWriter;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.util.ToolRunner;
 import org.junit.Test;
@@ -130,8 +127,6 @@ public class TestGetConf {
     switch (type) {
     case NAMENODE:
       return DFSUtil.getNNServiceRpcAddressesForCluster(conf);
-    case BACKUP:
-      return DFSUtil.getBackupNodeAddresses(conf);
     case SECONDARY:
       return DFSUtil.getSecondaryNameNodeAddresses(conf);
     case NNRPCADDRESSES:
@@ -171,9 +166,6 @@ public class TestGetConf {
     switch (type) {
     case NAMENODE:
       args[0] = Command.NAMENODE.getName();
-      break;
-    case BACKUP:
-      args[0] = Command.BACKUP.getName();
       break;
     case SECONDARY:
       args[0] = Command.SECONDARY.getName();
@@ -293,10 +285,6 @@ public class TestGetConf {
     verifyAddresses(conf, TestType.NAMENODE, false, "localhost:1000");
     verifyAddresses(conf, TestType.NNRPCADDRESSES, true, "localhost:1000");
   
-    // Returned address should match backupnode RPC address
-    conf.set(DFS_NAMENODE_BACKUP_ADDRESS_KEY,"localhost:1001");
-    verifyAddresses(conf, TestType.BACKUP, false, "localhost:1001");
-  
     // Returned address should match secondary http address
     conf.set(DFS_NAMENODE_SECONDARY_HTTP_ADDRESS_KEY, "localhost:1002");
     verifyAddresses(conf, TestType.SECONDARY, false, "localhost:1002");
@@ -332,12 +320,9 @@ public class TestGetConf {
         DFS_NAMENODE_SERVICE_RPC_ADDRESS_KEY, nsCount, 1000);
     setupAddress(conf, DFS_NAMENODE_RPC_ADDRESS_KEY, nsCount, 1500);
     setupStaticHostResolution(nsCount, "nn");
-    String[] backupAddresses = setupAddress(conf,
-        DFS_NAMENODE_BACKUP_ADDRESS_KEY, nsCount, 2000);
     String[] secondaryAddresses = setupAddress(conf,
         DFS_NAMENODE_SECONDARY_HTTP_ADDRESS_KEY, nsCount, 3000);
     verifyAddresses(conf, TestType.NAMENODE, false, nnAddresses);
-    verifyAddresses(conf, TestType.BACKUP, false, backupAddresses);
     verifyAddresses(conf, TestType.SECONDARY, false, secondaryAddresses);
     verifyAddresses(conf, TestType.NNRPCADDRESSES, true, nnAddresses);
   
@@ -349,12 +334,9 @@ public class TestGetConf {
     setupNameServices(conf, nsCount);
     nnAddresses = setupAddress(conf,
         DFS_NAMENODE_RPC_ADDRESS_KEY, nsCount, 1000);
-    backupAddresses = setupAddress(conf,
-        DFS_NAMENODE_BACKUP_ADDRESS_KEY, nsCount, 2000);
     secondaryAddresses = setupAddress(conf,
         DFS_NAMENODE_SECONDARY_HTTP_ADDRESS_KEY, nsCount, 3000);
     verifyAddresses(conf, TestType.NAMENODE, false, nnAddresses);
-    verifyAddresses(conf, TestType.BACKUP, false, backupAddresses);
     verifyAddresses(conf, TestType.SECONDARY, false, secondaryAddresses);
     verifyAddresses(conf, TestType.NNRPCADDRESSES, true, nnAddresses);
   }
@@ -531,7 +513,7 @@ public class TestGetConf {
   }
 
   /**
-   * Tests commands other than {@link Command#NAMENODE}, {@link Command#BACKUP},
+   * Tests commands other than {@link Command#NAMENODE},
    * {@link Command#SECONDARY} and {@link Command#NNRPCADDRESSES}
    */
   @Test(timeout=10000)

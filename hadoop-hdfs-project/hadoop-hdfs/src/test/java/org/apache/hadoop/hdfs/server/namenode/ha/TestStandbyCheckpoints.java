@@ -432,11 +432,9 @@ public class TestStandbyCheckpoints {
 
     // Make sure new incremental block reports are processed during
     // checkpointing on the SBN.
-    assertEquals(0, cluster.getNamesystem(1).getPendingDataNodeMessageCount());
     doCreate();
     Thread.sleep(1000);
-    assertTrue(cluster.getNamesystem(1).getPendingDataNodeMessageCount() > 0);
-    
+
     // Make sure that the checkpoint is still going on, implying that the client
     // RPC to the SBN happened during the checkpoint.
     assertTrue("SBN should have still been checkpointing.",

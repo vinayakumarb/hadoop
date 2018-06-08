@@ -71,102 +71,16 @@ public interface FSNamesystemMBean {
   public long getCapacityUsed();
 
   /**
-   * Total PROVIDED storage capacity.
-   * @return -  total PROVIDED storage capacity in bytes
-   */
-  public long getProvidedCapacityTotal();
-
-  /**
    * Total number of files and directories
    * @return -  num of files and directories
    */
   public long getFilesTotal();
  
   /**
-   * Get aggregated count of all blocks pending to be reconstructed.
-   * @deprecated Use {@link #getPendingReconstructionBlocks()} instead.
-   */
-  @Deprecated
-  public long getPendingReplicationBlocks();
-
-  /**
-   * Get aggregated count of all blocks pending to be reconstructed.
-   * @return Number of blocks to be replicated.
-   */
-  public long getPendingReconstructionBlocks();
-
-  /**
-   * Get aggregated count of all blocks with low redundancy.
-   * @deprecated Use {@link #getLowRedundancyBlocks()} instead.
-   */
-  @Deprecated
-  public long getUnderReplicatedBlocks();
-
-  /**
-   * Get aggregated count of all blocks with low redundancy.
-   * @return Number of blocks with low redundancy.
-   */
-  public long getLowRedundancyBlocks();
-
-  /**
-   * Blocks scheduled for replication
-   * @return -  num of blocks scheduled for replication
-   */
-  public long getScheduledReplicationBlocks();
-
-  /**
    * Total Load on the FSNamesystem
    * @return -  total load of FSNamesystem
    */
   public int getTotalLoad();
-
-  /**
-   * Number of Live data nodes
-   * @return number of live data nodes
-   */
-  public int getNumLiveDataNodes();
-  
-  /**
-   * Number of dead data nodes
-   * @return number of dead data nodes
-   */
-  public int getNumDeadDataNodes();
-  
-  /**
-   * Number of stale data nodes
-   * @return number of stale data nodes
-   */
-  public int getNumStaleDataNodes();
-
-  /**
-   * Number of decommissioned Live data nodes
-   * @return number of decommissioned live data nodes
-   */
-  public int getNumDecomLiveDataNodes();
-
-  /**
-   * Number of decommissioned dead data nodes
-   * @return number of decommissioned dead data nodes
-   */
-  public int getNumDecomDeadDataNodes();
-
-  /**
-   * Number of failed data volumes across all live data nodes.
-   * @return number of failed data volumes across all live data nodes
-   */
-  int getVolumeFailuresTotal();
-
-  /**
-   * Returns an estimate of total capacity lost due to volume failures in bytes
-   * across all live data nodes.
-   * @return estimate of total capacity lost in bytes
-   */
-  long getEstimatedCapacityLostTotal();
-
-  /**
-   * Number of data nodes that are in the decommissioning state
-   */
-  public int getNumDecommissioningDataNodes();
 
   /**
    * The statistics of snapshots
@@ -189,12 +103,6 @@ public interface FSNamesystemMBean {
    * @return time when block deletions will begin
    */
   long getBlockDeletionStartTime();
-
-  /**
-   * Number of content stale storages.
-   * @return number of content stale storages
-   */
-  public int getNumStaleStorages();
 
   /**
    * Returns a nested JSON object listing the top users for different RPC 
@@ -227,19 +135,4 @@ public interface FSNamesystemMBean {
    * Return total time spent doing sync operations on FSEditLog.
    */
   String getTotalSyncTimes();
-
-  /**
-   * @return Number of IN_MAINTENANCE live data nodes
-   */
-  int getNumInMaintenanceLiveDataNodes();
-
-  /**
-   * @return Number of IN_MAINTENANCE dead data nodes
-   */
-  int getNumInMaintenanceDeadDataNodes();
-
-  /**
-   * @return Number of ENTERING_MAINTENANCE data nodes
-   */
-  int getNumEnteringMaintenanceDataNodes();
 }

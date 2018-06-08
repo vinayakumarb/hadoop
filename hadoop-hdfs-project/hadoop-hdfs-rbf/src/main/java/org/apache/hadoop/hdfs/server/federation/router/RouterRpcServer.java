@@ -47,7 +47,6 @@ import java.util.TreeMap;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.crypto.CryptoProtocolVersion;
 import org.apache.hadoop.fs.BatchedRemoteIterator.BatchedEntries;
-import org.apache.hadoop.fs.CacheFlag;
 import org.apache.hadoop.fs.CommonConfigurationKeys;
 import org.apache.hadoop.fs.ContentSummary;
 import org.apache.hadoop.fs.CreateFlag;
@@ -67,21 +66,13 @@ import org.apache.hadoop.hdfs.AddBlockFlag;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.DFSUtil;
 import org.apache.hadoop.hdfs.inotify.EventBatchList;
-import org.apache.hadoop.hdfs.protocol.AddErasureCodingPolicyResponse;
 import org.apache.hadoop.hdfs.protocol.BlockStoragePolicy;
-import org.apache.hadoop.hdfs.protocol.CacheDirectiveEntry;
-import org.apache.hadoop.hdfs.protocol.CacheDirectiveInfo;
-import org.apache.hadoop.hdfs.protocol.CachePoolEntry;
-import org.apache.hadoop.hdfs.protocol.CachePoolInfo;
 import org.apache.hadoop.hdfs.protocol.ClientProtocol;
 import org.apache.hadoop.hdfs.protocol.CorruptFileBlocks;
 import org.apache.hadoop.hdfs.protocol.DatanodeID;
 import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.hdfs.protocol.DirectoryListing;
-import org.apache.hadoop.hdfs.protocol.ECBlockGroupStats;
 import org.apache.hadoop.hdfs.protocol.EncryptionZone;
-import org.apache.hadoop.hdfs.protocol.ErasureCodingPolicy;
-import org.apache.hadoop.hdfs.protocol.ErasureCodingPolicyInfo;
 import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants.DatanodeReportType;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants.ReencryptAction;
@@ -95,7 +86,6 @@ import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
 import org.apache.hadoop.hdfs.protocol.OpenFileEntry;
 import org.apache.hadoop.hdfs.protocol.OpenFilesIterator;
 import org.apache.hadoop.hdfs.protocol.OpenFilesIterator.OpenFilesType;
-import org.apache.hadoop.hdfs.protocol.ReplicatedBlockStats;
 import org.apache.hadoop.hdfs.protocol.RollingUpgradeInfo;
 import org.apache.hadoop.hdfs.protocol.SnapshotDiffReport;
 import org.apache.hadoop.hdfs.protocol.SnapshotDiffReportListing;
@@ -108,7 +98,6 @@ import org.apache.hadoop.hdfs.protocolPB.ClientNamenodeProtocolServerSideTransla
 import org.apache.hadoop.hdfs.protocolPB.NamenodeProtocolPB;
 import org.apache.hadoop.hdfs.protocolPB.NamenodeProtocolServerSideTranslatorPB;
 import org.apache.hadoop.hdfs.security.token.block.DataEncryptionKey;
-import org.apache.hadoop.hdfs.security.token.block.ExportedBlockKeys;
 import org.apache.hadoop.hdfs.security.token.delegation.DelegationTokenIdentifier;
 import org.apache.hadoop.hdfs.server.federation.metrics.FederationRPCMetrics;
 import org.apache.hadoop.hdfs.server.federation.resolver.ActiveNamenodeResolver;
@@ -123,7 +112,6 @@ import org.apache.hadoop.hdfs.server.namenode.LeaseExpiredException;
 import org.apache.hadoop.hdfs.server.namenode.NameNode.OperationCategory;
 import org.apache.hadoop.hdfs.server.namenode.NotReplicatedYetException;
 import org.apache.hadoop.hdfs.server.namenode.SafeModeException;
-import org.apache.hadoop.hdfs.server.protocol.BlocksWithLocations;
 import org.apache.hadoop.hdfs.server.protocol.DatanodeStorageReport;
 import org.apache.hadoop.hdfs.server.protocol.NamenodeCommand;
 import org.apache.hadoop.hdfs.server.protocol.NamenodeProtocol;
@@ -1274,13 +1262,6 @@ public class RouterRpcServer extends AbstractService
     return combinedData;
   }
 
-  @Override // ClientProtocol
-  public DatanodeInfo[] getDatanodeReport(DatanodeReportType type)
-      throws IOException {
-    checkOperation(OperationCategory.UNCHECKED);
-    return getDatanodeReport(type, true, 0);
-  }
-
   /**
    * Get the datanode report with a timeout.
    * @param type Type of the datanode.
@@ -1322,34 +1303,6 @@ public class RouterRpcServer extends AbstractService
     // Map -> Array
     Collection<DatanodeInfo> datanodes = datanodesMap.values();
     return toArray(datanodes, DatanodeInfo.class);
-  }
-
-  @Override // ClientProtocol
-  public DatanodeStorageReport[] getDatanodeStorageReport(
-      DatanodeReportType type) throws IOException {
-    checkOperation(OperationCategory.UNCHECKED);
-
-    Map<String, DatanodeStorageReport[]> dnSubcluster =
-        getDatanodeStorageReportMap(type);
-
-    // Avoid repeating machines in multiple subclusters
-    Map<String, DatanodeStorageReport> datanodesMap = new LinkedHashMap<>();
-    for (DatanodeStorageReport[] dns : dnSubcluster.values()) {
-      for (DatanodeStorageReport dn : dns) {
-        DatanodeInfo dnInfo = dn.getDatanodeInfo();
-        String nodeId = dnInfo.getXferAddr();
-        if (!datanodesMap.containsKey(nodeId)) {
-          datanodesMap.put(nodeId, dn);
-        }
-        // TODO merge somehow, right now it just takes the first one
-      }
-    }
-
-    Collection<DatanodeStorageReport> datanodes = datanodesMap.values();
-    DatanodeStorageReport[] combinedData =
-        new DatanodeStorageReport[datanodes.size()];
-    combinedData = datanodes.toArray(combinedData);
-    return combinedData;
   }
 
   /**
@@ -1717,53 +1670,6 @@ public class RouterRpcServer extends AbstractService
   }
 
   @Override // ClientProtocol
-  public long addCacheDirective(CacheDirectiveInfo path,
-      EnumSet<CacheFlag> flags) throws IOException {
-    checkOperation(OperationCategory.WRITE, false);
-    return 0;
-  }
-
-  @Override // ClientProtocol
-  public void modifyCacheDirective(CacheDirectiveInfo directive,
-      EnumSet<CacheFlag> flags) throws IOException {
-    checkOperation(OperationCategory.WRITE, false);
-  }
-
-  @Override // ClientProtocol
-  public void removeCacheDirective(long id) throws IOException {
-    checkOperation(OperationCategory.WRITE, false);
-  }
-
-  @Override // ClientProtocol
-  public BatchedEntries<CacheDirectiveEntry> listCacheDirectives(
-      long prevId, CacheDirectiveInfo filter) throws IOException {
-    checkOperation(OperationCategory.READ, false);
-    return null;
-  }
-
-  @Override // ClientProtocol
-  public void addCachePool(CachePoolInfo info) throws IOException {
-    checkOperation(OperationCategory.WRITE, false);
-  }
-
-  @Override // ClientProtocol
-  public void modifyCachePool(CachePoolInfo info) throws IOException {
-    checkOperation(OperationCategory.WRITE, false);
-  }
-
-  @Override // ClientProtocol
-  public void removeCachePool(String cachePoolName) throws IOException {
-    checkOperation(OperationCategory.WRITE, false);
-  }
-
-  @Override // ClientProtocol
-  public BatchedEntries<CachePoolEntry> listCachePools(String prevKey)
-      throws IOException {
-    checkOperation(OperationCategory.READ, false);
-    return null;
-  }
-
-  @Override // ClientProtocol
   public void modifyAclEntries(String src, List<AclEntry> aclSpec)
       throws IOException {
     checkOperation(OperationCategory.WRITE);
@@ -2041,69 +1947,6 @@ public class RouterRpcServer extends AbstractService
     return null;
   }
 
-  @Override // ClientProtocol
-  public ErasureCodingPolicyInfo[] getErasureCodingPolicies()
-      throws IOException {
-    return erasureCoding.getErasureCodingPolicies();
-  }
-
-  @Override // ClientProtocol
-  public Map<String, String> getErasureCodingCodecs() throws IOException {
-    return erasureCoding.getErasureCodingCodecs();
-  }
-
-  @Override // ClientProtocol
-  public AddErasureCodingPolicyResponse[] addErasureCodingPolicies(
-      ErasureCodingPolicy[] policies) throws IOException {
-    return erasureCoding.addErasureCodingPolicies(policies);
-  }
-
-  @Override // ClientProtocol
-  public void removeErasureCodingPolicy(String ecPolicyName)
-      throws IOException {
-    erasureCoding.removeErasureCodingPolicy(ecPolicyName);
-  }
-
-  @Override // ClientProtocol
-  public void disableErasureCodingPolicy(String ecPolicyName)
-      throws IOException {
-    erasureCoding.disableErasureCodingPolicy(ecPolicyName);
-  }
-
-  @Override // ClientProtocol
-  public void enableErasureCodingPolicy(String ecPolicyName)
-      throws IOException {
-    erasureCoding.enableErasureCodingPolicy(ecPolicyName);
-  }
-
-  @Override // ClientProtocol
-  public ErasureCodingPolicy getErasureCodingPolicy(String src)
-      throws IOException {
-    return erasureCoding.getErasureCodingPolicy(src);
-  }
-
-  @Override // ClientProtocol
-  public void setErasureCodingPolicy(String src, String ecPolicyName)
-      throws IOException {
-    erasureCoding.setErasureCodingPolicy(src, ecPolicyName);
-  }
-
-  @Override // ClientProtocol
-  public void unsetErasureCodingPolicy(String src) throws IOException {
-    erasureCoding.unsetErasureCodingPolicy(src);
-  }
-
-  @Override
-  public ECBlockGroupStats getECBlockGroupStats() throws IOException {
-    return erasureCoding.getECBlockGroupStats();
-  }
-
-  @Override
-  public ReplicatedBlockStats getReplicatedBlockStats() throws IOException {
-    checkOperation(OperationCategory.READ, false);
-    return null;
-  }
-
   @Deprecated
   @Override
   public BatchedEntries<OpenFileEntry> listOpenFiles(long prevId)
@@ -2117,17 +1960,6 @@ public class RouterRpcServer extends AbstractService
       EnumSet<OpenFilesType> openFilesTypes, String path) throws IOException {
     checkOperation(OperationCategory.READ, false);
     return null;
-  }
-
-  @Override // NamenodeProtocol
-  public BlocksWithLocations getBlocks(DatanodeInfo datanode, long size,
-      long minBlockSize) throws IOException {
-    return nnProto.getBlocks(datanode, size, minBlockSize);
-  }
-
-  @Override // NamenodeProtocol
-  public ExportedBlockKeys getBlockKeys() throws IOException {
-    return nnProto.getBlockKeys();
   }
 
   @Override // NamenodeProtocol
@@ -2148,18 +1980,6 @@ public class RouterRpcServer extends AbstractService
   @Override // NamenodeProtocol
   public NamespaceInfo versionRequest() throws IOException {
     return nnProto.versionRequest();
-  }
-
-  @Override // NamenodeProtocol
-  public void errorReport(NamenodeRegistration registration, int errorCode,
-      String msg) throws IOException {
-    nnProto.errorReport(registration, errorCode, msg);
-  }
-
-  @Override // NamenodeProtocol
-  public NamenodeRegistration registerSubordinateNamenode(
-      NamenodeRegistration registration) throws IOException {
-    return nnProto.registerSubordinateNamenode(registration);
   }
 
   @Override // NamenodeProtocol

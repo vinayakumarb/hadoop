@@ -51,7 +51,6 @@ import java.util.TreeSet;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.crypto.CryptoProtocolVersion;
 import org.apache.hadoop.fs.CreateFlag;
 import org.apache.hadoop.fs.FileContext;
 import org.apache.hadoop.fs.FileStatus;
@@ -63,21 +62,14 @@ import org.apache.hadoop.hdfs.DFSClient;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.NameNodeProxies;
 import org.apache.hadoop.hdfs.client.HdfsDataOutputStream;
-import org.apache.hadoop.hdfs.protocol.AddErasureCodingPolicyResponse;
 import org.apache.hadoop.hdfs.protocol.BlockStoragePolicy;
 import org.apache.hadoop.hdfs.protocol.ClientProtocol;
 import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.hdfs.protocol.DirectoryListing;
-import org.apache.hadoop.hdfs.protocol.ECBlockGroupStats;
-import org.apache.hadoop.hdfs.protocol.ErasureCodingPolicy;
-import org.apache.hadoop.hdfs.protocol.ErasureCodingPolicyInfo;
-import org.apache.hadoop.hdfs.protocol.ErasureCodingPolicyState;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants.DatanodeReportType;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants.SafeModeAction;
 import org.apache.hadoop.hdfs.protocol.HdfsFileStatus;
-import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
-import org.apache.hadoop.hdfs.security.token.block.ExportedBlockKeys;
 import org.apache.hadoop.hdfs.server.federation.MiniRouterDFSCluster;
 import org.apache.hadoop.hdfs.server.federation.MiniRouterDFSCluster.NamenodeContext;
 import org.apache.hadoop.hdfs.server.federation.MiniRouterDFSCluster.RouterContext;
@@ -85,8 +77,6 @@ import org.apache.hadoop.hdfs.server.federation.MockResolver;
 import org.apache.hadoop.hdfs.server.federation.RouterConfigBuilder;
 import org.apache.hadoop.hdfs.server.federation.metrics.NamenodeBeanMetrics;
 import org.apache.hadoop.hdfs.server.federation.resolver.FileSubclusterResolver;
-import org.apache.hadoop.hdfs.server.protocol.BlocksWithLocations;
-import org.apache.hadoop.hdfs.server.protocol.BlocksWithLocations.BlockWithLocations;
 import org.apache.hadoop.hdfs.server.protocol.DatanodeStorageReport;
 import org.apache.hadoop.hdfs.server.protocol.NamenodeProtocol;
 import org.apache.hadoop.hdfs.server.protocol.NamespaceInfo;
@@ -874,31 +864,6 @@ public class TestRouterRpc {
   }
 
   @Test
-  public void testProxyGetAdditionalDatanode()
-      throws IOException, InterruptedException, URISyntaxException {
-
-    // Use primitive APIs to open a file, add a block, and get datanode location
-    EnumSet<CreateFlag> createFlag = EnumSet.of(CreateFlag.CREATE);
-    String clientName = getRouterContext().getClient().getClientName();
-    String newRouterFile = routerFile + "_additionalDatanode";
-    HdfsFileStatus status = routerProtocol.create(
-        newRouterFile, new FsPermission("777"), clientName,
-        new EnumSetWritable<CreateFlag>(createFlag), true, (short) 1,
-        (long) 1024, CryptoProtocolVersion.supported(), null);
-
-    // Add a block via router (requires client to have same lease)
-    LocatedBlock block = routerProtocol.addBlock(
-        newRouterFile, clientName, null, null,
-        status.getFileId(), null, null);
-
-    DatanodeInfo[] exclusions = new DatanodeInfo[0];
-    LocatedBlock newBlock = routerProtocol.getAdditionalDatanode(
-        newRouterFile, status.getFileId(), block.getBlock(),
-        block.getLocations(), block.getStorageIDs(), exclusions, 1, clientName);
-    assertNotNull(newBlock);
-  }
-
-  @Test
   public void testProxyCreateFileAlternateUser()
       throws IOException, URISyntaxException, InterruptedException {
 
@@ -960,37 +925,6 @@ public class TestRouterRpc {
     assertEquals(nnVersion.getClusterID(), rVersion.getClusterID());
     assertEquals(nnVersion.getLayoutVersion(), rVersion.getLayoutVersion());
     assertEquals(nnVersion.getCTime(), rVersion.getCTime());
-  }
-
-  @Test
-  public void testProxyGetBlockKeys() throws Exception {
-    ExportedBlockKeys rKeys = routerNamenodeProtocol.getBlockKeys();
-    ExportedBlockKeys nnKeys = nnNamenodeProtocol.getBlockKeys();
-    assertEquals(nnKeys.getCurrentKey(), rKeys.getCurrentKey());
-    assertEquals(nnKeys.getKeyUpdateInterval(), rKeys.getKeyUpdateInterval());
-    assertEquals(nnKeys.getTokenLifetime(), rKeys.getTokenLifetime());
-  }
-
-  @Test
-  public void testProxyGetBlocks() throws Exception {
-    // Get datanodes
-    DatanodeInfo[] dns =
-        routerProtocol.getDatanodeReport(DatanodeReportType.ALL);
-    DatanodeInfo dn0 = dns[0];
-
-    // Verify that checking that datanode works
-    BlocksWithLocations routerBlockLocations =
-        routerNamenodeProtocol.getBlocks(dn0, 1024, 0);
-    BlocksWithLocations nnBlockLocations =
-        nnNamenodeProtocol.getBlocks(dn0, 1024, 0);
-    BlockWithLocations[] routerBlocks = routerBlockLocations.getBlocks();
-    BlockWithLocations[] nnBlocks = nnBlockLocations.getBlocks();
-    assertEquals(nnBlocks.length, routerBlocks.length);
-    for (int i = 0; i < routerBlocks.length; i++) {
-      assertEquals(
-          nnBlocks[i].getBlock().getBlockId(),
-          routerBlocks[i].getBlock().getBlockId());
-    }
   }
 
   @Test
@@ -1191,11 +1125,6 @@ public class TestRouterRpc {
     ErasureCodingPolicy policyNamenode3 =
         file3Protocol.getErasureCodingPolicy(filePath3);
     assertEquals(newPolicyName, policyNamenode3.getName());
-
-    LOG.info("Check the stats");
-    ECBlockGroupStats statsRouter = routerProtocol.getECBlockGroupStats();
-    ECBlockGroupStats statsNamenode = nnProtocol.getECBlockGroupStats();
-    assertEquals(statsNamenode.toString(), statsRouter.toString());
   }
 
   @Test
