@@ -65,7 +65,7 @@ public class HAStressTestHarness {
   public MiniDFSCluster startCluster() throws IOException {
     cluster = new MiniDFSCluster.Builder(conf)
       .nnTopology(MiniDFSNNTopology.simpleHATopology(nns))
-      .numDataNodes(3)
+
       .build();
     return cluster;
   }

@@ -22,8 +22,6 @@ import static org.junit.Assert.assertEquals;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.logging.Log;
@@ -31,12 +29,8 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.protocol.Block;
-import org.apache.hadoop.hdfs.protocol.BlockListAsLongs;
 import org.apache.hadoop.hdfs.protocol.ClientProtocol;
-import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
-import org.apache.hadoop.hdfs.server.datanode.SimulatedFSDataset;
-import org.apache.hadoop.hdfs.server.protocol.DatanodeStorage;
 import org.apache.hadoop.util.Time;
 import org.junit.Test;
 
@@ -63,37 +57,8 @@ public class TestInjectionForSimulatedStorage {
     
     //wait for all the blocks to be replicated;
     LOG.info("Checking for block replication for " + filename);
-    
     LocatedBlocks blocks = namenode.getBlockLocations(filename, 0, Long.MAX_VALUE);
     assertEquals(numBlocks, blocks.locatedBlockCount());
-    
-    for (int i = 0; i < numBlocks; ++i) {
-      LOG.info("Checking for block:" + (i+1));
-      while (true) { // Loop to check for block i (usually when 0 is done all will be done
-        blocks = namenode.getBlockLocations(filename, 0, Long.MAX_VALUE);
-        assertEquals(numBlocks, blocks.locatedBlockCount());
-        LocatedBlock block = blocks.get(i);
-        int actual = block.getLocations().length;
-        if ( actual == expected ) {
-          LOG.info("Got enough replicas for " + (i+1) + "th block " + block.getBlock() +
-              ", got " + actual + ".");
-          break;
-        }
-        LOG.info("Not enough replicas for " + (i+1) + "th block " + block.getBlock() +
-                               " yet. Expecting " + expected + ", got " + 
-                               actual + ".");
-      
-        if (maxWaitSec > 0 && 
-            (Time.monotonicNow() - start) > (maxWaitSec * 1000)) {
-          throw new IOException("Timedout while waiting for all blocks to " +
-                                " be replicated for " + filename);
-        }
-      
-        try {
-          Thread.sleep(500);
-        } catch (InterruptedException ignored) {}
-      }
-    }
   }
  
   
@@ -125,9 +90,8 @@ public class TestInjectionForSimulatedStorage {
       Configuration conf = new HdfsConfiguration();
       conf.set(DFSConfigKeys.DFS_REPLICATION_KEY, Integer.toString(numDataNodes));
       conf.setInt(DFSConfigKeys.DFS_BYTES_PER_CHECKSUM_KEY, checksumSize);
-      SimulatedFSDataset.setFactory(conf);
       //first time format
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(numDataNodes).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       cluster.waitActive();
       String bpid = cluster.getNamesystem().getBlockPoolId();
       DFSClient dfsClient = new DFSClient(new InetSocketAddress("localhost",
@@ -137,8 +101,6 @@ public class TestInjectionForSimulatedStorage {
       DFSTestUtil.createFile(cluster.getFileSystem(), testPath, filesize,
           filesize, blockSize, (short) numDataNodes, 0L);
       waitForBlockReplication(testFile, dfsClient.getNamenode(), numDataNodes, 20);
-      List<Map<DatanodeStorage, BlockListAsLongs>> blocksList = cluster.getAllBlockReports(bpid);
-      
       cluster.shutdown();
       cluster = null;
       
@@ -149,27 +111,17 @@ public class TestInjectionForSimulatedStorage {
       
       LOG.info("Restarting minicluster");
       conf = new HdfsConfiguration();
-      SimulatedFSDataset.setFactory(conf);
-      conf.set(DFSConfigKeys.DFS_NAMENODE_SAFEMODE_THRESHOLD_PCT_KEY, "0.0f"); 
+      conf.set(DFSConfigKeys.DFS_NAMENODE_SAFEMODE_THRESHOLD_PCT_KEY, "0.0f");
       
       cluster = new MiniDFSCluster.Builder(conf)
-                                  .numDataNodes(numDataNodes * 2)
                                   .format(false)
                                   .build();
       cluster.waitActive();
       Set<Block> uniqueBlocks = new HashSet<Block>();
-      for(Map<DatanodeStorage, BlockListAsLongs> map : blocksList) {
-        for(BlockListAsLongs blockList : map.values()) {
-          for(Block b : blockList) {
-            uniqueBlocks.add(new Block(b));
-          }
-        }
-      }
       // Insert all the blocks in the first data node
       
       LOG.info("Inserting " + uniqueBlocks.size() + " blocks");
-      cluster.injectBlocks(0, uniqueBlocks, null);
-      
+
       dfsClient = new DFSClient(new InetSocketAddress("localhost",
                                   cluster.getNameNodePort()),
                                   conf);

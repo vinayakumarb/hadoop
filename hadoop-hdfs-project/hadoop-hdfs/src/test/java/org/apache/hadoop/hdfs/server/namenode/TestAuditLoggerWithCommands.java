@@ -81,7 +81,7 @@ public class TestAuditLoggerWithCommands {
     conf.setBoolean(
         CommonConfigurationKeys.HADOOP_SECURITY_AUTHORIZATION, true);
     cluster =
-        new MiniDFSCluster.Builder(conf).numDataNodes(NUM_DATA_NODES).build();
+        new MiniDFSCluster.Builder(conf).build();
     cluster.waitActive();
     user1 =
         UserGroupInformation.createUserForTesting("theDoctor",

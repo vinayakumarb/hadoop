@@ -43,7 +43,7 @@ public class TestLossyRetryInvocationHandler {
 
     try {
       cluster = new MiniDFSCluster.Builder(conf)
-          .nnTopology(MiniDFSNNTopology.simpleHATopology()).numDataNodes(0)
+          .nnTopology(MiniDFSNNTopology.simpleHATopology())
           .build();
       cluster.waitActive();
       cluster.transitionToActive(0);

@@ -36,6 +36,4 @@ if "%1" == "--config" (
 )
 
 start "Apache Hadoop Distribution" hadoop namenode
-start "Apache Hadoop Distribution" hadoop datanode
-
 endlocal

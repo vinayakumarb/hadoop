@@ -137,7 +137,7 @@ public class TestOfflineImageViewer {
       conf.setBoolean(DFSConfigKeys.DFS_NAMENODE_ACLS_ENABLED_KEY, true);
       conf.set(CommonConfigurationKeysPublic.HADOOP_SECURITY_AUTH_TO_LOCAL,
           "RULE:[2:$1@$0](JobTracker@.*FOO.COM)s/@.*//" + "DEFAULT");
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(3).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       cluster.waitActive();
       DistributedFileSystem hdfs = cluster.getFileSystem();
 
@@ -411,19 +411,6 @@ public class TestOfflineImageViewer {
         throws SAXException {
       super.endElement(uri, localName, qName);
       if (qName.equalsIgnoreCase(PBImageXmlWriter.INODE_SECTION_INODE)) {
-        if (currentInodeName != null && currentInodeName.length() > 0) {
-          if (currentBlockType != null && currentBlockType.equalsIgnoreCase(
-              BlockType.STRIPED.name())) {
-            Assert.assertEquals("INode '"
-                    + currentInodeName + "' has unexpected EC Policy!",
-                Byte.parseByte(currentECPolicy),
-                SystemErasureCodingPolicies.XOR_2_1_POLICY_ID);
-            Assert.assertEquals("INode '"
-                    + currentInodeName + "' has unexpected replication!",
-                currentRepl,
-                Short.toString(INodeFile.DEFAULT_REPL_FOR_STRIPED_BLOCKS));
-          }
-        }
         isInode = false;
         currentInodeName = "";
         currentECPolicy = "";
@@ -738,7 +725,7 @@ public class TestOfflineImageViewer {
 
     // Create a initial fsimage file
     try (MiniDFSCluster cluster =
-        new MiniDFSCluster.Builder(conf).numDataNodes(1).build()) {
+        new MiniDFSCluster.Builder(conf).build()) {
       cluster.waitActive();
       DistributedFileSystem hdfs = cluster.getFileSystem();
 

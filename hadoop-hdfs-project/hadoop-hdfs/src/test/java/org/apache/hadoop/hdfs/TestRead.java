@@ -19,26 +19,16 @@ package org.apache.hadoop.hdfs;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InterruptedIOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ClosedByInterruptException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.apache.hadoop.hdfs.client.HdfsClientConfigKeys;
-import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
-import org.apache.hadoop.hdfs.server.datanode.DataNode;
-import org.apache.hadoop.hdfs.server.datanode.DataStorage;
-import org.apache.hadoop.hdfs.server.datanode.SimulatedFSDataset;
-import org.apache.hadoop.hdfs.server.datanode.fsdataset.FsDatasetSpi;
-import org.apache.hadoop.io.IOUtils;
-import org.junit.Assert;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hdfs.DFSTestUtil.ShortCircuitTestContext;
+import org.junit.Assert;
 import org.junit.Test;
 
 public class TestRead {
@@ -64,28 +54,9 @@ public class TestRead {
   }
 
   @Test(timeout=60000)
-  public void testEOFWithBlockReaderLocal() throws Exception {
-    ShortCircuitTestContext testContext = 
-        new ShortCircuitTestContext("testEOFWithBlockReaderLocal");
-    try {
-      final Configuration conf = testContext.newConfiguration();
-      conf.setLong(HdfsClientConfigKeys.DFS_CLIENT_CACHE_READAHEAD, BLOCK_SIZE);
-      MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).numDataNodes(1)
-          .format(true).build();
-      testEOF(cluster, 1);
-      testEOF(cluster, 14);
-      testEOF(cluster, 10000);
-      cluster.shutdown();
-    } finally {
-      testContext.close();
-    }
-  }
-
-  @Test(timeout=60000)
   public void testEOFWithRemoteBlockReader() throws Exception {
     final Configuration conf = new Configuration();
-    conf.setLong(HdfsClientConfigKeys.DFS_CLIENT_CACHE_READAHEAD, BLOCK_SIZE);
-    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).numDataNodes(1)
+    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
         .format(true).build();
     testEOF(cluster, 1);
     testEOF(cluster, 14);
@@ -102,7 +73,7 @@ public class TestRead {
   public void testReadReservedPath() throws Exception {
     Configuration conf = new Configuration();
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).
-        numDataNodes(1).format(true).build();
+        format(true).build();
     try {
       FileSystem fs = cluster.getFileSystem();
       fs.open(new Path("/.reserved/.inodes/file"));
@@ -117,11 +88,9 @@ public class TestRead {
   @Test(timeout=60000)
   public void testInterruptReader() throws Exception {
     final Configuration conf = new HdfsConfiguration();
-    conf.set(DFSConfigKeys.DFS_DATANODE_FSDATASET_FACTORY_KEY,
-        DelayedSimulatedFSDataset.Factory.class.getName());
 
     final MiniDFSCluster cluster = new MiniDFSCluster
-        .Builder(conf).numDataNodes(1).build();
+        .Builder(conf).build();
     final DistributedFileSystem fs = cluster.getFileSystem();
     try {
       cluster.waitActive();
@@ -152,42 +121,6 @@ public class TestRead {
       Assert.assertTrue(readInterrupted.get());
     } finally {
       cluster.shutdown();
-    }
-  }
-
-  private static class DelayedSimulatedFSDataset extends SimulatedFSDataset {
-    private volatile boolean isDelayed = true;
-
-    DelayedSimulatedFSDataset(DataNode datanode, DataStorage storage,
-        Configuration conf) {
-      super(datanode, storage, conf);
-    }
-
-    @Override
-    public synchronized InputStream getBlockInputStream(ExtendedBlock b,
-        long seekOffset) throws IOException {
-      while (isDelayed) {
-        try {
-          this.wait();
-        } catch (InterruptedException ignored) {
-        }
-      }
-      InputStream result = super.getBlockInputStream(b);
-      IOUtils.skipFully(result, seekOffset);
-      return result;
-    }
-
-    static class Factory extends FsDatasetSpi.Factory<DelayedSimulatedFSDataset> {
-      @Override
-      public DelayedSimulatedFSDataset newInstance(DataNode datanode,
-          DataStorage storage, Configuration conf) throws IOException {
-        return new DelayedSimulatedFSDataset(datanode, storage, conf);
-      }
-
-      @Override
-      public boolean isSimulated() {
-        return true;
-      }
     }
   }
 }

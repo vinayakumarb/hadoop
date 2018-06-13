@@ -156,7 +156,7 @@ public class TestStorageRestore {
   @Test
   public void testStorageRestore() throws Exception {
     int numDatanodes = 0;
-    cluster = new MiniDFSCluster.Builder(config).numDataNodes(numDatanodes)
+    cluster = new MiniDFSCluster.Builder(config)
                                                 .manageNameDfsDirs(false)
                                                 .build();
     cluster.waitActive();
@@ -258,7 +258,7 @@ public class TestStorageRestore {
   @Test
   public void testDfsAdminCmd() throws Exception {
     cluster = new MiniDFSCluster.Builder(config).
-                                 numDataNodes(2).
+
                                  manageNameDfsDirs(false).build();
     cluster.waitActive();
     try {
@@ -315,7 +315,7 @@ public class TestStorageRestore {
     
     SecondaryNameNode secondary = null;
     try {
-      cluster = new MiniDFSCluster.Builder(config).numDataNodes(1)
+      cluster = new MiniDFSCluster.Builder(config)
           .manageNameDfsDirs(false).build();
       cluster.waitActive();
       
@@ -393,7 +393,7 @@ public class TestStorageRestore {
 
     try {
       cluster = new MiniDFSCluster.Builder(config)
-          .numDataNodes(0)
+
           .manageNameDfsDirs(false).build();
       cluster.waitActive();
 

@@ -51,9 +51,7 @@ public class IOUtilsClient {
       return;
     }
 
-    if (blockReader.isShortCircuit()) {
-      readStatistics.addShortCircuitBytes(nRead);
-    } else if (blockReader.getNetworkDistance() == 0) {
+    if (blockReader.getNetworkDistance() == 0) {
       readStatistics.addLocalBytes(nRead);
     } else {
       readStatistics.addRemoteBytes(nRead);

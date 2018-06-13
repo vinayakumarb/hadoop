@@ -56,7 +56,7 @@ public class TestHAFsck {
     
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
       .nnTopology(topology)
-      .numDataNodes(0)
+
       .build();
     FileSystem fs = null;
     try {

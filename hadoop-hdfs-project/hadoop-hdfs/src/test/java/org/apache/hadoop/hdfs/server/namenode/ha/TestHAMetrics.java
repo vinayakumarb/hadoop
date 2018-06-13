@@ -53,7 +53,7 @@ public class TestHAMetrics {
     conf.setInt(DFSConfigKeys.DFS_HA_LOGROLL_PERIOD_KEY, Integer.MAX_VALUE);
 
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
-        .nnTopology(MiniDFSNNTopology.simpleHATopology()).numDataNodes(1)
+        .nnTopology(MiniDFSNNTopology.simpleHATopology())
         .build();
     FileSystem fs = null;
     try {
@@ -94,22 +94,15 @@ public class TestHAMetrics {
       Thread.sleep(2000); // make sure standby gets a little out-of-date
       assertTrue(2000 <= nn0.getMillisSinceLastLoadedEdits());
       
-      assertEquals(0, nn0.getPendingDataNodeMessageCount());
-      assertEquals(0, nn1.getPendingDataNodeMessageCount());
-      
       fs = HATestUtil.configureFailoverFs(cluster, conf);
       DFSTestUtil.createFile(fs, new Path("/foo"),
           10, (short)1, 1L);
       
-      assertTrue(0 < nn0.getPendingDataNodeMessageCount());
-      assertEquals(0, nn1.getPendingDataNodeMessageCount());
       long millisSinceLastLoadedEdits = nn0.getMillisSinceLastLoadedEdits();
       
       HATestUtil.waitForStandbyToCatchUp(cluster.getNameNode(1),
           cluster.getNameNode(0));
       
-      assertEquals(0, nn0.getPendingDataNodeMessageCount());
-      assertEquals(0, nn1.getPendingDataNodeMessageCount());
       long newMillisSinceLastLoadedEdits = nn0.getMillisSinceLastLoadedEdits();
       // Since we just waited for the standby to catch up, the time since we
       // last loaded edits should be very low.
@@ -129,7 +122,7 @@ public class TestHAMetrics {
     conf.setInt(DFSConfigKeys.DFS_HA_LOGROLL_PERIOD_KEY, Integer.MAX_VALUE);
 
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
-        .nnTopology(MiniDFSNNTopology.simpleHATopology()).numDataNodes(1)
+        .nnTopology(MiniDFSNNTopology.simpleHATopology())
         .build();
     FileSystem fs = null;
     try {

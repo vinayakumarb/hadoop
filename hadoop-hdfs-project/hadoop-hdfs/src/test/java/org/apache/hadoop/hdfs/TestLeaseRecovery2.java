@@ -43,8 +43,6 @@ import org.apache.hadoop.hdfs.protocol.AlreadyBeingCreatedException;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
 import org.apache.hadoop.hdfs.server.common.HdfsServerConstants;
-import org.apache.hadoop.hdfs.server.datanode.DataNode;
-import org.apache.hadoop.hdfs.server.datanode.DataNodeTestUtils;
 import org.apache.hadoop.hdfs.server.namenode.FSEditLog;
 import org.apache.hadoop.hdfs.server.namenode.FSNamesystem;
 import org.apache.hadoop.hdfs.server.namenode.LeaseManager;
@@ -64,7 +62,6 @@ public class TestLeaseRecovery2 {
   public static final Log LOG = LogFactory.getLog(TestLeaseRecovery2.class);
   
   {
-    GenericTestUtils.setLogLevel(DataNode.LOG, Level.TRACE);
     GenericTestUtils.setLogLevel(LeaseManager.LOG, Level.TRACE);
     GenericTestUtils.setLogLevel(FSNamesystem.LOG, Level.TRACE);
   }
@@ -96,7 +93,6 @@ public class TestLeaseRecovery2 {
     conf.setInt(DFSConfigKeys.DFS_HEARTBEAT_INTERVAL_KEY, 1);
 
     cluster = new MiniDFSCluster.Builder(conf)
-        .numDataNodes(5)
         .checkExitOnShutdown(false)
         .build();
     cluster.waitActive();
@@ -488,13 +484,7 @@ public class TestLeaseRecovery2 {
     AppendTestUtil.LOG.info("leasechecker.interruptAndJoin()");
     dfs.dfs.getLeaseRenewer().interruptAndJoin();
     
-    // Make sure the DNs don't send a heartbeat for a while, so the blocks
-    // won't actually get completed during lease recovery.
-    for (DataNode dn : cluster.getDataNodes()) {
-      DataNodeTestUtils.setHeartbeatsDisabledForTests(dn, true);
-    }
-    
-    // set the hard limit to be 1 second 
+    // set the hard limit to be 1 second
     cluster.setLeasePeriod(LONG_LEASE_PERIOD, SHORT_LEASE_PERIOD);
     
     // Make sure lease recovery begins.
@@ -519,10 +509,6 @@ public class TestLeaseRecovery2 {
     
     checkLease(fileStr, size);
     
-    // Let the DNs send heartbeats again.
-    for (DataNode dn : cluster.getDataNodes()) {
-      DataNodeTestUtils.setHeartbeatsDisabledForTests(dn, false);
-    }
 
     cluster.waitActive();
 

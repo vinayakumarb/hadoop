@@ -88,7 +88,7 @@ public class TestAppendSnapshotTruncate {
     conf.setBoolean(ReplaceDatanodeOnFailure.BEST_EFFORT_KEY, true);
     cluster = new MiniDFSCluster.Builder(conf)
         .format(true)
-        .numDataNodes(DATANODE_NUM)
+
         .waitSafeMode(true)
         .build();
     dfs = cluster.getFileSystem();

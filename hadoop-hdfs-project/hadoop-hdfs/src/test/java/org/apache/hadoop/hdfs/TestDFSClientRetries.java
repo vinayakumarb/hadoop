@@ -187,7 +187,7 @@ public class TestDFSClientRetries {
     final int bufferSize = 4096;
     conf.setInt(CommonConfigurationKeys.IO_FILE_BUFFER_SIZE_KEY, bufferSize);
 
-    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).numDataNodes(3).build();
+    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).build();
     
     try {
       cluster.waitActive();
@@ -691,7 +691,7 @@ public class TestDFSClientRetries {
 
     final short numDatanodes = 3;
     final MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
-        .numDataNodes(numDatanodes)
+
         .build();
     try {
       cluster.waitActive();

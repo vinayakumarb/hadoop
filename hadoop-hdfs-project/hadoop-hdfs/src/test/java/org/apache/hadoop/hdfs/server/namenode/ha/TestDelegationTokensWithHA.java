@@ -87,7 +87,7 @@ public class TestDelegationTokensWithHA {
 
     cluster = new MiniDFSCluster.Builder(conf)
       .nnTopology(MiniDFSNNTopology.simpleHATopology())
-      .numDataNodes(0)
+
       .build();
     cluster.waitActive();
     

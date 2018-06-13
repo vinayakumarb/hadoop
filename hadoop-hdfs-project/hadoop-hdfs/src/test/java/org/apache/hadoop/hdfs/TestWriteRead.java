@@ -74,7 +74,7 @@ public class TestWriteRead {
     conf.setLong(DFSConfigKeys.DFS_BLOCK_SIZE_KEY, blockSize); // 100K
                                                               // blocksize
 
-    cluster = new MiniDFSCluster.Builder(conf).numDataNodes(3).build();
+    cluster = new MiniDFSCluster.Builder(conf).build();
     cluster.waitActive();
 
     mfs = cluster.getFileSystem();

@@ -75,7 +75,7 @@ public class TestWebHdfsFileContextMainOperations
   public static void clusterSetupAtBeginning()
       throws IOException, LoginException, URISyntaxException {
 
-    cluster = new MiniDFSCluster.Builder(CONF).numDataNodes(2).build();
+    cluster = new MiniDFSCluster.Builder(CONF).build();
     cluster.waitClusterUp();
     webhdfsUrl = new URI(WebHdfs.SCHEME + "://" + cluster.getConfiguration(0)
         .get(DFSConfigKeys.DFS_NAMENODE_HTTP_ADDRESS_KEY));

@@ -67,7 +67,7 @@ public class TestHDFSTrash {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    cluster = new MiniDFSCluster.Builder(conf).numDataNodes(2).build();
+    cluster = new MiniDFSCluster.Builder(conf).build();
     fs = FileSystem.get(conf);
 
     superUser = UserGroupInformation.getCurrentUser();

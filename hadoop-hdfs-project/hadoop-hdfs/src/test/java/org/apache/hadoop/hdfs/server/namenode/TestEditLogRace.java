@@ -215,7 +215,7 @@ public class TestEditLogRace {
     // start a cluster 
     Configuration conf = getConf();
     final MiniDFSCluster cluster =
-        new MiniDFSCluster.Builder(conf).numDataNodes(NUM_DATA_NODES).build();
+        new MiniDFSCluster.Builder(conf).build();
     FileSystem fileSys = null;
 
 
@@ -301,7 +301,7 @@ public class TestEditLogRace {
 
     AtomicReference<Throwable> caughtErr = new AtomicReference<Throwable>();
     try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(NUM_DATA_NODES).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       cluster.waitActive();
       fileSys = cluster.getFileSystem();
       final FSNamesystem namesystem = cluster.getNamesystem();

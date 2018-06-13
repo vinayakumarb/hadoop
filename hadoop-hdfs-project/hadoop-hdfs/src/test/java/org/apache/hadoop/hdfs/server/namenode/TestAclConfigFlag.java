@@ -164,7 +164,7 @@ public class TestAclConfigFlag {
     if (aclsEnabled) {
       conf.setBoolean(DFSConfigKeys.DFS_NAMENODE_ACLS_ENABLED_KEY, true);
     }
-    cluster = new MiniDFSCluster.Builder(conf).numDataNodes(1).format(format)
+    cluster = new MiniDFSCluster.Builder(conf).format(format)
       .build();
     cluster.waitActive();
     fs = cluster.getFileSystem();

@@ -62,7 +62,7 @@ public class TestViewFsFileStatusHdfs {
   @BeforeClass
   public static void clusterSetupAtBegining() throws IOException,
       LoginException, URISyntaxException {
-    cluster = new MiniDFSCluster.Builder(CONF).numDataNodes(2).build();
+    cluster = new MiniDFSCluster.Builder(CONF).build();
     cluster.waitClusterUp();
     fHdfs = cluster.getFileSystem();
     defaultWorkingDirectory = fHdfs.makeQualified( new Path("/user/" + 

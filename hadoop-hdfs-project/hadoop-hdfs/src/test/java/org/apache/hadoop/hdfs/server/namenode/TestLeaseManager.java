@@ -150,7 +150,7 @@ public class TestLeaseManager {
     MiniDFSCluster cluster = null;
     try {
       cluster = new MiniDFSCluster.Builder(new HdfsConfiguration())
-          .numDataNodes(1).build();
+          .build();
       DistributedFileSystem dfs = cluster.getFileSystem();
 
       // Create an empty file

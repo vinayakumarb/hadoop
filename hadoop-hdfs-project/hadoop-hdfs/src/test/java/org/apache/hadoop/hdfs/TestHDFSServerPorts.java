@@ -17,26 +17,24 @@
  */
 package org.apache.hadoop.hdfs;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.FileUtil;
-import org.apache.hadoop.hdfs.server.common.HdfsServerConstants.StartupOption;
-import org.apache.hadoop.hdfs.server.datanode.DataNode;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
-import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
-import org.apache.hadoop.net.DNS;
-import org.apache.hadoop.test.PathUtils;
-import org.junit.Test;
+import static org.apache.hadoop.hdfs.server.common.Util.fileAsURI;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
 import java.net.UnknownHostException;
 
-import static org.apache.hadoop.hdfs.server.common.Util.fileAsURI;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.FileUtil;
+import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
+import org.apache.hadoop.net.DNS;
+import org.apache.hadoop.test.PathUtils;
+import org.junit.Test;
 
 /**
  * This test checks correctness of port usage by hdfs components:
@@ -110,57 +108,6 @@ public class TestHDFSServerPorts {
     return NameNode.createNameNode(args, config);
   }
 
-  /**
-   * Start the BackupNode
-   */
-  public BackupNode startBackupNode(Configuration conf) throws IOException {
-    // Set up testing environment directories
-    hdfsDir = new File(TEST_DATA_DIR, "backupNode");
-    if ( hdfsDir.exists() && !FileUtil.fullyDelete(hdfsDir) ) {
-      throw new IOException("Could not delete hdfs directory '" + hdfsDir + "'");
-    }
-    File currDir = new File(hdfsDir, "name2");
-    File currDir2 = new File(currDir, "current");
-    File currDir3 = new File(currDir, "image");
-    
-    assertTrue(currDir.mkdirs());
-    assertTrue(currDir2.mkdirs());
-    assertTrue(currDir3.mkdirs());
-    
-    conf.set(DFSConfigKeys.DFS_NAMENODE_NAME_DIR_KEY,
-        fileAsURI(new File(hdfsDir, "name2")).toString());
-    conf.set(DFSConfigKeys.DFS_NAMENODE_EDITS_DIR_KEY,
-        "${" + DFSConfigKeys.DFS_NAMENODE_NAME_DIR_KEY + "}");
-    
-    // Start BackupNode
-    String[] args = new String [] { StartupOption.BACKUP.getName() };
-    BackupNode bu = (BackupNode)NameNode.createNameNode(args, conf);
-
-    return bu;
-  }
-  
-  /**
-   * Start the datanode.
-   */
-  public DataNode startDataNode(int index, Configuration config) 
-  throws IOException {
-    File dataNodeDir = new File(TEST_DATA_DIR, "data-" + index);
-    config.set(DFSConfigKeys.DFS_DATANODE_DATA_DIR_KEY, dataNodeDir.getPath());
-
-    String[] args = new String[] {};
-    // NameNode will modify config with the ports it bound to
-    return DataNode.createDataNode(args, config);
-  }
-
-  /**
-   * Stop the datanode.
-   */
-  public void stopDataNode(DataNode dn) {
-    if (dn != null) {
-      dn.shutdown();
-    }
-  }
-
   public void stopNameNode(NameNode nn) {
     if (nn != null) {
       nn.stop();
@@ -189,23 +136,6 @@ public class TestHDFSServerPorts {
   }
 
   /**
-   * Check whether the datanode can be started.
-   */
-  private boolean canStartDataNode(Configuration conf) throws IOException {
-    DataNode dn = null;
-    try {
-      dn = DataNode.createDataNode(new String[]{}, conf);
-    } catch(IOException e) {
-      if (e instanceof java.net.BindException)
-        return false;
-      throw e;
-    } finally {
-      if(dn != null) dn.shutdown();
-    }
-    return true;
-  }
-
-  /**
    * Check whether the secondary name-node can be started.
    */
   @SuppressWarnings("deprecation")
@@ -223,25 +153,6 @@ public class TestHDFSServerPorts {
     } finally {
       if(sn != null) sn.shutdown();
     }
-    return true;
-  }
-  
-  /**
-   * Check whether the BackupNode can be started.
-   */
-  private boolean canStartBackupNode(Configuration conf) throws IOException {
-    BackupNode bn = null;
-
-    try {
-      bn = startBackupNode(conf);
-    } catch(IOException e) {
-      if (e instanceof java.net.BindException)
-        return false;
-      throw e;
-    } finally {
-      if(bn != null) bn.stop();
-    }
-
     return true;
   }
 
@@ -294,42 +205,6 @@ public class TestHDFSServerPorts {
   }
 
   /**
-   * Verify datanode port usage.
-   */
-  @Test(timeout = 300000)
-  public void testDataNodePorts() throws Exception {
-    NameNode nn = null;
-    try {
-      nn = startNameNode();
-
-      // start data-node on the same port as name-node
-      Configuration conf2 = new HdfsConfiguration(config);
-      conf2.set(DFSConfigKeys.DFS_DATANODE_DATA_DIR_KEY, new File(hdfsDir, "data").getPath());
-      conf2.set(DFSConfigKeys.DFS_DATANODE_ADDRESS_KEY,
-                FileSystem.getDefaultUri(config).getAuthority());
-      conf2.set(DFSConfigKeys.DFS_DATANODE_HTTP_ADDRESS_KEY, THIS_HOST);
-      boolean started = canStartDataNode(conf2);
-      assertFalse(started); // should fail
-
-      // bind http server to the same port as name-node
-      conf2.set(DFSConfigKeys.DFS_DATANODE_ADDRESS_KEY, THIS_HOST);
-      conf2.set(DFSConfigKeys.DFS_DATANODE_HTTP_ADDRESS_KEY,
-                config.get(DFSConfigKeys.DFS_NAMENODE_HTTP_ADDRESS_KEY));
-      started = canStartDataNode(conf2);
-      assertFalse(started); // should fail
-    
-      // both ports are different from the name-node ones
-      conf2.set(DFSConfigKeys.DFS_DATANODE_ADDRESS_KEY, THIS_HOST);
-      conf2.set(DFSConfigKeys.DFS_DATANODE_HTTP_ADDRESS_KEY, THIS_HOST);
-      conf2.set(DFSConfigKeys.DFS_DATANODE_IPC_ADDRESS_KEY, THIS_HOST);
-      started = canStartDataNode(conf2);
-      assertTrue(started); // should start now
-    } finally {
-      stopNameNode(nn);
-    }
-  }
-
-  /**
    * Verify secondary namenode port usage.
    */
   @Test(timeout = 300000)
@@ -356,45 +231,5 @@ public class TestHDFSServerPorts {
     } finally {
       stopNameNode(nn);
     }
-  }
-    
-    /**
-     * Verify BackupNode port usage.
-     */
-    @Test(timeout = 300000)
-    public void testBackupNodePorts() throws Exception {
-      NameNode nn = null;
-      try {
-        nn = startNameNode();
-
-        Configuration backup_config = new HdfsConfiguration(config);
-        backup_config.set(
-            DFSConfigKeys.DFS_NAMENODE_BACKUP_ADDRESS_KEY, THIS_HOST);
-        // bind http server to the same port as name-node
-        backup_config.set(DFSConfigKeys.DFS_NAMENODE_BACKUP_HTTP_ADDRESS_KEY, 
-            backup_config.get(DFSConfigKeys.DFS_NAMENODE_HTTP_ADDRESS_KEY));
-
-        LOG.info("= Starting 1 on: " + backup_config.get(
-            DFSConfigKeys.DFS_NAMENODE_BACKUP_HTTP_ADDRESS_KEY));
-
-        assertFalse("Backup started on same port as Namenode", 
-                           canStartBackupNode(backup_config)); // should fail
-
-        // reset namenode backup address because Windows does not release
-        // port used previously properly.
-        backup_config.set(
-            DFSConfigKeys.DFS_NAMENODE_BACKUP_ADDRESS_KEY, THIS_HOST);
-
-        // bind http server to a different port
-        backup_config.set(
-            DFSConfigKeys.DFS_NAMENODE_BACKUP_HTTP_ADDRESS_KEY, THIS_HOST);
-        LOG.info("= Starting 2 on: " + backup_config.get(
-            DFSConfigKeys.DFS_NAMENODE_BACKUP_HTTP_ADDRESS_KEY));
-
-        boolean started = canStartBackupNode(backup_config);
-        assertTrue("Backup Namenode should've started", started); // should start now
-      } finally {
-        stopNameNode(nn);
-      }
   }
 }

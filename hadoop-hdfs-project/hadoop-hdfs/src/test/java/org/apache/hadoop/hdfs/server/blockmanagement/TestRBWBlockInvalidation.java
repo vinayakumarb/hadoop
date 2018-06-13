@@ -31,8 +31,6 @@ import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.DFSTestUtil;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
-import org.apache.hadoop.hdfs.MiniDFSCluster.DataNodeProperties;
-import org.apache.hadoop.hdfs.server.namenode.ha.HATestUtil;
 import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.test.GenericTestUtils;
 import org.junit.Test;
@@ -67,7 +65,7 @@ public class TestRBWBlockInvalidation {
       testPaths.add(new Path("/test" + i));
     }
     
-    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).numDataNodes(2)
+    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
         .build();
     try {
       List<FSDataOutputStream> streams = Lists.newArrayList();
@@ -84,9 +82,6 @@ public class TestRBWBlockInvalidation {
         for (Path path : testPaths) {
           DFSTestUtil.waitReplication(cluster.getFileSystem(), path, (short)2);
         }
-
-        // Shutdown one of the nodes in the pipeline
-        DataNodeProperties oldGenstampNode = cluster.stopDataNode(0);
 
         // Write some more data and flush again. This data will only
         // be in the latter genstamp copy of the blocks.
@@ -112,20 +107,9 @@ public class TestRBWBlockInvalidation {
         // copy is the one that is deleted.
 
         LOG.info("=========================== restarting cluster");
-        DataNodeProperties otherNode = cluster.stopDataNode(0);
         cluster.restartNameNode();
         
-        // Restart the datanode with the corrupt replica first.
-        cluster.restartDataNode(oldGenstampNode);
         cluster.waitActive();
-
-        // Then the other node
-        cluster.restartDataNode(otherNode);
-        cluster.waitActive();
-        
-        // Compute and send invalidations, waiting until they're fully processed.
-        cluster.triggerHeartbeats();
-        cluster.triggerDeletionReports();
 
         waitForNumTotalBlocks(cluster, numFiles);
         // Make sure we can still read the blocks.
@@ -149,8 +133,6 @@ public class TestRBWBlockInvalidation {
       @Override
       public Boolean get() {
         try {
-          cluster.triggerBlockReports();
-
           // Wait total blocks
           if (cluster.getNamesystem().getBlocksTotal() == numTotalBlocks) {
             return true;

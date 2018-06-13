@@ -17,23 +17,15 @@
  */
 package org.apache.hadoop.hdfs;
 
-import static org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.Status.SUCCESS;
-
-import java.io.BufferedOutputStream;
-import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InterruptedIOException;
-import java.io.OutputStream;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.channels.ClosedChannelException;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -41,11 +33,10 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import javax.annotation.Nonnull;
 
-import com.google.common.annotations.VisibleForTesting;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.fs.StorageType;
-import org.apache.hadoop.hdfs.client.HdfsClientConfigKeys.BlockWrite;
 import org.apache.hadoop.hdfs.client.impl.DfsClientConf;
 import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
@@ -54,22 +45,11 @@ import org.apache.hadoop.hdfs.protocol.HdfsFileStatus;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.protocol.QuotaExceededException;
 import org.apache.hadoop.hdfs.protocol.datatransfer.BlockConstructionStage;
-import org.apache.hadoop.hdfs.protocol.datatransfer.DataTransferProtocol;
-import org.apache.hadoop.hdfs.protocol.datatransfer.IOStreamPair;
 import org.apache.hadoop.hdfs.protocol.datatransfer.InvalidEncryptionKeyException;
 import org.apache.hadoop.hdfs.protocol.datatransfer.PacketHeader;
-import org.apache.hadoop.hdfs.protocol.datatransfer.PipelineAck;
-import org.apache.hadoop.hdfs.protocol.datatransfer.Sender;
-import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.BlockOpResponseProto;
-import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.Status;
-import org.apache.hadoop.hdfs.protocolPB.PBHelperClient;
-import org.apache.hadoop.hdfs.security.token.block.BlockTokenIdentifier;
-import org.apache.hadoop.hdfs.server.datanode.CachingStrategy;
 import org.apache.hadoop.hdfs.util.ByteArrayManager;
-import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.io.MultipleIOException;
 import org.apache.hadoop.net.NetUtils;
-import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.util.Daemon;
 import org.apache.hadoop.util.DataChecksum;
 import org.apache.hadoop.util.Progressable;
@@ -78,17 +58,14 @@ import org.apache.htrace.core.Span;
 import org.apache.htrace.core.SpanId;
 import org.apache.htrace.core.TraceScope;
 import org.apache.htrace.core.Tracer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.cache.RemovalListener;
 import com.google.common.cache.RemovalNotification;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import javax.annotation.Nonnull;
 
 /*********************************************************************
  *
@@ -146,54 +123,6 @@ class DataStreamer extends Daemon {
         throws InvalidEncryptionKeyException {
       fetchEncryptionKeyTimes++;
       lastException = e;
-    }
-  }
-
-  private class StreamerStreams implements java.io.Closeable {
-    private Socket sock = null;
-    private DataOutputStream out = null;
-    private DataInputStream in = null;
-
-    StreamerStreams(final DatanodeInfo src,
-        final long writeTimeout, final long readTimeout,
-        final Token<BlockTokenIdentifier> blockToken)
-        throws IOException {
-      sock = createSocketForPipeline(src, 2, dfsClient);
-
-      OutputStream unbufOut = NetUtils.getOutputStream(sock, writeTimeout);
-      InputStream unbufIn = NetUtils.getInputStream(sock, readTimeout);
-      IOStreamPair saslStreams = dfsClient.saslClient
-          .socketSend(sock, unbufOut, unbufIn, dfsClient, blockToken, src);
-      unbufOut = saslStreams.out;
-      unbufIn = saslStreams.in;
-      out = new DataOutputStream(new BufferedOutputStream(unbufOut,
-          DFSUtilClient.getSmallBufferSize(dfsClient.getConfiguration())));
-      in = new DataInputStream(unbufIn);
-    }
-
-    void sendTransferBlock(final DatanodeInfo[] targets,
-        final StorageType[] targetStorageTypes,
-        final String[] targetStorageIDs,
-        final Token<BlockTokenIdentifier> blockToken) throws IOException {
-      //send the TRANSFER_BLOCK request
-      new Sender(out).transferBlock(block.getCurrentBlock(), blockToken,
-          dfsClient.clientName, targets, targetStorageTypes,
-          targetStorageIDs);
-      out.flush();
-      //ack
-      BlockOpResponseProto transferResponse = BlockOpResponseProto
-          .parseFrom(PBHelperClient.vintPrefixed(in));
-      if (SUCCESS != transferResponse.getStatus()) {
-        throw new IOException("Failed to add a datanode. Response status: "
-            + transferResponse.getStatus());
-      }
-    }
-
-    @Override
-    public void close() throws IOException {
-      IOUtils.closeStream(in);
-      IOUtils.closeStream(out);
-      IOUtils.closeSocket(sock);
     }
   }
 
@@ -501,7 +430,6 @@ class DataStreamer extends Daemon {
   protected final LinkedList<DFSPacket> dataQueue = new LinkedList<>();
   private final Map<Long, Long> packetSendTime = new HashMap<>();
   private final LinkedList<DFSPacket> ackQueue = new LinkedList<>();
-  private final AtomicReference<CachingStrategy> cachingStrategy;
   private final ByteArrayManager byteArrayManager;
   //persist blocks on namenode
   private final AtomicBoolean persistBlocks = new AtomicBoolean(false);
@@ -516,19 +444,15 @@ class DataStreamer extends Daemon {
   private final EnumSet<AddBlockFlag> addBlockFlags;
 
   private DataStreamer(HdfsFileStatus stat, ExtendedBlock block,
-                       DFSClient dfsClient, String src,
-                       Progressable progress, DataChecksum checksum,
-                       AtomicReference<CachingStrategy> cachingStrategy,
-                       ByteArrayManager byteArrayManage,
-                       boolean isAppend, String[] favoredNodes,
-                       EnumSet<AddBlockFlag> flags) {
+      DFSClient dfsClient, String src, Progressable progress,
+      DataChecksum checksum, ByteArrayManager byteArrayManage, boolean isAppend,
+      String[] favoredNodes, EnumSet<AddBlockFlag> flags) {
     this.block = new BlockToWrite(block);
     this.dfsClient = dfsClient;
     this.src = src;
     this.progress = progress;
     this.stat = stat;
     this.checksum4WriteBlock = checksum;
-    this.cachingStrategy = cachingStrategy;
     this.byteArrayManager = byteArrayManage;
     this.isLazyPersistFile = isLazyPersist(stat);
     this.isAppend = isAppend;
@@ -544,11 +468,9 @@ class DataStreamer extends Daemon {
    */
   DataStreamer(HdfsFileStatus stat, ExtendedBlock block, DFSClient dfsClient,
                String src, Progressable progress, DataChecksum checksum,
-               AtomicReference<CachingStrategy> cachingStrategy,
                ByteArrayManager byteArrayManage, String[] favoredNodes,
                EnumSet<AddBlockFlag> flags) {
-    this(stat, block, dfsClient, src, progress, checksum, cachingStrategy,
-        byteArrayManage, false, favoredNodes, flags);
+    this(stat, block, dfsClient, src, progress, checksum, byteArrayManage, false, favoredNodes, flags);
     stage = BlockConstructionStage.PIPELINE_SETUP_CREATE;
   }
 
@@ -559,9 +481,8 @@ class DataStreamer extends Daemon {
    */
   DataStreamer(LocatedBlock lastBlock, HdfsFileStatus stat, DFSClient dfsClient,
                String src, Progressable progress, DataChecksum checksum,
-               AtomicReference<CachingStrategy> cachingStrategy,
                ByteArrayManager byteArrayManage) {
-    this(stat, lastBlock.getBlock(), dfsClient, src, progress, checksum, cachingStrategy,
+    this(stat, lastBlock.getBlock(), dfsClient, src, progress, checksum,
         byteArrayManage, true, null, null);
     stage = BlockConstructionStage.PIPELINE_SETUP_APPEND;
     bytesSent = block.getNumBytes();
@@ -1009,32 +930,6 @@ class DataStreamer extends Daemon {
     int multi = 2
         + (int) (bytesSent / dfsClient.getConf().getWritePacketSize()) / 200;
     return dfsClient.getDatanodeReadTimeout(multi);
-  }
-
-  private void transfer(final DatanodeInfo src, final DatanodeInfo[] targets,
-                        final StorageType[] targetStorageTypes,
-                        final String[] targetStorageIDs,
-                        final Token<BlockTokenIdentifier> blockToken)
-      throws IOException {
-    //transfer replica to the new datanode
-    RefetchEncryptionKeyPolicy policy = new RefetchEncryptionKeyPolicy(src);
-    do {
-      StreamerStreams streams = null;
-      try {
-        final long writeTimeout = computeTransferWriteTimeout();
-        final long readTimeout = computeTransferReadTimeout();
-
-        streams = new StreamerStreams(src, writeTimeout, readTimeout,
-            blockToken);
-        streams.sendTransferBlock(targets, targetStorageTypes,
-            targetStorageIDs, blockToken);
-        return;
-      } catch (InvalidEncryptionKeyException e) {
-        policy.recordFailure(e);
-      } finally {
-        IOUtils.closeStream(streams);
-      }
-    } while (policy.continueRetryingOrThrow());
   }
 
   /**

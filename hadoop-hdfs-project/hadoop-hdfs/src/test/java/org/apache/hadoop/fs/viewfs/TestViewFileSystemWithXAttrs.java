@@ -61,7 +61,7 @@ public class TestViewFileSystemWithXAttrs {
   public static void clusterSetupAtBeginning() throws IOException {
     cluster = new MiniDFSCluster.Builder(clusterConf)
         .nnTopology(MiniDFSNNTopology.simpleFederatedTopology(2))
-        .numDataNodes(2)
+
         .build();
     cluster.waitClusterUp();
 

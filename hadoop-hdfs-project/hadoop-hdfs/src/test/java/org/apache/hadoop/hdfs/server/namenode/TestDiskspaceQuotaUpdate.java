@@ -60,7 +60,7 @@ public class TestDiskspaceQuotaUpdate {
   public static void setUp() throws Exception {
     conf = new Configuration();
     conf.setLong(DFSConfigKeys.DFS_BLOCK_SIZE_KEY, BLOCKSIZE);
-    cluster = new MiniDFSCluster.Builder(conf).numDataNodes(REPLICATION)
+    cluster = new MiniDFSCluster.Builder(conf)
         .build();
     cluster.waitActive();
   }
@@ -71,7 +71,7 @@ public class TestDiskspaceQuotaUpdate {
       // Previous test seems to have left cluster in a bad state;
       // recreate the cluster to protect subsequent tests
       cluster.shutdown();
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(REPLICATION)
+      cluster = new MiniDFSCluster.Builder(conf)
         .build();
       cluster.waitActive();
     }

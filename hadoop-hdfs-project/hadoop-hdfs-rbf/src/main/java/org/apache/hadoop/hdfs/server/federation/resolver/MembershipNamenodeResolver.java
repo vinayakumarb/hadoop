@@ -266,22 +266,10 @@ public class MembershipNamenodeResolver
       MembershipStats stats = MembershipStats.newInstance();
       stats.setNumOfFiles(report.getNumFiles());
       stats.setNumOfBlocks(report.getNumBlocks());
-      stats.setNumOfBlocksMissing(report.getNumBlocksMissing());
-      stats.setNumOfBlocksPendingReplication(
-          report.getNumOfBlocksPendingReplication());
-      stats.setNumOfBlocksUnderReplicated(
-          report.getNumOfBlocksUnderReplicated());
       stats.setNumOfBlocksPendingDeletion(
           report.getNumOfBlocksPendingDeletion());
       stats.setAvailableSpace(report.getAvailableSpace());
       stats.setTotalSpace(report.getTotalSpace());
-      stats.setProvidedSpace(report.getProvidedSpace());
-      stats.setNumOfDecommissioningDatanodes(
-          report.getNumDecommissioningDatanodes());
-      stats.setNumOfActiveDatanodes(report.getNumLiveDatanodes());
-      stats.setNumOfDeadDatanodes(report.getNumDeadDatanodes());
-      stats.setNumOfDecomActiveDatanodes(report.getNumDecomLiveDatanodes());
-      stats.setNumOfDecomDeadDatanodes(report.getNumDecomDeadDatanodes());
       record.setStats(stats);
     }
 

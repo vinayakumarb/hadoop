@@ -21,15 +21,8 @@ import java.io.IOException;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.fs.StorageType;
-import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
-import org.apache.hadoop.hdfs.server.datanode.*;
-import org.apache.hadoop.hdfs.server.datanode.fsdataset.FsDatasetSpi;
 import org.apache.hadoop.test.GenericTestUtils;
 import org.junit.Test;
-
-import static org.hamcrest.core.Is.is;
-import static org.junit.Assert.*;
 
 
 /**
@@ -46,10 +39,8 @@ public class TestWriteBlockGetsBlockLengthHint {
     final Path path = new Path("/" + METHOD_NAME + ".dat");
 
     Configuration conf = new HdfsConfiguration();
-    FsDatasetChecker.setFactory(conf);
     conf.setLong(DFSConfigKeys.DFS_BLOCK_SIZE_KEY, DEFAULT_BLOCK_LENGTH);
-    conf.setInt(DFSConfigKeys.DFS_DATANODE_SCAN_PERIOD_HOURS_KEY, -1);
-    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).numDataNodes(1).build();
+    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).build();
 
     try {
       cluster.waitActive();
@@ -66,43 +57,6 @@ public class TestWriteBlockGetsBlockLengthHint {
           0x1BAD5EED);
     } finally {
       cluster.shutdown();
-    }
-  }
-
-  static class FsDatasetChecker extends SimulatedFSDataset {
-    static class Factory extends FsDatasetSpi.Factory<SimulatedFSDataset> {
-      @Override
-      public SimulatedFSDataset newInstance(DataNode datanode,
-          DataStorage storage, Configuration conf) throws IOException {
-        return new FsDatasetChecker(storage, conf);
-      }
-
-      @Override
-      public boolean isSimulated() {
-        return true;
-      }
-    }
-
-    public static void setFactory(Configuration conf) {
-      conf.set(DFSConfigKeys.DFS_DATANODE_FSDATASET_FACTORY_KEY,
-               Factory.class.getName());
-    }
-
-    public FsDatasetChecker(DataStorage storage, Configuration conf) {
-      super(storage, conf);
-    }
-
-    /**
-     * Override createRbw to verify that the block length that is passed
-     * is correct. This requires both DFSOutputStream and BlockReceiver to
-     * correctly propagate the hint to FsDatasetSpi.
-     */
-    @Override
-    public synchronized ReplicaHandler createRbw(StorageType storageType,
-        String storageId, ExtendedBlock b, boolean allowLazyPersist)
-        throws IOException {
-      assertThat(b.getLocalBlock().getNumBytes(), is(EXPECTED_BLOCK_LENGTH));
-      return super.createRbw(storageType, storageId, b, allowLazyPersist);
     }
   }
 }

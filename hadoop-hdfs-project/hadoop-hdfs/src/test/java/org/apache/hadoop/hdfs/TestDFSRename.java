@@ -56,7 +56,7 @@ public class TestDFSRename {
   @Test
   public void testRename() throws Exception {
     Configuration conf = new HdfsConfiguration();
-    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).numDataNodes(2).build();
+    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).build();
     try {
       FileSystem fs = cluster.getFileSystem();
       assertTrue(fs.mkdirs(dir));
@@ -139,7 +139,7 @@ public class TestDFSRename {
     final long blockSize = 512;
     Configuration conf = new Configuration();
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).
-        numDataNodes(replFactor).build();
+        build();
     DistributedFileSystem dfs = cluster.getFileSystem();
     try {
       

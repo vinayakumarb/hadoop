@@ -125,7 +125,7 @@ public class TestMultiThreadedHflush {
   private void doTestMultipleHflushers(int repl) throws Exception {
     Configuration conf = new Configuration();
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
-        .numDataNodes(repl)
+
         .build();
 
     FileSystem fs = cluster.getFileSystem();

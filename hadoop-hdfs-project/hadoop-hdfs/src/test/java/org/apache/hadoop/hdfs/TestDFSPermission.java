@@ -116,7 +116,7 @@ public class TestDFSPermission {
 
   @Before
   public void setUp() throws IOException {
-    cluster = new MiniDFSCluster.Builder(conf).numDataNodes(3).build();
+    cluster = new MiniDFSCluster.Builder(conf).build();
     cluster.waitActive();
   }
   

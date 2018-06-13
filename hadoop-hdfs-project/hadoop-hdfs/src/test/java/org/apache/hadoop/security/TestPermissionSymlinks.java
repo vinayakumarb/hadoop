@@ -74,7 +74,7 @@ public class TestPermissionSymlinks {
     conf.setBoolean(DFSConfigKeys.DFS_PERMISSIONS_ENABLED_KEY, true);
     conf.setBoolean(DFSConfigKeys.DFS_NAMENODE_ACLS_ENABLED_KEY, true);
     conf.set(FsPermission.UMASK_LABEL, "000");
-    cluster = new MiniDFSCluster.Builder(conf).numDataNodes(3).build();
+    cluster = new MiniDFSCluster.Builder(conf).build();
     cluster.waitActive();
     fs = cluster.getFileSystem();
     wrapper = new FileSystemTestWrapper(fs);

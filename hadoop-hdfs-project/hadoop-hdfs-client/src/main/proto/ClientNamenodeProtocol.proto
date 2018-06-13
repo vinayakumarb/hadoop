@@ -34,7 +34,6 @@ import "acl.proto";
 import "xattr.proto";
 import "encryption.proto";
 import "inotify.proto";
-import "erasurecoding.proto";
 
 /**
  * The ClientNamenodeProtocol Service defines the interface between a client 
@@ -545,17 +544,6 @@ message UpdateBlockForPipelineResponseProto {
   required LocatedBlockProto block = 1;
 }
 
-message UpdatePipelineRequestProto {
-  required string clientName = 1;
-  required ExtendedBlockProto oldBlock = 2;
-  required ExtendedBlockProto newBlock = 3;
-  repeated DatanodeIDProto newNodes = 4;
-  repeated string storageIDs = 5;
-}
-
-message UpdatePipelineResponseProto { // void response
-}
-
 message SetBalancerBandwidthRequestProto {
   required int64 bandwidth = 1;
 }
@@ -731,8 +719,6 @@ service ClientNamenodeProtocol {
       returns(GetLinkTargetResponseProto);
   rpc updateBlockForPipeline(UpdateBlockForPipelineRequestProto)
       returns(UpdateBlockForPipelineResponseProto);
-  rpc updatePipeline(UpdatePipelineRequestProto)
-      returns(UpdatePipelineResponseProto);
   rpc getDelegationToken(hadoop.common.GetDelegationTokenRequestProto)
       returns(hadoop.common.GetDelegationTokenResponseProto);
   rpc renewDelegationToken(hadoop.common.RenewDelegationTokenRequestProto)

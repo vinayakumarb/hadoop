@@ -44,7 +44,7 @@ public class TestDeleteCLI extends CLITestHelperDFS {
     conf.setLong(CommonConfigurationKeysPublic.
         HADOOP_SHELL_SAFELY_DELETE_LIMIT_NUM_FILES, 5);
 
-    dfsCluster = new MiniDFSCluster.Builder(conf).numDataNodes(1).build();
+    dfsCluster = new MiniDFSCluster.Builder(conf).build();
     dfsCluster.waitClusterUp();
     namenode = conf.get(DFSConfigKeys.FS_DEFAULT_NAME_KEY, "file:///");
 

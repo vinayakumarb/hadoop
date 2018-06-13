@@ -66,7 +66,7 @@ public class TestViewFileSystemWithAcls {
     clusterConf.setBoolean(DFSConfigKeys.DFS_NAMENODE_ACLS_ENABLED_KEY, true);
     cluster = new MiniDFSCluster.Builder(clusterConf)
         .nnTopology(MiniDFSNNTopology.simpleFederatedTopology(2))
-        .numDataNodes(2)
+
         .build();
     cluster.waitClusterUp();
 

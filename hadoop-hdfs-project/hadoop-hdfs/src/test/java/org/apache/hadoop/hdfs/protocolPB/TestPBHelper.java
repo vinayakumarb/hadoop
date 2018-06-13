@@ -17,38 +17,30 @@
  */
 package org.apache.hadoop.hdfs.protocolPB;
 
-
-import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import org.apache.hadoop.fs.FsServerDefaults;
+import org.apache.hadoop.fs.StorageType;
 import org.apache.hadoop.fs.permission.AclEntry;
 import org.apache.hadoop.fs.permission.AclEntryScope;
 import org.apache.hadoop.fs.permission.AclEntryType;
 import org.apache.hadoop.fs.permission.AclStatus;
 import org.apache.hadoop.fs.permission.FsAction;
-import org.apache.hadoop.fs.FsServerDefaults;
-import org.apache.hadoop.fs.StorageType;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
-import org.apache.hadoop.hdfs.DFSTestUtil;
 import org.apache.hadoop.hdfs.client.HdfsClientConfigKeys;
 import org.apache.hadoop.hdfs.protocol.Block;
-import org.apache.hadoop.hdfs.protocol.BlockChecksumType;
-import org.apache.hadoop.hdfs.protocol.DatanodeID;
 import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
-import org.apache.hadoop.hdfs.protocol.DatanodeInfo.DatanodeInfoBuilder;
 import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.BlockProto;
-import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.DatanodeIDProto;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.ExtendedBlockProto;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.LocatedBlockProto;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsServerProtos.BlockWithLocationsProto;
@@ -69,7 +61,6 @@ import org.apache.hadoop.hdfs.server.namenode.CheckpointSignature;
 import org.apache.hadoop.hdfs.server.protocol.BlocksWithLocations;
 import org.apache.hadoop.hdfs.server.protocol.BlocksWithLocations.BlockWithLocations;
 import org.apache.hadoop.hdfs.server.protocol.BlocksWithLocations.StripedBlockWithLocations;
-import org.apache.hadoop.hdfs.server.protocol.DatanodeStorage;
 import org.apache.hadoop.hdfs.server.protocol.NamenodeRegistration;
 import org.apache.hadoop.hdfs.server.protocol.NamespaceInfo;
 import org.apache.hadoop.hdfs.server.protocol.RemoteEditLog;
@@ -142,29 +133,6 @@ public class TestPBHelper {
   }
 
   @Test
-  public void testConvertDatanodeID() {
-    DatanodeID dn = DFSTestUtil.getLocalDatanodeID();
-    DatanodeIDProto dnProto = PBHelperClient.convert(dn);
-    DatanodeID dn2 = PBHelperClient.convert(dnProto);
-    compare(dn, dn2);
-  }
-  
-  void compare(DatanodeID dn, DatanodeID dn2) {
-    assertEquals(dn.getIpAddr(), dn2.getIpAddr());
-    assertEquals(dn.getHostName(), dn2.getHostName());
-    assertEquals(dn.getDatanodeUuid(), dn2.getDatanodeUuid());
-    assertEquals(dn.getXferPort(), dn2.getXferPort());
-    assertEquals(dn.getInfoPort(), dn2.getInfoPort());
-    assertEquals(dn.getIpcPort(), dn2.getIpcPort());
-  }
-
-  void compare(DatanodeStorage dns1, DatanodeStorage dns2) {
-    assertThat(dns2.getStorageID(), is(dns1.getStorageID()));
-    assertThat(dns2.getState(), is(dns1.getState()));
-    assertThat(dns2.getStorageType(), is(dns1.getStorageType()));
-  }
-
-  @Test
   public void testConvertBlock() {
     Block b = new Block(1, 100, 3);
     BlockProto bProto = PBHelperClient.convert(b);
@@ -182,10 +150,6 @@ public class TestPBHelper {
     final short dataBlkNum = 6;
     BlockWithLocations blkLocs = new BlockWithLocations(new Block(bid, 0, 1),
         datanodeUuids, storageIDs, storageTypes);
-    if (isStriped) {
-      blkLocs = new StripedBlockWithLocations(blkLocs, indices, dataBlkNum,
-          StripedFileTestUtil.getDefaultECPolicy().getCellSize());
-    }
     return blkLocs;
   }
 
@@ -429,19 +393,6 @@ public class TestPBHelper {
   }
 
   @Test
-  public void testBlockChecksumTypeProto() {
-    assertEquals(BlockChecksumType.MD5CRC,
-        PBHelperClient.convert(HdfsProtos.BlockChecksumTypeProto.MD5CRC));
-    assertEquals(BlockChecksumType.COMPOSITE_CRC,
-        PBHelperClient.convert(
-            HdfsProtos.BlockChecksumTypeProto.COMPOSITE_CRC));
-    assertEquals(PBHelperClient.convert(BlockChecksumType.MD5CRC),
-        HdfsProtos.BlockChecksumTypeProto.MD5CRC);
-    assertEquals(PBHelperClient.convert(BlockChecksumType.COMPOSITE_CRC),
-        HdfsProtos.BlockChecksumTypeProto.COMPOSITE_CRC);
-  }
-
-  @Test
   public void testAclEntryProto() {
     // All fields populated.
     AclEntry e1 = new AclEntry.Builder().setName("test")
@@ -476,29 +427,6 @@ public class TestPBHelper {
     Assert.assertEquals(s, PBHelperClient.convert(PBHelperClient.convert(s)));
   }
   
-  @Test
-  public void testDataNodeInfoPBHelper() {
-    DatanodeID id = DFSTestUtil.getLocalDatanodeID();
-    DatanodeInfo dnInfos0 = new DatanodeInfoBuilder().setNodeID(id)
-        .build();
-    dnInfos0.setCapacity(3500L);
-    dnInfos0.setDfsUsed(1000L);
-    dnInfos0.setNonDfsUsed(2000L);
-    dnInfos0.setRemaining(500L);
-    HdfsProtos.DatanodeInfoProto dnproto = PBHelperClient.convert(dnInfos0);
-    DatanodeInfo dnInfos1 = PBHelperClient.convert(dnproto);
-    compare(dnInfos0, dnInfos1);
-    assertEquals(dnInfos0.getNonDfsUsed(), dnInfos1.getNonDfsUsed());
-
-    //Testing without nonDfs field
-    HdfsProtos.DatanodeInfoProto.Builder b =
-        HdfsProtos.DatanodeInfoProto.newBuilder();
-    b.setId(PBHelperClient.convert(id)).setCapacity(3500L).setDfsUsed(1000L)
-        .setRemaining(500L);
-    DatanodeInfo dnInfos3 = PBHelperClient.convert(b.build());
-    assertEquals(dnInfos0.getNonDfsUsed(), dnInfos3.getNonDfsUsed());
-  }
-
   /**
    * Test case for old namenode where the namenode doesn't support returning
    * keyProviderUri.

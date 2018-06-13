@@ -45,9 +45,6 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.LocatedBlockProto;
-import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
-
 public class TestBlockUnderConstruction {
   static final String BASE_DIR = "/test/TestBlockUnderConstruction";
   static final int BLOCK_SIZE = 8192; // same as TestFileCreation.blocksize
@@ -59,7 +56,7 @@ public class TestBlockUnderConstruction {
   @BeforeClass
   public static void setUp() throws Exception {
     Configuration conf = new HdfsConfiguration();
-    cluster = new MiniDFSCluster.Builder(conf).numDataNodes(3).build();
+    cluster = new MiniDFSCluster.Builder(conf).build();
     cluster.waitActive();
     hdfs = cluster.getFileSystem();
   }
@@ -140,7 +137,7 @@ public class TestBlockUnderConstruction {
   @Test
   public void testBlockCreation() throws IOException {
     Path file1 = new Path(BASE_DIR, "file1.dat");
-    FSDataOutputStream out = TestFileCreation.createFile(hdfs, file1, 3);
+    FSDataOutputStream out = TestFileCreation.createFile(hdfs, file1);
 
     for(int idx = 0; idx < NUM_BLOCKS; idx++) {
       // write one block
@@ -164,7 +161,7 @@ public class TestBlockUnderConstruction {
     final BlockManager blockManager = cluster.getNamesystem().getBlockManager();
     final Path p = new Path(BASE_DIR, "file2.dat");
     final String src = p.toString();
-    final FSDataOutputStream out = TestFileCreation.createFile(hdfs, p, 3);
+    final FSDataOutputStream out = TestFileCreation.createFile(hdfs, p);
 
     // write a half block
     int len = BLOCK_SIZE >>> 1;
@@ -201,7 +198,7 @@ public class TestBlockUnderConstruction {
     final BlockManager bm = fsn.getBlockManager();
     final Path p = new Path(BASE_DIR, "file2.dat");
     final String src = p.toString();
-    final FSDataOutputStream out = TestFileCreation.createFile(hdfs, p, 1);
+    final FSDataOutputStream out = TestFileCreation.createFile(hdfs, p);
     writeFile(p, out, 256);
     out.hflush();
 

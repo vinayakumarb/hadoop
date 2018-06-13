@@ -46,7 +46,7 @@ public class TestStoragePolicyCommands {
   @Before
   public void clusterSetUp() throws IOException, URISyntaxException {
     conf = new HdfsConfiguration();
-    cluster = new MiniDFSCluster.Builder(conf).numDataNodes(REPL).build();
+    cluster = new MiniDFSCluster.Builder(conf).build();
     cluster.waitActive();
     fs = cluster.getFileSystem();
   }

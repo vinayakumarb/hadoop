@@ -45,7 +45,7 @@ public class TestSnapRootDescendantDiff extends TestSnapshotDiffReport {
     conf.setBoolean(
         DFSConfigKeys.DFS_NAMENODE_SNAPSHOT_DIFF_ALLOW_SNAP_ROOT_DESCENDANT,
         false);
-    cluster = new MiniDFSCluster.Builder(conf).numDataNodes(3)
+    cluster = new MiniDFSCluster.Builder(conf)
         .format(true).build();
     cluster.waitActive();
     hdfs = cluster.getFileSystem();

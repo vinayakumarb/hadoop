@@ -17,29 +17,25 @@
 
 package org.apache.hadoop.hdfs.server.namenode;
 
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hdfs.DFSConfigKeys;
-import org.apache.hadoop.hdfs.DFSTestUtil;
-import org.apache.hadoop.hdfs.HdfsConfiguration;
-import org.apache.hadoop.hdfs.MiniDFSCluster;
-import org.apache.hadoop.hdfs.MiniDFSCluster.DataNodeProperties;
-import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
-import org.apache.hadoop.hdfs.server.blockmanagement.BlockInfo;
-import org.apache.hadoop.test.GenericTestUtils;
-
-import com.google.common.base.Supplier;
-
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.io.OutputStream;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hdfs.DFSTestUtil;
+import org.apache.hadoop.hdfs.HdfsConfiguration;
+import org.apache.hadoop.hdfs.MiniDFSCluster;
+import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
+import org.apache.hadoop.hdfs.server.blockmanagement.BlockInfo;
+import org.apache.hadoop.test.GenericTestUtils;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
+import com.google.common.base.Supplier;
 
 public class TestNameNodeMetadataConsistency {
   private static final Path filePath1 = new Path("/testdata1.txt");
@@ -55,7 +51,6 @@ public class TestNameNodeMetadataConsistency {
   public void InitTest() throws IOException {
     conf = new HdfsConfiguration();
     cluster = new MiniDFSCluster.Builder(conf)
-        .numDataNodes(1)
         .build();
   }
 
@@ -83,12 +78,6 @@ public class TestNameNodeMetadataConsistency {
 
     // Re-write the Generation Stamp to a Generation Stamp in future.
     ExtendedBlock block = DFSTestUtil.getFirstBlock(fs, filePath1);
-    final long genStamp = block.getGenerationStamp();
-    final int datanodeIndex = 0;
-    cluster.changeGenStampOfBlock(datanodeIndex, block, genStamp + 1);
-    // stop the data node so that it won't remove block
-    final DataNodeProperties dnProps = cluster.stopDataNode(datanodeIndex);
-
     // Simulate Namenode forgetting a Block
     cluster.restartNameNode(true);
     cluster.getNameNode().getNamesystem().writeLock();
@@ -99,7 +88,6 @@ public class TestNameNodeMetadataConsistency {
         .removeBlock(bInfo);
     cluster.getNameNode().getNamesystem().writeUnlock();
 
-    cluster.restartDataNode(dnProps);
     waitForNumBytes(TEST_DATA_IN_FUTURE.length());
 
     // Assert safemode reason
@@ -114,7 +102,6 @@ public class TestNameNodeMetadataConsistency {
   @Test
   public void testEnsureGenStampsIsStartupOnly() throws Exception {
     String testData = " This is test data";
-    cluster.restartDataNodes();
     cluster.restartNameNodes();
     cluster.waitActive();
     FileSystem fs = cluster.getFileSystem();
@@ -125,11 +112,6 @@ public class TestNameNodeMetadataConsistency {
     ExtendedBlock block = DFSTestUtil.getFirstBlock(fs, filePath2);
     long genStamp = block.getGenerationStamp();
 
-    // Re-write the Generation Stamp to a Generation Stamp in future.
-    cluster.changeGenStampOfBlock(0, block, genStamp + 1);
-    MiniDFSCluster.DataNodeProperties dnProps = cluster.stopDataNode(0);
-
-
     // Simulate  Namenode forgetting a Block
     cluster.restartNameNode(true);
     BlockInfo bInfo = cluster.getNameNode().getNamesystem().getBlockManager
@@ -139,8 +121,6 @@ public class TestNameNodeMetadataConsistency {
     cluster.getNameNode().getNamesystem().getBlockManager()
         .removeBlock(bInfo);
     cluster.getNameNode().getNamesystem().writeUnlock();
-
-    cluster.restartDataNode(dnProps);
     waitForNumBytes(0);
 
     fail("TODO: Add assertion");
@@ -152,12 +132,6 @@ public class TestNameNodeMetadataConsistency {
       @Override
       public Boolean get() {
         try {
-          cluster.triggerBlockReports();
-          // Compare the number of bytes
-//          if (cluster.getNameNode().getBytesWithFutureGenerationStamps()
-//              == numBytes) {
-//            return true;
-//          }
           fail("TODO: Return valid values");
         } catch (Exception e) {
           // Ignore the exception

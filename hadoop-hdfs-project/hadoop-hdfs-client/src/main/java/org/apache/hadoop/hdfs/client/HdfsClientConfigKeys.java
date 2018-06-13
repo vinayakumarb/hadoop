@@ -91,11 +91,6 @@ public interface HdfsClientConfigKeys {
   long    DFS_CLIENT_SOCKET_CACHE_EXPIRY_MSEC_DEFAULT = 3000;
   String  DFS_CLIENT_USE_DN_HOSTNAME = "dfs.client.use.datanode.hostname";
   boolean DFS_CLIENT_USE_DN_HOSTNAME_DEFAULT = false;
-  String  DFS_CLIENT_CACHE_DROP_BEHIND_WRITES =
-      "dfs.client.cache.drop.behind.writes";
-  String  DFS_CLIENT_CACHE_DROP_BEHIND_READS =
-      "dfs.client.cache.drop.behind.reads";
-  String  DFS_CLIENT_CACHE_READAHEAD = "dfs.client.cache.readahead";
   String  DFS_CLIENT_CACHED_CONN_RETRY_KEY = "dfs.client.cached.conn.retry";
   int     DFS_CLIENT_CACHED_CONN_RETRY_DEFAULT = 3;
   String  DFS_CLIENT_CONTEXT = "dfs.client.context";

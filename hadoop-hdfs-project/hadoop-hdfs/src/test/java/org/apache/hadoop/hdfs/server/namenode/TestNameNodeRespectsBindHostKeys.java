@@ -83,7 +83,7 @@ public class TestNameNodeRespectsBindHostKeys {
     
     // NN should not bind the wildcard address by default.
     try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(0).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       cluster.waitActive();
       String address = getRpcServerAddress(cluster);
       assertThat("Bind address not expected to be wildcard by default.",
@@ -102,7 +102,7 @@ public class TestNameNodeRespectsBindHostKeys {
 
     // Verify that NN binds wildcard address now.
     try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(0).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       cluster.waitActive();
       String address = getRpcServerAddress(cluster);
       assertThat("Bind address " + address + " is not wildcard.",
@@ -125,7 +125,7 @@ public class TestNameNodeRespectsBindHostKeys {
 
     // NN should not bind the wildcard address by default.
     try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(0).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       cluster.waitActive();
       String address = getServiceRpcServerAddress(cluster);
       assertThat("Bind address not expected to be wildcard by default.",
@@ -144,7 +144,7 @@ public class TestNameNodeRespectsBindHostKeys {
 
     // Verify that NN binds wildcard address now.
     try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(0).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       cluster.waitActive();
       String address = getServiceRpcServerAddress(cluster);
       assertThat("Bind address " + address + " is not wildcard.",
@@ -167,7 +167,7 @@ public class TestNameNodeRespectsBindHostKeys {
 
     // NN should not bind the wildcard address by default.
     try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(0).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       cluster.waitActive();
       String address = getLifelineRpcServerAddress(cluster);
       assertThat("Bind address not expected to be wildcard by default.",
@@ -186,7 +186,7 @@ public class TestNameNodeRespectsBindHostKeys {
 
     // Verify that NN binds wildcard address now.
     try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(0).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       cluster.waitActive();
       String address = getLifelineRpcServerAddress(cluster);
       assertThat("Bind address " + address + " is not wildcard.",
@@ -208,7 +208,7 @@ public class TestNameNodeRespectsBindHostKeys {
     // NN should not bind the wildcard address by default.
     try {
       conf.set(DFS_NAMENODE_HTTP_ADDRESS_KEY, LOCALHOST_SERVER_ADDRESS);
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(0).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       cluster.waitActive();
       String address = cluster.getNameNode().getHttpAddress().toString();
       assertFalse("HTTP Bind address not expected to be wildcard by default.",
@@ -228,7 +228,7 @@ public class TestNameNodeRespectsBindHostKeys {
     // Verify that NN binds wildcard address now.
     try {
       conf.set(DFS_NAMENODE_HTTP_ADDRESS_KEY, LOCALHOST_SERVER_ADDRESS);
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(0).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       cluster.waitActive();
       String address = cluster.getNameNode().getHttpAddress().toString();
       assertTrue("HTTP Bind address " + address + " is not wildcard.",
@@ -281,7 +281,7 @@ public class TestNameNodeRespectsBindHostKeys {
     // NN should not bind the wildcard address by default.
     try {
       conf.set(DFS_NAMENODE_HTTPS_ADDRESS_KEY, LOCALHOST_SERVER_ADDRESS);
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(0).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       cluster.waitActive();
       String address = cluster.getNameNode().getHttpsAddress().toString();
       assertFalse("HTTP Bind address not expected to be wildcard by default.",
@@ -301,7 +301,7 @@ public class TestNameNodeRespectsBindHostKeys {
     // Verify that NN binds wildcard address now.
     try {
       conf.set(DFS_NAMENODE_HTTPS_ADDRESS_KEY, LOCALHOST_SERVER_ADDRESS);
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(0).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       cluster.waitActive();
       String address = cluster.getNameNode().getHttpsAddress().toString();
       assertTrue("HTTP Bind address " + address + " is not wildcard.",

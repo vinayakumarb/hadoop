@@ -70,7 +70,7 @@ public class TestEncryptionZonesWithHA {
 
     cluster = new MiniDFSCluster.Builder(conf)
       .nnTopology(MiniDFSNNTopology.simpleHATopology())
-      .numDataNodes(1)
+
       .build();
     cluster.waitActive();
     cluster.transitionToActive(0);

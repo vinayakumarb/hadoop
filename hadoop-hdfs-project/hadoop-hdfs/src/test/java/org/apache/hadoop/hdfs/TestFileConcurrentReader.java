@@ -157,7 +157,7 @@ public class TestFileConcurrentReader {
     throws IOException {
     // create a new file in the root, write data, do no close
     Path file1 = new Path("/unfinished-block");
-    FSDataOutputStream stm = TestFileCreation.createFile(fileSystem, file1, 1);
+    FSDataOutputStream stm = TestFileCreation.createFile(fileSystem, file1);
 
     // write partial block and sync
     int partialBlockSize = blockSize / 2;
@@ -184,7 +184,7 @@ public class TestFileConcurrentReader {
     // create a new file in the root, write data, do no close
     Path file1 = new Path("/unfinished-block");
     final FSDataOutputStream stm =
-      TestFileCreation.createFile(fileSystem, file1, 1);
+      TestFileCreation.createFile(fileSystem, file1);
 
     // write partial block and sync
     final int bytesPerChecksum = conf.getInt("io.bytes.per.checksum", 512);
@@ -328,8 +328,6 @@ public class TestFileConcurrentReader {
     final int writeSize,
     Configuration conf
   ) throws IOException {
-    conf.setBoolean(DFSConfigKeys.DFS_DATANODE_TRANSFERTO_ALLOWED_KEY,
-        transferToAllowed);
     init(conf);
 
     final Path file = new Path("/block-being-written-to");

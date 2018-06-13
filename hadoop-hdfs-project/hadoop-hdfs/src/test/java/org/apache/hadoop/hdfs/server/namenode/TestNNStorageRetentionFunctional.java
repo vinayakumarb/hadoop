@@ -74,7 +74,7 @@ public class TestNNStorageRetentionFunctional {
 
     try {
       cluster = new MiniDFSCluster.Builder(conf)
-        .numDataNodes(0)
+
         .manageNameDfsDirs(false)
         .format(true).build();
   

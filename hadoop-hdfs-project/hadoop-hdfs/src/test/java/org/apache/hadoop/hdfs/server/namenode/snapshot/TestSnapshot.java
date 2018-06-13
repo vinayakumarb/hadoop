@@ -117,7 +117,7 @@ public class TestSnapshot {
   public void setUp() throws Exception {
     conf = new Configuration();
     conf.setLong(DFSConfigKeys.DFS_BLOCK_SIZE_KEY, BLOCKSIZE);
-    cluster = new MiniDFSCluster.Builder(conf).numDataNodes(REPLICATION)
+    cluster = new MiniDFSCluster.Builder(conf)
         .build();
     cluster.waitActive();
 
@@ -199,7 +199,7 @@ public class TestSnapshot {
     
     cluster.shutdown();
     cluster = new MiniDFSCluster.Builder(conf).format(false)
-        .numDataNodes(REPLICATION).build();
+        .build();
     cluster.waitActive();
     fsn = cluster.getNamesystem();
     hdfs = cluster.getFileSystem();
@@ -212,7 +212,7 @@ public class TestSnapshot {
     hdfs.setSafeMode(SafeModeAction.SAFEMODE_LEAVE);
     cluster.shutdown();
     cluster = new MiniDFSCluster.Builder(conf).format(false)
-        .numDataNodes(REPLICATION).build();
+        .build();
     cluster.waitActive();
     fsn = cluster.getNamesystem();
     hdfs = cluster.getFileSystem();

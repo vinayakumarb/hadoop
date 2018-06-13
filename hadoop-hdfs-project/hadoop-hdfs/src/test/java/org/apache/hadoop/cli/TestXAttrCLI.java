@@ -46,7 +46,7 @@ public class TestXAttrCLI  extends CLITestHelperDFS {
         HDFSPolicyProvider.class, PolicyProvider.class);
     conf.setInt(DFSConfigKeys.DFS_REPLICATION_KEY, 1);
     
-    dfsCluster = new MiniDFSCluster.Builder(conf).numDataNodes(1).build();
+    dfsCluster = new MiniDFSCluster.Builder(conf).build();
     dfsCluster.waitClusterUp();
     namenode = conf.get(DFSConfigKeys.FS_DEFAULT_NAME_KEY, "file:///");
     

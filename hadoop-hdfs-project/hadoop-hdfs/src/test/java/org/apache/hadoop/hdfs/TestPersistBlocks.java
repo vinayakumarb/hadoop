@@ -101,7 +101,7 @@ public class TestPersistBlocks {
     long len = 0;
     FSDataOutputStream stream;
     try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(3).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       FileSystem fs = cluster.getFileSystem();
       // Creating a file with 4096 blockSize to write multiple blocks
       stream = fs.create(FILE_PATH, true, BLOCK_SIZE, (short) 1, BLOCK_SIZE);
@@ -160,7 +160,7 @@ public class TestPersistBlocks {
     long len = 0;
     FSDataOutputStream stream;
     try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(3).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       FileSystem fs = cluster.getFileSystem();
       // Creating a file with 4096 blockSize to write multiple blocks
       stream = fs.create(FILE_PATH, true, BLOCK_SIZE, (short) 1, BLOCK_SIZE);
@@ -221,7 +221,7 @@ public class TestPersistBlocks {
 
     FSDataOutputStream stream;
     try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(3).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       FileSystem fs = cluster.getFileSystem();
       DFSUtilClient.getNNAddress(conf).getPort();
       // Creating a file with 4096 blockSize to write multiple blocks
@@ -270,7 +270,7 @@ public class TestPersistBlocks {
 
     FSDataOutputStream stream;
     try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(3).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       FileSystem fs = cluster.getFileSystem();
       DFSUtilClient.getNNAddress(conf).getPort();
       // Creating a file with 4096 blockSize to write multiple blocks
@@ -332,13 +332,10 @@ public class TestPersistBlocks {
     GenericTestUtils.assertExists(dataDir);
     
     conf.set(DFSConfigKeys.DFS_NAMENODE_NAME_DIR_KEY, nameDir.getAbsolutePath());
-    conf.set(DFSConfigKeys.DFS_DATANODE_DATA_DIR_KEY, dataDir.getAbsolutePath());
-    
-    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).numDataNodes(0)
+
+    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
       .format(false)
-      .manageDataDfsDirs(false)
       .manageNameDfsDirs(false)
-      .numDataNodes(1)
       .startupOption(StartupOption.UPGRADE)
       .build();
     try {

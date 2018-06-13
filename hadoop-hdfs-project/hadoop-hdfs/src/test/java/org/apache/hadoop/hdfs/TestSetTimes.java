@@ -17,7 +17,6 @@
  */
 package org.apache.hadoop.hdfs;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -35,14 +34,11 @@ import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
-import org.apache.hadoop.hdfs.protocol.HdfsConstants.DatanodeReportType;
 import org.apache.hadoop.hdfs.server.namenode.NameNodeAdapter;
 import org.apache.hadoop.test.MockitoUtil;
 import org.apache.hadoop.util.Time;
 import org.junit.Assert;
 import org.junit.Test;
-import org.mockito.Mockito;
 
 /**
  * This class tests the access time on files.
@@ -78,14 +74,6 @@ public class TestSetTimes {
     assertTrue(!fileSys.exists(name));
   }
 
-  private void printDatanodeReport(DatanodeInfo[] info) {
-    System.out.println("-------------------------------------------------");
-    for (int i = 0; i < info.length; i++) {
-      System.out.println(info[i].getDatanodeReport());
-      System.out.println();
-    }
-  }
-
   /**
    * Tests mod & access time in DFS.
    */
@@ -99,15 +87,13 @@ public class TestSetTimes {
 
 
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
-                                               .numDataNodes(numDatanodes)
+
                                                .build();
     cluster.waitActive();
     final int nnport = cluster.getNameNodePort();
     InetSocketAddress addr = new InetSocketAddress("localhost", 
                                                    cluster.getNameNodePort());
     DFSClient client = new DFSClient(addr, conf);
-    DatanodeInfo[] info = client.datanodeReport(DatanodeReportType.LIVE);
-    assertEquals("Number of Datanodes ", numDatanodes, info.length);
     FileSystem fileSys = cluster.getFileSystem();
     int replicas = 1;
     assertTrue(fileSys instanceof DistributedFileSystem);
@@ -209,8 +195,6 @@ public class TestSetTimes {
       cleanupFile(fileSys, file1);
       cleanupFile(fileSys, dir1);
     } catch (IOException e) {
-      info = client.datanodeReport(DatanodeReportType.ALL);
-      printDatanodeReport(info);
       throw e;
     } finally {
       fileSys.close();
@@ -231,16 +215,13 @@ public class TestSetTimes {
     conf.setInt("ipc.client.connection.maxidletime", MAX_IDLE_TIME);
     conf.setInt(DFSConfigKeys.DFS_NAMENODE_HEARTBEAT_RECHECK_INTERVAL_KEY, 1000);
     conf.setInt(DFSConfigKeys.DFS_HEARTBEAT_INTERVAL_KEY, 1);
-    conf.setInt(DFSConfigKeys.DFS_DATANODE_HANDLER_COUNT_KEY, 50);
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
-                                               .numDataNodes(numDatanodes)
+
                                                .build();
     cluster.waitActive();
     InetSocketAddress addr = new InetSocketAddress("localhost",
                                                      cluster.getNameNodePort());
     DFSClient client = new DFSClient(addr, conf);
-    DatanodeInfo[] info = client.datanodeReport(DatanodeReportType.LIVE);
-    assertEquals("Number of Datanodes ", numDatanodes, info.length);
     FileSystem fileSys = cluster.getFileSystem();
     assertTrue(fileSys instanceof DistributedFileSystem);
 
@@ -270,8 +251,6 @@ public class TestSetTimes {
 
       cleanupFile(fileSys, file1);
     } catch (IOException e) {
-      info = client.datanodeReport(DatanodeReportType.ALL);
-      printDatanodeReport(info);
       throw e;
     } finally {
       fileSys.close();
@@ -289,7 +268,7 @@ public class TestSetTimes {
     Configuration conf = new HdfsConfiguration();
     conf.setInt(DFSConfigKeys.DFS_NAMENODE_ACCESSTIME_PRECISION_KEY, 100*1000);
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
-      .numDataNodes(0)
+
       .build();
     ReentrantReadWriteLock spyLock = NameNodeAdapter.spyOnFsLock(cluster.getNamesystem());
     try {
@@ -323,7 +302,7 @@ public class TestSetTimes {
 
     try {
       cluster = new MiniDFSCluster.Builder(conf)
-          .numDataNodes(0)
+
           .build();
       fs = cluster.getFileSystem();
 

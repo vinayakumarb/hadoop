@@ -33,7 +33,6 @@ import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hdfs.MiniDFSCluster.DataNodeProperties;
 import org.apache.hadoop.hdfs.client.HdfsClientConfigKeys;
 import org.apache.hadoop.hdfs.protocol.AlreadyBeingCreatedException;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
@@ -323,7 +322,7 @@ public class TestFileAppend{
 
     File builderBaseDir = new File(GenericTestUtils.getRandomizedTempPath());
     final MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf,
-        builderBaseDir).numDataNodes(4).build();
+        builderBaseDir).build();
     final DistributedFileSystem fs = cluster.getFileSystem();
     try {
       final Path p = new Path("/testMultipleAppend/foo");
@@ -376,7 +375,7 @@ public class TestFileAppend{
 
     File builderBaseDir = new File(GenericTestUtils.getRandomizedTempPath());
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf, builderBaseDir)
-        .numDataNodes(1).build();
+        .build();
     cluster.setLeasePeriod(softLimit, hardLimit);
     cluster.waitActive();
 
@@ -417,7 +416,7 @@ public class TestFileAppend{
 
     File builderBaseDir = new File(GenericTestUtils.getRandomizedTempPath());
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf, builderBaseDir)
-        .numDataNodes(1).build();
+        .build();
     cluster.setLeasePeriod(softLimit, hardLimit);
     cluster.waitActive();
 
@@ -465,7 +464,7 @@ public class TestFileAppend{
         "false");
     File builderBaseDir = new File(GenericTestUtils.getRandomizedTempPath());
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf, builderBaseDir)
-        .numDataNodes(3).build();
+        .build();
     DistributedFileSystem fs = null;
     try {
       fs = cluster.getFileSystem();
@@ -474,8 +473,6 @@ public class TestFileAppend{
       out.writeBytes("hello\n");
       out.close();
 
-      // stop one datanode
-      DataNodeProperties dnProp = cluster.stopDataNode(0);
       // append again to bump genstamps
       for (int i = 0; i < 2; i++) {
         out = fs.append(path);
@@ -485,7 +482,6 @@ public class TestFileAppend{
 
       // re-open and make the block state as underconstruction
       out = fs.append(path);
-      cluster.restartDataNode(dnProp, true);
       // wait till the block report comes
       Thread.sleep(2000);
       // check the block locations, this should not contain restarted datanode
@@ -510,7 +506,7 @@ public class TestFileAppend{
         "false");
     File builderBaseDir = new File(GenericTestUtils.getRandomizedTempPath());
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf, builderBaseDir)
-        .numDataNodes(3).build();
+        .build();
     DistributedFileSystem fs = null;
     final String hello = "hello\n";
     try {

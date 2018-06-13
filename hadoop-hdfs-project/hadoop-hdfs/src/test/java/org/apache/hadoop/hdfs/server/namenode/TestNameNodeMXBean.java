@@ -82,7 +82,7 @@ public class TestNameNodeMXBean {
     MiniDFSCluster cluster = null;
 
     try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(0).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       cluster.waitActive();
       FSNamesystem fsn = cluster.getNameNode().namesystem;
 
@@ -191,7 +191,7 @@ public class TestNameNodeMXBean {
     final Configuration conf = new Configuration();
     MiniDFSCluster cluster = null;
     try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(0).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       cluster.waitActive();
       MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
       ObjectName mxbeanNameFsns = new ObjectName(
@@ -247,7 +247,7 @@ public class TestNameNodeMXBean {
     conf.setBoolean(DFSConfigKeys.NNTOP_ENABLED_KEY, false);
     MiniDFSCluster cluster = null;
     try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(0).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       cluster.waitActive();
       MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
       ObjectName mxbeanNameFsns = new ObjectName(
@@ -276,7 +276,7 @@ public class TestNameNodeMXBean {
     conf.set(DFSConfigKeys.NNTOP_WINDOWS_MINUTES_KEY, "");
     MiniDFSCluster cluster = null;
     try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(0).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       cluster.waitActive();
       MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
       ObjectName mxbeanNameFsns = new ObjectName(
@@ -303,7 +303,7 @@ public class TestNameNodeMXBean {
     final Configuration conf = new Configuration();
     MiniDFSCluster cluster = null;
     try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(0).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       cluster.waitActive();
       MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
       ObjectName mxbeanNameFs =
@@ -333,7 +333,7 @@ public class TestNameNodeMXBean {
                     new MiniDFSNNTopology.NNConf("nn2").setIpcPort(ports[1])));
 
         cluster = new MiniDFSCluster.Builder(conf)
-            .nnTopology(topology).numDataNodes(0)
+            .nnTopology(topology)
             .build();
         break;
       } catch (BindException e) {
@@ -395,7 +395,7 @@ public class TestNameNodeMXBean {
       int blockSize = 10*1024*1024;
       conf.setLong(DFSConfigKeys.DFS_BLOCK_SIZE_KEY, blockSize);
 
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(0)
+      cluster = new MiniDFSCluster.Builder(conf)
           .build();
       namesystem = cluster.getNamesystem();
       fs = cluster.getFileSystem();

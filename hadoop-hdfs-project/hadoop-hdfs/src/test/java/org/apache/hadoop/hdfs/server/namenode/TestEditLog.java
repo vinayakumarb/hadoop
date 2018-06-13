@@ -281,7 +281,7 @@ public class TestEditLog {
     MiniDFSCluster cluster = null;
 
     try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(0).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       cluster.waitActive();
       final FSNamesystem namesystem = cluster.getNamesystem();
 
@@ -312,7 +312,7 @@ public class TestEditLog {
     MiniDFSCluster cluster = null;
     FileSystem fileSys = null;
     try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(NUM_DATA_NODES).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       cluster.waitActive();
       fileSys = cluster.getFileSystem();
       final FSNamesystem namesystem = cluster.getNamesystem();
@@ -382,7 +382,7 @@ public class TestEditLog {
     FileSystem fileSys = null;
 
     try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(NUM_DATA_NODES).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       cluster.waitActive();
       fileSys = cluster.getFileSystem();
       final FSNamesystem namesystem = cluster.getNamesystem();
@@ -519,7 +519,7 @@ public class TestEditLog {
     ExecutorService threadA = Executors.newSingleThreadExecutor();
     ExecutorService threadB = Executors.newSingleThreadExecutor();
     try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(NUM_DATA_NODES).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       cluster.waitActive();
       fileSys = cluster.getFileSystem();
       final FSNamesystem namesystem = cluster.getNamesystem();
@@ -582,7 +582,7 @@ public class TestEditLog {
     ExecutorService threadA = Executors.newSingleThreadExecutor();
     ExecutorService threadB = Executors.newSingleThreadExecutor();
     try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(NUM_DATA_NODES).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       cluster.waitActive();
       fileSys = cluster.getFileSystem();
       final FSNamesystem namesystem = cluster.getNamesystem();
@@ -622,7 +622,7 @@ public class TestEditLog {
     Configuration conf = getConf();
     MiniDFSCluster cluster = null;
     FileSystem fileSys = null;
-    cluster = new MiniDFSCluster.Builder(conf).numDataNodes(NUM_DATA_NODES).build();
+    cluster = new MiniDFSCluster.Builder(conf).build();
     cluster.waitActive();
     fileSys = cluster.getFileSystem();
     final FSNamesystem namesystem = cluster.getNamesystem();
@@ -655,7 +655,7 @@ public class TestEditLog {
     }
     
     try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(NUM_DATA_NODES).format(false).build();
+      cluster = new MiniDFSCluster.Builder(conf).format(false).build();
       fail("should not be able to start");
     } catch (IOException e) {
       // expected
@@ -700,7 +700,7 @@ public class TestEditLog {
                  "Starting empty cluster");
         
         cluster = new MiniDFSCluster.Builder(conf)
-          .numDataNodes(NUM_DATA_NODES)
+
           .format(true)
           .build();
         cluster.waitActive();
@@ -746,7 +746,7 @@ public class TestEditLog {
         LOG.info("\n===========================================\n" +
         "Starting same cluster after simulated crash");
         cluster = new MiniDFSCluster.Builder(conf)
-          .numDataNodes(NUM_DATA_NODES)
+
           .format(false)
           .build();
         cluster.waitActive();
@@ -777,7 +777,7 @@ public class TestEditLog {
         cluster = null;
         
         cluster = new MiniDFSCluster.Builder(conf)
-        .numDataNodes(NUM_DATA_NODES)
+
         .format(false)
         .build();
         cluster.waitActive();
@@ -839,7 +839,7 @@ public class TestEditLog {
     Configuration conf = getConf();
     MiniDFSCluster cluster = null;
     cluster = new MiniDFSCluster.Builder(conf)
-      .numDataNodes(NUM_DATA_NODES).build();
+      .build();
     cluster.shutdown();
     
     Collection<URI> editsDirs = cluster.getNameEditsDirs(0);
@@ -875,7 +875,7 @@ public class TestEditLog {
     
     try {
       cluster = new MiniDFSCluster.Builder(conf)
-        .numDataNodes(NUM_DATA_NODES).format(false).build();
+        .format(false).build();
       if (!shouldSucceed) {
         fail("Should not have succeeded in startin cluster");
       }
@@ -1511,7 +1511,7 @@ public class TestEditLog {
     MiniDFSCluster cluster = null;
     FileSystem fileSys = null;
     try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(NUM_DATA_NODES).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       cluster.waitActive();
       fileSys = cluster.getFileSystem();
       final FSNamesystem namesystem = cluster.getNamesystem();
@@ -1538,7 +1538,7 @@ public class TestEditLog {
     long startTime = Time.now();
     try {
       cluster = new MiniDFSCluster.Builder(conf).
-          numDataNodes(NUM_DATA_NODES).build();
+          build();
       cluster.waitActive();
     } finally {
       if (cluster != null) {
@@ -1568,7 +1568,7 @@ public class TestEditLog {
     MiniDFSCluster cluster = null;
     FileSystem fileSys = null;
     try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(1).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       cluster.waitActive();
       fileSys = cluster.getFileSystem();
 
@@ -1648,7 +1648,7 @@ public class TestEditLog {
     conf.setInt(DFSConfigKeys.DFS_NAMENODE_HANDLER_COUNT_KEY, 1);
     MiniDFSCluster cluster = null;
     try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(1).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       cluster.waitActive();
       FSImage fsimage = cluster.getNamesystem().getFSImage();
       StorageDirectory sd = fsimage.getStorage().getStorageDir(0);

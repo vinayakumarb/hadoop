@@ -149,7 +149,6 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
               <source>
                 <directory>${basedir}/src/main/proto</directory>
                 <includes>
-                  <include>ClientDatanodeProtocol.proto</include>
                   <include>ClientNamenodeProtocol.proto</include>
                   <include>acl.proto</include>
                   <include>xattr.proto</include>
@@ -157,7 +156,6 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
                   <include>hdfs.proto</include>
                   <include>encryption.proto</include>
                   <include>inotify.proto</include>
-                  <include>erasurecoding.proto</include>
                   <include>ReconfigurationProtocol.proto</include>
                 </includes>
               </source>

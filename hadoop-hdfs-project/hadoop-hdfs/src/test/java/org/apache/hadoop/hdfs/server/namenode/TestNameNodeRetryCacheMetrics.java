@@ -62,7 +62,7 @@ public class TestNameNodeRetryCacheMetrics {
     conf.setBoolean(DFS_NAMENODE_ENABLE_RETRY_CACHE_KEY, true);
     conf.setInt(HdfsClientConfigKeys.DFS_CLIENT_TEST_DROP_NAMENODE_RESPONSE_NUM_KEY, 2);
     cluster = new MiniDFSCluster.Builder(conf)
-        .nnTopology(MiniDFSNNTopology.simpleHATopology()).numDataNodes(3)
+        .nnTopology(MiniDFSNNTopology.simpleHATopology())
         .build();
     cluster.waitActive();
     cluster.transitionToActive(namenodeId);

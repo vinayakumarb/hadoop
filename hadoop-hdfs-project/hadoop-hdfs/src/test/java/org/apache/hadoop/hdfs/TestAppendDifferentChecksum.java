@@ -50,7 +50,7 @@ public class TestAppendDifferentChecksum {
     conf.setInt(DFSConfigKeys.DFS_BLOCK_SIZE_KEY, 4096);
     conf.set("fs.hdfs.impl.disable.cache", "true");
     cluster = new MiniDFSCluster.Builder(conf)
-      .numDataNodes(1)
+
       .build();
     fs = cluster.getFileSystem();
   }

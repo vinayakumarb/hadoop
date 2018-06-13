@@ -48,7 +48,7 @@ public class TestStateTransitionFailure {
       conf.setLong(CommonConfigurationKeys.FS_TRASH_INTERVAL_KEY, -1);
       cluster = new MiniDFSCluster.Builder(conf)
           .nnTopology(MiniDFSNNTopology.simpleHATopology())
-          .numDataNodes(0)
+
           .checkExitOnShutdown(false)
           .build();
       cluster.waitActive();

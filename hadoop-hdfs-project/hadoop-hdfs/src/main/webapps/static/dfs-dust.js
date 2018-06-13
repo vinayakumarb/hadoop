@@ -28,7 +28,7 @@
         i += 1;
       }
 
-      if (i > 0 && i < UNITS.length) {
+      if (i > 0 && i <= UNITS.length) {
         v = prev;
         i -= 1;
       }

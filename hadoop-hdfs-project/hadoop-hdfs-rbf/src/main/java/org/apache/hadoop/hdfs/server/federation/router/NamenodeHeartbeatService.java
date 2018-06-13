@@ -333,25 +333,14 @@ public class NamenodeHeartbeatService extends PeriodicService {
         for (int i = 0; i < aux.length(); i++) {
           JSONObject jsonObject = aux.getJSONObject(i);
           String name = jsonObject.getString("name");
-          if (name.equals("Hadoop:service=NameNode,name=FSNamesystemState")) {
-            report.setDatanodeInfo(
-                jsonObject.getInt("NumLiveDataNodes"),
-                jsonObject.getInt("NumDeadDataNodes"),
-                jsonObject.getInt("NumDecommissioningDataNodes"),
-                jsonObject.getInt("NumDecomLiveDataNodes"),
-                jsonObject.getInt("NumDecomDeadDataNodes"));
-          } else if (name.equals(
+          if (name.equals(
               "Hadoop:service=NameNode,name=FSNamesystem")) {
             report.setNamesystemInfo(
                 jsonObject.getLong("CapacityRemaining"),
                 jsonObject.getLong("CapacityTotal"),
                 jsonObject.getLong("FilesTotal"),
                 jsonObject.getLong("BlocksTotal"),
-                jsonObject.getLong("MissingBlocks"),
-                jsonObject.getLong("PendingReplicationBlocks"),
-                jsonObject.getLong("UnderReplicatedBlocks"),
-                jsonObject.getLong("PendingDeletionBlocks"),
-                jsonObject.getLong("ProvidedCapacityTotal"));
+                jsonObject.getLong("PendingDeletionBlocks"));
           }
         }
       }

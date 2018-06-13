@@ -88,7 +88,7 @@ public abstract class FSAclBaseTest {
 
   protected static void startCluster() throws IOException {
     conf.setBoolean(DFSConfigKeys.DFS_NAMENODE_ACLS_ENABLED_KEY, true);
-    cluster = new MiniDFSCluster.Builder(conf).numDataNodes(1).build();
+    cluster = new MiniDFSCluster.Builder(conf).build();
     cluster.waitActive();
   }
 
@@ -1740,7 +1740,7 @@ public abstract class FSAclBaseTest {
   private void restartCluster() throws Exception {
     destroyFileSystems();
     shutdown();
-    cluster = new MiniDFSCluster.Builder(conf).numDataNodes(1).format(false)
+    cluster = new MiniDFSCluster.Builder(conf).format(false)
       .build();
     cluster.waitActive();
     initFileSystems();

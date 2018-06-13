@@ -199,7 +199,6 @@ import org.apache.hadoop.hdfs.protocol.RollingUpgradeInfo;
 import org.apache.hadoop.hdfs.protocol.SnapshotAccessControlException;
 import org.apache.hadoop.hdfs.protocol.SnapshotException;
 import org.apache.hadoop.hdfs.protocol.SnapshottableDirectoryStatus;
-import org.apache.hadoop.hdfs.protocol.datatransfer.ReplaceDatanodeOnFailure;
 import org.apache.hadoop.hdfs.security.token.delegation.DelegationTokenIdentifier;
 import org.apache.hadoop.hdfs.security.token.delegation.DelegationTokenSecretManager;
 import org.apache.hadoop.hdfs.security.token.delegation.DelegationTokenSecretManager.SecretManagerState;
@@ -463,7 +462,6 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
   NameNodeResourceChecker nnResourceChecker;
 
   private final FsServerDefaults serverDefaults;
-  private final ReplaceDatanodeOnFailure dtpReplaceDatanodeOnFailure;
 
   private final long maxFsObjects;          // maximum number of fs objects
 
@@ -774,8 +772,6 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
       this.numCommittedAllowed = conf.getInt(
           DFSConfigKeys.DFS_NAMENODE_FILE_CLOSE_NUM_COMMITTED_ALLOWED_KEY,
           DFSConfigKeys.DFS_NAMENODE_FILE_CLOSE_NUM_COMMITTED_ALLOWED_DEFAULT);
-
-      this.dtpReplaceDatanodeOnFailure = ReplaceDatanodeOnFailure.get(conf);
       
       this.standbyShouldCheckpoint = conf.getBoolean(
           DFS_HA_STANDBY_CHECKPOINTS_KEY, DFS_HA_STANDBY_CHECKPOINTS_DEFAULT);
@@ -4522,7 +4518,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
   @Override // NameNodeMXBean
   public float getPercentRemaining() {
     //return datanodeStatistics.getCapacityRemainingPercent();
-    return 1f;
+    return 100.0f;
   }
 
   @Override // NameNodeMXBean

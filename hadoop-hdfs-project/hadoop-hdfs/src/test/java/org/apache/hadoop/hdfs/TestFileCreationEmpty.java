@@ -59,15 +59,15 @@ public class TestFileCreationEmpty {
     conf.setInt(DFSConfigKeys.DFS_HEARTBEAT_INTERVAL_KEY, 1);
 
     // create cluster
-    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).numDataNodes(DATANODE_NUM).build();
+    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).build();
     try {
       cluster.waitActive();
       DistributedFileSystem dfs = cluster.getFileSystem();
 
       // create a new file.
-      TestFileCreation.createFile(dfs, new Path("/foo"), DATANODE_NUM);
-      TestFileCreation.createFile(dfs, new Path("/foo2"), DATANODE_NUM);
-      TestFileCreation.createFile(dfs, new Path("/foo3"), DATANODE_NUM);
+      TestFileCreation.createFile(dfs, new Path("/foo"));
+      TestFileCreation.createFile(dfs, new Path("/foo2"));
+      TestFileCreation.createFile(dfs, new Path("/foo3"));
 
       // set the soft and hard limit to be 1 second so that the
       // namenode triggers lease recovery

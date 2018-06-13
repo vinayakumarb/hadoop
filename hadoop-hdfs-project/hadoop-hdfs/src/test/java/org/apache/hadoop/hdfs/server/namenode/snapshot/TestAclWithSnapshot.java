@@ -908,7 +908,7 @@ public class TestAclWithSnapshot {
    * @throws Exception if any step fails
    */
   private static void initCluster(boolean format) throws Exception {
-    cluster = new MiniDFSCluster.Builder(conf).numDataNodes(1).format(format)
+    cluster = new MiniDFSCluster.Builder(conf).format(format)
       .build();
     cluster.waitActive();
     hdfs = cluster.getFileSystem();

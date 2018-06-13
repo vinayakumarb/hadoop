@@ -67,7 +67,7 @@ public class TestHttpsFileSystem {
     conf.set(DFSConfigKeys.DFS_SERVER_HTTPS_KEYSTORE_RESOURCE_KEY,
         KeyStoreTestUtil.getServerSSLConfigFileName());
 
-    cluster = new MiniDFSCluster.Builder(conf).numDataNodes(1).build();
+    cluster = new MiniDFSCluster.Builder(conf).build();
     cluster.waitActive();
     OutputStream os = cluster.getFileSystem().create(new Path("/test"));
     os.write(23);

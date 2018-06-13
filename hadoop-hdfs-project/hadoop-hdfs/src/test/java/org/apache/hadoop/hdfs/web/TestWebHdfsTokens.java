@@ -173,7 +173,7 @@ public class TestWebHdfsTokens {
       // trick the NN into thinking security is enabled w/o it trying
       // to login from a keytab
       UserGroupInformation.setConfiguration(clusterConf);
-      cluster = new MiniDFSCluster.Builder(clusterConf).numDataNodes(1).build();
+      cluster = new MiniDFSCluster.Builder(clusterConf).build();
       cluster.waitActive();
       SecurityUtil.setAuthenticationMethod(KERBEROS, clusterConf);
       UserGroupInformation.setConfiguration(clusterConf);
@@ -220,7 +220,7 @@ public class TestWebHdfsTokens {
       // trick the NN into thinking security is enabled w/o it trying
       // to login from a keytab
       UserGroupInformation.setConfiguration(clusterConf);
-      cluster = new MiniDFSCluster.Builder(clusterConf).numDataNodes(1).build();
+      cluster = new MiniDFSCluster.Builder(clusterConf).build();
       cluster.waitActive();
       InetSocketAddress addr = cluster.getNameNode().getHttpsAddress();
       String nnAddr = NetUtils.getHostPortString(addr);
@@ -253,7 +253,7 @@ public class TestWebHdfsTokens {
       // trick the NN into thinking s[ecurity is enabled w/o it trying
       // to login from a keytab
       UserGroupInformation.setConfiguration(clusterConf);
-      cluster = new MiniDFSCluster.Builder(clusterConf).numDataNodes(0).build();
+      cluster = new MiniDFSCluster.Builder(clusterConf).build();
       cluster.waitActive();
       SecurityUtil.setAuthenticationMethod(KERBEROS, clusterConf);
       final WebHdfsFileSystem fs = WebHdfsTestUtil.getWebHdfsFileSystem

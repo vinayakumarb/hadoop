@@ -57,7 +57,7 @@ public class TestRollingFileSystemSinkWithHdfs
 
     // It appears that since HDFS-265, append is always enabled.
     cluster =
-        new MiniDFSCluster.Builder(conf).numDataNodes(NUM_DATANODES).build();
+        new MiniDFSCluster.Builder(conf).build();
 
     // Also clear sink flags
     RollingFileSystemSink.hasFlushed = false;

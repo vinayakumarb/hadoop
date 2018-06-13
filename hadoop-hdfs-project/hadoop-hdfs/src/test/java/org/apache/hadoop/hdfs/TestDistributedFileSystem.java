@@ -139,7 +139,7 @@ public class TestDistributedFileSystem {
     Configuration conf = getTestConfiguration();
     MiniDFSCluster cluster = null;
     try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(1).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       FileSystem fileSys = cluster.getFileSystem();
       fileSys.getDelegationToken("");
     } finally {
@@ -152,7 +152,7 @@ public class TestDistributedFileSystem {
   @Test
   public void testFileSystemCloseAll() throws Exception {
     Configuration conf = getTestConfiguration();
-    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).numDataNodes(0).
+    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).
         build();
     URI address = FileSystem.getDefaultUri(conf);
 
@@ -180,7 +180,7 @@ public class TestDistributedFileSystem {
     Configuration conf = getTestConfiguration();
     MiniDFSCluster cluster = null;
     try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(2).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       DistributedFileSystem fileSys = cluster.getFileSystem();
 
       // create two files, leaving them open
@@ -380,7 +380,7 @@ public class TestDistributedFileSystem {
     Configuration conf = getTestConfiguration();
     MiniDFSCluster cluster = null;
     try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(2).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       FileSystem fileSys = cluster.getFileSystem();
       String file = "/test/fileclosethenseek/file-0";
       Path path = new Path(file);
@@ -422,7 +422,7 @@ public class TestDistributedFileSystem {
     LeaseRenewer.setLeaseRenewerGraceDefault(grace);
 
     try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(2).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       final String filepathstring = "/test/LeaseChecker/foo";
       final Path[] filepaths = new Path[4];
       for(int i = 0; i < filepaths.length; i++) {
@@ -902,30 +902,7 @@ public class TestDistributedFileSystem {
     // Use different value for DFS_CLIENT_CONTEXT in each test case so that it
     // can compute network distance independently.
     conf.set(DFS_CLIENT_CONTEXT, "testContext_" + expectedDistance);
-
-    // create a cluster with a dn with the expected distance.
-    // MiniDFSCluster by default uses StaticMapping unless the test
-    // overrides it.
-    if (useScriptMapping) {
-      conf.setClass(DFSConfigKeys.NET_TOPOLOGY_NODE_SWITCH_MAPPING_IMPL_KEY,
-          ScriptBasedMapping.class, DNSToSwitchMapping.class);
-      if (invalidScriptMappingFile) {
-        conf.set(DFSConfigKeys.NET_TOPOLOGY_SCRIPT_FILE_NAME_KEY,
-            "invalidScriptFile.txt");
-      }
-      cluster = new MiniDFSCluster.Builder(conf).
-          useConfiguredTopologyMappingClass(true).build();
-    } else if (expectedDistance == 0) {
-      cluster = new MiniDFSCluster.Builder(conf).
-          hosts(new String[] {NetUtils.getLocalHostname()}).build();
-    } else if (expectedDistance == 2) {
-      cluster = new MiniDFSCluster.Builder(conf).
-          racks(new String[]{"/rackClient"}).build();
-    } else if (expectedDistance == 4) {
-      cluster = new MiniDFSCluster.Builder(conf).
-          racks(new String[]{"/rackFoo"}).build();
-    }
-
+    cluster = new MiniDFSCluster.Builder(conf).build();
     // create a file, read the file and verify the metrics
     try {
       final FileSystem fs = cluster.getFileSystem();
@@ -963,7 +940,7 @@ public class TestDistributedFileSystem {
     final Configuration conf = getTestConfiguration();
 
     final MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
-        .numDataNodes(2).build();
+        .build();
     final FileSystem hdfs = cluster.getFileSystem();
 
     final String nnAddr = conf.get(DFSConfigKeys.DFS_NAMENODE_HTTP_ADDRESS_KEY);
@@ -1127,7 +1104,7 @@ public class TestDistributedFileSystem {
   public void testLocatedFileStatusStorageIdsTypes() throws Exception {
     final Configuration conf = getTestConfiguration();
     final MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
-        .numDataNodes(3).build();
+        .build();
     try {
       final DistributedFileSystem fs = cluster.getFileSystem();
       final Path testFile = new Path("/testListLocatedStatus");
@@ -1188,7 +1165,7 @@ public class TestDistributedFileSystem {
     short repl = 1;
 
     try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(1).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       FileSystem dfs = cluster.getFileSystem();
 
       dfs.mkdirs(testBasePath);
@@ -1379,7 +1356,7 @@ public class TestDistributedFileSystem {
     Configuration conf = new HdfsConfiguration();
     MiniDFSCluster cluster = null;
     try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(1).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       FileSystem fs = cluster.getFileSystem();
       // create file under root
       FSDataOutputStream File1 = fs.create(new Path("/File1"));
@@ -1406,7 +1383,7 @@ public class TestDistributedFileSystem {
     Configuration conf = getTestConfiguration();
     MiniDFSCluster cluster = null;
     try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(1).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       DistributedFileSystem fileSys = cluster.getFileSystem();
 
       // Create one file then delete it to trigger the FileNotFoundException
@@ -1458,7 +1435,7 @@ public class TestDistributedFileSystem {
       throws IOException {
     Configuration conf = getTestConfiguration();
     try (MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
-        .numDataNodes(1).build()) {
+        .build()) {
       cluster.waitActive();
       DistributedFileSystem fs = cluster.getFileSystem();
 
@@ -1472,7 +1449,7 @@ public class TestDistributedFileSystem {
     String testFile = "/testDFSDataOutputStreamBuilder";
     Path testFilePath = new Path(testFile);
     try (MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
-        .numDataNodes(1).build()) {
+        .build()) {
       DistributedFileSystem fs = cluster.getFileSystem();
 
       // Before calling build(), no change was made in the file system
@@ -1532,7 +1509,7 @@ public class TestDistributedFileSystem {
     Path path = new Path(testFile);
     Random random = new Random();
     try (MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
-        .numDataNodes(1).build()) {
+        .build()) {
       DistributedFileSystem fs = cluster.getFileSystem();
 
       byte[] buf = new byte[16];

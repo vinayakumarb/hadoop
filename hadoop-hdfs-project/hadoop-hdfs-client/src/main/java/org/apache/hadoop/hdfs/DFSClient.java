@@ -17,9 +17,6 @@
  */
 package org.apache.hadoop.hdfs;
 
-import static org.apache.hadoop.hdfs.client.HdfsClientConfigKeys.DFS_CLIENT_CACHE_DROP_BEHIND_READS;
-import static org.apache.hadoop.hdfs.client.HdfsClientConfigKeys.DFS_CLIENT_CACHE_DROP_BEHIND_WRITES;
-import static org.apache.hadoop.hdfs.client.HdfsClientConfigKeys.DFS_CLIENT_CACHE_READAHEAD;
 import static org.apache.hadoop.hdfs.client.HdfsClientConfigKeys.DFS_CLIENT_CONTEXT;
 import static org.apache.hadoop.hdfs.client.HdfsClientConfigKeys.DFS_CLIENT_CONTEXT_DEFAULT;
 import static org.apache.hadoop.hdfs.client.HdfsClientConfigKeys.DFS_CLIENT_LOCAL_INTERFACES;
@@ -109,7 +106,6 @@ import org.apache.hadoop.hdfs.protocol.EncryptionZone;
 import org.apache.hadoop.hdfs.protocol.EncryptionZoneIterator;
 import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants;
-import org.apache.hadoop.hdfs.protocol.HdfsConstants.DatanodeReportType;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants.ReencryptAction;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants.RollingUpgradeAction;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants.SafeModeAction;
@@ -133,7 +129,6 @@ import org.apache.hadoop.hdfs.protocol.ZoneReencryptionStatus;
 import org.apache.hadoop.hdfs.protocol.SnapshotDiffReport;
 import org.apache.hadoop.hdfs.protocol.SnapshotDiffReportListing;
 import org.apache.hadoop.hdfs.protocol.datatransfer.IOStreamPair;
-import org.apache.hadoop.hdfs.protocol.datatransfer.ReplaceDatanodeOnFailure;
 import org.apache.hadoop.hdfs.protocol.datatransfer.TrustedChannelResolver;
 import org.apache.hadoop.hdfs.protocol.datatransfer.sasl.DataEncryptionKeyFactory;
 import org.apache.hadoop.hdfs.protocol.datatransfer.sasl.DataTransferSaslUtil;
@@ -141,9 +136,7 @@ import org.apache.hadoop.hdfs.protocol.datatransfer.sasl.SaslDataTransferClient;
 import org.apache.hadoop.hdfs.security.token.block.BlockTokenIdentifier;
 import org.apache.hadoop.hdfs.security.token.block.DataEncryptionKey;
 import org.apache.hadoop.hdfs.security.token.delegation.DelegationTokenIdentifier;
-import org.apache.hadoop.hdfs.server.datanode.CachingStrategy;
 import org.apache.hadoop.hdfs.server.namenode.SafeModeException;
-import org.apache.hadoop.hdfs.server.protocol.DatanodeStorageReport;
 import org.apache.hadoop.hdfs.util.IOUtilsClient;
 import org.apache.hadoop.io.EnumSetWritable;
 import org.apache.hadoop.io.IOUtils;
@@ -211,8 +204,6 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
   private SocketAddress[] localInterfaceAddrs;
   private DataEncryptionKey encryptionKey;
   final SaslDataTransferClient saslClient;
-  private final CachingStrategy defaultReadCachingStrategy;
-  private final CachingStrategy defaultWriteCachingStrategy;
   private final ClientContext clientContext;
 
   private static final DFSHedgedReadMetrics HEDGED_READ_METRIC =
@@ -335,21 +326,9 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
           Joiner.on(',').join(localInterfaceAddrs) + "]");
     }
 
-    Boolean readDropBehind =
-        (conf.get(DFS_CLIENT_CACHE_DROP_BEHIND_READS) == null) ?
-            null : conf.getBoolean(DFS_CLIENT_CACHE_DROP_BEHIND_READS, false);
-    Long readahead = (conf.get(DFS_CLIENT_CACHE_READAHEAD) == null) ?
-        null : conf.getLong(DFS_CLIENT_CACHE_READAHEAD, 0);
     this.serverDefaultsValidityPeriod =
             conf.getLong(DFS_CLIENT_SERVER_DEFAULTS_VALIDITY_PERIOD_MS_KEY,
       DFS_CLIENT_SERVER_DEFAULTS_VALIDITY_PERIOD_MS_DEFAULT);
-    Boolean writeDropBehind =
-        (conf.get(DFS_CLIENT_CACHE_DROP_BEHIND_WRITES) == null) ?
-            null : conf.getBoolean(DFS_CLIENT_CACHE_DROP_BEHIND_WRITES, false);
-    this.defaultReadCachingStrategy =
-        new CachingStrategy(readDropBehind, readahead);
-    this.defaultWriteCachingStrategy =
-        new CachingStrategy(writeDropBehind, readahead);
     this.clientContext = ClientContext.get(
         conf.get(DFS_CLIENT_CONTEXT, DFS_CLIENT_CONTEXT_DEFAULT),
         dfsClientConf, conf);
@@ -1706,17 +1685,7 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
     Preconditions.checkArgument(length >= 0);
 
     LocatedBlocks blockLocations = null;
-    FileChecksumHelper.FileChecksumComputer maker = null;
-    if (length > 0) {
-      blockLocations = getBlockLocations(src, length);
-    }
-
-    maker = new FileChecksumHelper.ReplicatedFileChecksumComputer(src, length,
-            blockLocations, namenode, this, combineMode);
-
-    maker.compute();
-
-    return maker.getFileChecksum();
+    throw new UnsupportedOperationException("Not supported now!! TODO:");
   }
 
   /**
@@ -2395,14 +2364,6 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
   public String toString() {
     return getClass().getSimpleName() + "[clientName=" + clientName
         + ", ugi=" + ugi + "]";
-  }
-
-  public CachingStrategy getDefaultReadCachingStrategy() {
-    return defaultReadCachingStrategy;
-  }
-
-  public CachingStrategy getDefaultWriteCachingStrategy() {
-    return defaultWriteCachingStrategy;
   }
 
   public ClientContext getClientContext() {

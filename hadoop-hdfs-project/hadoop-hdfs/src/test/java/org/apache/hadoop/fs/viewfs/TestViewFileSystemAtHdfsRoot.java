@@ -56,7 +56,7 @@ public class TestViewFileSystemAtHdfsRoot extends ViewFileSystemBaseTest {
         DFSConfigKeys.DFS_NAMENODE_DELEGATION_TOKEN_ALWAYS_USE_KEY, true);
     
     cluster = new MiniDFSCluster.Builder(CONF)
-      .numDataNodes(2)
+
       .build();
     cluster.waitClusterUp();
     

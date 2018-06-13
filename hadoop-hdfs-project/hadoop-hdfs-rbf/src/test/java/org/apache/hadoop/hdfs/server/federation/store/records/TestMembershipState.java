@@ -46,12 +46,6 @@ public class TestMembershipState {
 
   private static final long NUM_BLOCKS = 300;
   private static final long NUM_FILES = 400;
-  private static final int NUM_DEAD = 500;
-  private static final int NUM_ACTIVE = 600;
-  private static final int NUM_DECOM = 700;
-  private static final int NUM_DECOM_ACTIVE = 800;
-  private static final int NUM_DECOM_DEAD = 900;
-  private static final long NUM_BLOCK_MISSING = 1000;
 
   private static final long TOTAL_SPACE = 1100;
   private static final long AVAILABLE_SPACE = 1200;
@@ -71,12 +65,6 @@ public class TestMembershipState {
     MembershipStats stats = MembershipStats.newInstance();
     stats.setNumOfBlocks(NUM_BLOCKS);
     stats.setNumOfFiles(NUM_FILES);
-    stats.setNumOfActiveDatanodes(NUM_ACTIVE);
-    stats.setNumOfDeadDatanodes(NUM_DEAD);
-    stats.setNumOfDecommissioningDatanodes(NUM_DECOM);
-    stats.setNumOfDecomActiveDatanodes(NUM_DECOM_ACTIVE);
-    stats.setNumOfDecomDeadDatanodes(NUM_DECOM_DEAD);
-    stats.setNumOfBlocksMissing(NUM_BLOCK_MISSING);
     stats.setTotalSpace(TOTAL_SPACE);
     stats.setAvailableSpace(AVAILABLE_SPACE);
     record.setStats(stats);
@@ -99,11 +87,6 @@ public class TestMembershipState {
     MembershipStats stats = record.getStats();
     assertEquals(NUM_BLOCKS, stats.getNumOfBlocks());
     assertEquals(NUM_FILES, stats.getNumOfFiles());
-    assertEquals(NUM_ACTIVE, stats.getNumOfActiveDatanodes());
-    assertEquals(NUM_DEAD, stats.getNumOfDeadDatanodes());
-    assertEquals(NUM_DECOM, stats.getNumOfDecommissioningDatanodes());
-    assertEquals(NUM_DECOM_ACTIVE, stats.getNumOfDecomActiveDatanodes());
-    assertEquals(NUM_DECOM_DEAD, stats.getNumOfDecomDeadDatanodes());
     assertEquals(TOTAL_SPACE, stats.getTotalSpace());
     assertEquals(AVAILABLE_SPACE, stats.getAvailableSpace());
   }

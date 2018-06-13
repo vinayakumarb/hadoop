@@ -39,8 +39,6 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.client.HdfsClientConfigKeys;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
-import org.apache.hadoop.hdfs.protocol.datatransfer.DataTransferProtocol;
-import org.apache.hadoop.hdfs.server.datanode.SimulatedFSDataset;
 import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.test.GenericTestUtils;
 import org.apache.log4j.Level;
@@ -140,16 +138,8 @@ public class TestPread {
   private void pReadFile(FileSystem fileSys, Path name) throws IOException {
     FSDataInputStream stm = fileSys.open(name);
     byte[] expected = new byte[fileSize];
-    if (simulatedStorage) {
-      assert fileSys instanceof DistributedFileSystem;
-      DistributedFileSystem dfs = (DistributedFileSystem) fileSys;
-      LocatedBlocks lbs = dfs.getClient().getLocatedBlocks(name.toString(),
-          0, fileSize);
-      DFSTestUtil.fillExpectedBuf(lbs, expected);
-    } else {
-      Random rand = new Random(seed);
-      rand.nextBytes(expected);
-    }
+    Random rand = new Random(seed);
+    rand.nextBytes(expected);
     // do a sanity check. Read first 4K bytes
     byte[] actual = new byte[4096];
     stm.readFully(actual);
@@ -226,10 +216,6 @@ public class TestPread {
     // read a block and get block locations cached as a result
     stm.readFully(0, actual);
     checkAndEraseData(actual, 0, expected, "Pread Datanode Restart Setup");
-    // restart all datanodes. it is expected that they will
-    // restart on different ports, hence, cached block locations
-    // will no longer work.
-    assertTrue(cluster.restartDataNodes());
     cluster.waitActive();
     // verify the block can be read again using the same InputStream 
     // (via re-fetching of block locations from namenode). there is a 
@@ -269,7 +255,6 @@ public class TestPread {
   @Test
   public void testPreadDFSNoChecksum() throws IOException {
     Configuration conf = new Configuration();
-    GenericTestUtils.setLogLevel(DataTransferProtocol.LOG, Level.ALL);
     dfsPreadTest(conf, false, false);
     dfsPreadTest(conf, true, false);
   }
@@ -326,7 +311,7 @@ public class TestPread {
       }
     }).when(injector).readFromDatanodeDelay();
 
-    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).numDataNodes(2)
+    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
         .format(true).build();
     DistributedFileSystem fileSys = cluster.getFileSystem();
     DFSClient dfsClient = fileSys.getClient();
@@ -386,7 +371,7 @@ public class TestPread {
       }
     }).when(injector).startFetchFromDatanode();
 
-    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).numDataNodes(3)
+    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
         .format(true).build();
     DistributedFileSystem fileSys = cluster.getFileSystem();
     DFSClient dfsClient = fileSys.getClient();
@@ -455,13 +440,10 @@ public class TestPread {
     conf.setLong(HdfsClientConfigKeys.Read.PREFETCH_SIZE_KEY, 4096);
     // Set short retry timeouts so this test runs faster
     conf.setInt(HdfsClientConfigKeys.Retry.WINDOW_BASE_KEY, 0);
-    if (simulatedStorage) {
-      SimulatedFSDataset.setFactory(conf);
-    }
     if (disableTransferTo) {
       conf.setBoolean("dfs.datanode.transferTo.allowed", false);
     }
-    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).numDataNodes(3).build();
+    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).build();
     FileSystem fileSys = cluster.getFileSystem();
     fileSys.setVerifyChecksum(verifyChecksum);
     try {
@@ -509,7 +491,7 @@ public class TestPread {
     conf.setLong(HdfsClientConfigKeys.Read.PREFETCH_SIZE_KEY, blockSize);
 
     MiniDFSCluster cluster =
-        new MiniDFSCluster.Builder(conf).numDataNodes(1).build();
+        new MiniDFSCluster.Builder(conf).build();
     try {
       DistributedFileSystem fs = cluster.getFileSystem();
       // create multi-block file
@@ -572,7 +554,7 @@ public class TestPread {
       }
     }).when(injector).fetchFromDatanodeException();
 
-    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).numDataNodes(3)
+    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
         .format(true).build();
     DistributedFileSystem fileSys = cluster.getFileSystem();
     DFSClient dfsClient = fileSys.getClient();

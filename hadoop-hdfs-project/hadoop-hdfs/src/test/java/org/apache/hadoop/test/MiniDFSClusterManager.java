@@ -140,7 +140,7 @@ public class MiniDFSClusterManager {
   public void start() throws IOException, FileNotFoundException {
     dfs = new MiniDFSCluster.Builder(conf).nameNodePort(nameNodePort)
                                           .nameNodeHttpPort(nameNodeHttpPort)
-                                          .numDataNodes(numDataNodes)
+
                                           .startupOption(dfsOpts)
                                           .format(format)
                                           .build();

@@ -246,7 +246,7 @@ public class TestFsShellPermission {
     MiniDFSCluster cluster = null;
     try {
       conf = new Configuration();
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(2).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
 
       String nnUri = FileSystem.getDefaultUri(conf).toString();
       FileSystem fs = FileSystem.get(URI.create(nnUri), conf);

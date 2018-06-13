@@ -40,12 +40,9 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.fs.ByteBufferReadable;
 import org.apache.hadoop.fs.ByteBufferUtil;
-import org.apache.hadoop.fs.CanSetDropBehind;
-import org.apache.hadoop.fs.CanSetReadahead;
 import org.apache.hadoop.fs.CanUnbuffer;
 import org.apache.hadoop.fs.ChecksumException;
 import org.apache.hadoop.fs.FSInputStream;
@@ -63,8 +60,6 @@ import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
 import org.apache.hadoop.hdfs.protocol.datatransfer.InvalidEncryptionKeyException;
 import org.apache.hadoop.hdfs.security.token.block.InvalidBlockTokenException;
-import org.apache.hadoop.hdfs.server.datanode.CachingStrategy;
-import org.apache.hadoop.hdfs.shortcircuit.ClientMmap;
 import org.apache.hadoop.hdfs.util.IOUtilsClient;
 import org.apache.hadoop.io.ByteBufferPool;
 import org.apache.hadoop.security.token.SecretManager.InvalidToken;
@@ -84,7 +79,7 @@ import javax.annotation.Nonnull;
  ****************************************************************/
 @InterfaceAudience.Private
 public class DFSInputStream extends FSInputStream
-    implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
+    implements ByteBufferReadable,
                HasEnhancedByteBufferAccess, CanUnbuffer, StreamCapabilities {
   @VisibleForTesting
   public static boolean tcpReadsDisabledForTesting = false;
@@ -110,7 +105,6 @@ public class DFSInputStream extends FSInputStream
   protected LocatedBlocks locatedBlocks = null;
   private long lastBlockBeingWrittenLength = 0;
   private FileEncryptionInfo fileEncryptionInfo = null;
-  protected CachingStrategy cachingStrategy;
   ////
 
   protected final ReadStatistics readStatistics = new ReadStatistics();
@@ -164,9 +158,6 @@ public class DFSInputStream extends FSInputStream
     this.dfsClient = dfsClient;
     this.verifyChecksum = verifyChecksum;
     this.src = src;
-    synchronized (infoLock) {
-      this.cachingStrategy = dfsClient.getDefaultReadCachingStrategy();
-    }
     this.locatedBlocks = locatedBlocks;
     openInfo(false);
   }
@@ -516,10 +507,8 @@ public class DFSInputStream extends FSInputStream
       long offsetInBlock, long length, InetSocketAddress targetAddr,
       StorageType storageType, DatanodeInfo datanode) throws IOException {
     ExtendedBlock blk = targetBlock.getBlock();
-    CachingStrategy curCachingStrategy;
     boolean shortCircuitForbidden;
     synchronized (infoLock) {
-      curCachingStrategy = cachingStrategy;
       shortCircuitForbidden = shortCircuitForbidden();
     }
     return new BlockReaderFactory(dfsClient.getConf()).
@@ -533,7 +522,6 @@ public class DFSInputStream extends FSInputStream
         setVerifyChecksum(verifyChecksum).
         setClientName(dfsClient.clientName).
         setLength(length).
-        setCachingStrategy(curCachingStrategy).
         setAllowShortCircuitLocalReads(!shortCircuitForbidden).
         setClientCacheContext(dfsClient.getClientContext()).
         setUserGroupInformation(dfsClient.ugi).
@@ -1458,28 +1446,6 @@ public class DFSInputStream extends FSInputStream
     blockEnd = -1;
   }
 
-  @Override
-  public synchronized void setReadahead(Long readahead)
-      throws IOException {
-    synchronized (infoLock) {
-      this.cachingStrategy =
-          new CachingStrategy.Builder(this.cachingStrategy).
-              setReadahead(readahead).build();
-    }
-    closeCurrentBlockReaders();
-  }
-
-  @Override
-  public synchronized void setDropBehind(Boolean dropBehind)
-      throws IOException {
-    synchronized (infoLock) {
-      this.cachingStrategy =
-          new CachingStrategy.Builder(this.cachingStrategy).
-              setDropBehind(dropBehind).build();
-    }
-    closeCurrentBlockReaders();
-  }
-
   /**
    * The immutable empty buffer we return when we reach EOF when doing a
    * zero-copy read.
@@ -1513,90 +1479,9 @@ public class DFSInputStream extends FSInputStream
       }
     }
     ByteBuffer buffer = null;
-    if (dfsClient.getConf().getShortCircuitConf().isShortCircuitMmapEnabled()) {
-      buffer = tryReadZeroCopy(maxLength, opts);
-    }
-    if (buffer != null) {
-      return buffer;
-    }
     buffer = ByteBufferUtil.fallbackRead(this, bufferPool, maxLength);
     if (buffer != null) {
       getExtendedReadBuffers().put(buffer, bufferPool);
-    }
-    return buffer;
-  }
-
-  private synchronized ByteBuffer tryReadZeroCopy(int maxLength,
-      EnumSet<ReadOption> opts) throws IOException {
-    // Copy 'pos' and 'blockEnd' to local variables to make it easier for the
-    // JVM to optimize this function.
-    final long curPos = pos;
-    final long curEnd = blockEnd;
-    final long blockStartInFile = currentLocatedBlock.getStartOffset();
-    final long blockPos = curPos - blockStartInFile;
-
-    // Shorten this read if the end of the block is nearby.
-    long length63;
-    if ((curPos + maxLength) <= (curEnd + 1)) {
-      length63 = maxLength;
-    } else {
-      length63 = 1 + curEnd - curPos;
-      if (length63 <= 0) {
-        DFSClient.LOG.debug("Unable to perform a zero-copy read from offset {}"
-                + " of {}; {} bytes left in block. blockPos={}; curPos={};"
-                + "curEnd={}",
-            curPos, src, length63, blockPos, curPos, curEnd);
-        return null;
-      }
-      DFSClient.LOG.debug("Reducing read length from {} to {} to avoid going "
-              + "more than one byte past the end of the block.  blockPos={}; "
-              +" curPos={}; curEnd={}",
-          maxLength, length63, blockPos, curPos, curEnd);
-    }
-    // Make sure that don't go beyond 31-bit offsets in the MappedByteBuffer.
-    int length;
-    if (blockPos + length63 <= Integer.MAX_VALUE) {
-      length = (int)length63;
-    } else {
-      long length31 = Integer.MAX_VALUE - blockPos;
-      if (length31 <= 0) {
-        // Java ByteBuffers can't be longer than 2 GB, because they use
-        // 4-byte signed integers to represent capacity, etc.
-        // So we can't mmap the parts of the block higher than the 2 GB offset.
-        // FIXME: we could work around this with multiple memory maps.
-        // See HDFS-5101.
-        DFSClient.LOG.debug("Unable to perform a zero-copy read from offset {} "
-            + " of {}; 31-bit MappedByteBuffer limit exceeded.  blockPos={}, "
-            + "curEnd={}", curPos, src, blockPos, curEnd);
-        return null;
-      }
-      length = (int)length31;
-      DFSClient.LOG.debug("Reducing read length from {} to {} to avoid 31-bit "
-          + "limit.  blockPos={}; curPos={}; curEnd={}",
-          maxLength, length, blockPos, curPos, curEnd);
-    }
-    final ClientMmap clientMmap = blockReader.getClientMmap(opts);
-    if (clientMmap == null) {
-      DFSClient.LOG.debug("unable to perform a zero-copy read from offset {} of"
-          + " {}; BlockReader#getClientMmap returned null.", curPos, src);
-      return null;
-    }
-    boolean success = false;
-    ByteBuffer buffer;
-    try {
-      seek(curPos + length);
-      buffer = clientMmap.getMappedByteBuffer().asReadOnlyBuffer();
-      buffer.position((int)blockPos);
-      buffer.limit((int)(blockPos + length));
-      getExtendedReadBuffers().put(buffer, clientMmap);
-      readStatistics.addZeroCopyBytes(length);
-      DFSClient.LOG.debug("readZeroCopy read {} bytes from offset {} via the "
-          + "zero-copy read path.  blockEnd = {}", length, curPos, blockEnd);
-      success = true;
-    } finally {
-      if (!success) {
-        IOUtils.closeQuietly(clientMmap);
-      }
     }
     return buffer;
   }
@@ -1609,9 +1494,7 @@ public class DFSInputStream extends FSInputStream
       throw new IllegalArgumentException("tried to release a buffer " +
           "that was not created by this stream, " + buffer);
     }
-    if (val instanceof ClientMmap) {
-      IOUtils.closeQuietly((ClientMmap)val);
-    } else if (val instanceof ByteBufferPool) {
+    if (val instanceof ByteBufferPool) {
       ((ByteBufferPool)val).putBuffer(buffer);
     }
   }

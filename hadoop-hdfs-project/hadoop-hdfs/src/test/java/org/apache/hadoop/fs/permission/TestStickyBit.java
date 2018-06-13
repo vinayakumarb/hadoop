@@ -75,7 +75,7 @@ public class TestStickyBit {
   }
 
   private static void initCluster(boolean format) throws Exception {
-    cluster = new MiniDFSCluster.Builder(conf).numDataNodes(4).format(format)
+    cluster = new MiniDFSCluster.Builder(conf).format(format)
       .build();
     hdfs = cluster.getFileSystem();
     assertTrue(hdfs instanceof DistributedFileSystem);

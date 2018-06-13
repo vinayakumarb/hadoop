@@ -58,7 +58,7 @@ public class TestDisallowModifyROSnapshot {
   @BeforeClass
   public static void setUp() throws Exception {
     conf = new Configuration();
-    cluster = new MiniDFSCluster.Builder(conf).numDataNodes(1).build();
+    cluster = new MiniDFSCluster.Builder(conf).build();
     cluster.waitActive();
 
     fsn = cluster.getNamesystem();

@@ -136,7 +136,7 @@ public class TestFailureOfSharedDir {
     try {
       cluster = new MiniDFSCluster.Builder(conf)
         .nnTopology(MiniDFSNNTopology.simpleHATopology())
-        .numDataNodes(0)
+
         .checkExitOnShutdown(false)
         .build();
       

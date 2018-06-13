@@ -43,16 +43,10 @@ import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.apache.hadoop.hdfs.RemotePeerFactory;
 import org.apache.hadoop.hdfs.net.Peer;
 import org.apache.hadoop.hdfs.protocol.DatanodeID;
-import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.security.token.block.BlockTokenIdentifier;
-import org.apache.hadoop.hdfs.server.datanode.CachingStrategy;
-import org.apache.hadoop.hdfs.shortcircuit.DfsClientShmManager;
-import org.apache.hadoop.hdfs.shortcircuit.ShortCircuitCache;
-import org.apache.hadoop.hdfs.shortcircuit.ShortCircuitReplica;
-import org.apache.hadoop.hdfs.shortcircuit.ShortCircuitShm;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.security.token.Token;
 import org.apache.log4j.Level;
@@ -194,7 +188,6 @@ public class BlockReaderTestUtil {
       setVerifyChecksum(true).
       setClientName("BlockReaderTestUtil").
       setClientCacheContext(ClientContext.getFromConf(fs.getConf())).
-      setCachingStrategy(CachingStrategy.newDefaultStrategy()).
       setConfiguration(fs.getConf()).
       setAllowShortCircuitLocalReads(true).
       setTracer(FsTracer.get(fs.getConf())).
@@ -223,12 +216,6 @@ public class BlockReaderTestUtil {
 
   public static void enableBlockReaderFactoryTracing() {
     LogManager.getLogger(BlockReaderFactory.class.getName()).setLevel(
-        Level.TRACE);
-    LogManager.getLogger(ShortCircuitCache.class.getName()).setLevel(
-        Level.TRACE);
-    LogManager.getLogger(ShortCircuitReplica.class.getName()).setLevel(
-        Level.TRACE);
-    LogManager.getLogger(BlockReaderLocal.class.getName()).setLevel(
         Level.TRACE);
   }
 }

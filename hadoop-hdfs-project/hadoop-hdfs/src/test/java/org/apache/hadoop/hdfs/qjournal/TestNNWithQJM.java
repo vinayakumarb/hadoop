@@ -71,7 +71,7 @@ public class TestNNWithQJM {
         mjc.getQuorumJournalURI("myjournal").toString());
     
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
-      .numDataNodes(0)
+
       .manageNameDfsDirs(false)
       .build();
     try {
@@ -107,7 +107,7 @@ public class TestNNWithQJM {
 
     // Start the cluster once to generate the dfs dirs
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
-      .numDataNodes(0)
+
       .manageNameDfsDirs(false)
       .checkExitOnShutdown(false)
       .build();
@@ -127,7 +127,7 @@ public class TestNNWithQJM {
 
       // Start the cluster again
       cluster = new MiniDFSCluster.Builder(conf)
-        .numDataNodes(0)
+
         .format(false)
         .manageNameDfsDirs(false)
         .checkExitOnShutdown(false)
@@ -141,7 +141,7 @@ public class TestNNWithQJM {
       conf2.set(DFSConfigKeys.DFS_NAMENODE_EDITS_DIR_KEY,
           mjc.getQuorumJournalURI("myjournal").toString());
       MiniDFSCluster cluster2 = new MiniDFSCluster.Builder(conf2)
-        .numDataNodes(0)
+
         .format(false)
         .manageNameDfsDirs(false)
         .build();
@@ -178,7 +178,7 @@ public class TestNNWithQJM {
     // Start a NN, so the storage is formatted -- both on-disk
     // and QJM.
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
-      .numDataNodes(0)
+
       .manageNameDfsDirs(false)
       .build();
     cluster.shutdown();
@@ -192,7 +192,7 @@ public class TestNNWithQJM {
     // with the old namespace ID.
     try {
       cluster = new MiniDFSCluster.Builder(conf)
-        .numDataNodes(0)
+
         .manageNameDfsDirs(false)
         .format(false)
         .build();

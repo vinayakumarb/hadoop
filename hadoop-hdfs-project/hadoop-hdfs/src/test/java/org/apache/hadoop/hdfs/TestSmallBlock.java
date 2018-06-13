@@ -29,7 +29,6 @@ import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
-import org.apache.hadoop.hdfs.server.datanode.SimulatedFSDataset;
 import org.junit.Test;
 
 /**
@@ -58,14 +57,8 @@ public class TestSmallBlock {
     assertEquals("Number of blocks", fileSize, locations.length);
     FSDataInputStream stm = fileSys.open(name);
     byte[] expected = new byte[fileSize];
-    if (simulatedStorage) {
-      LocatedBlocks lbs = fileSys.getClient().getLocatedBlocks(name.toString(),
-          0, fileSize);
-      DFSTestUtil.fillExpectedBuf(lbs, expected);
-    } else {
-      Random rand = new Random(seed);
-      rand.nextBytes(expected);
-    }
+    Random rand = new Random(seed);
+    rand.nextBytes(expected);
     // do a sanity check. Read the file
     byte[] actual = new byte[fileSize];
     stm.readFully(0, actual);
@@ -85,9 +78,6 @@ public class TestSmallBlock {
   @Test
   public void testSmallBlock() throws IOException {
     Configuration conf = new HdfsConfiguration();
-    if (simulatedStorage) {
-      SimulatedFSDataset.setFactory(conf);
-    }
     conf.set(DFSConfigKeys.DFS_BYTES_PER_CHECKSUM_KEY, "1");
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).build();
     DistributedFileSystem fileSys = cluster.getFileSystem();

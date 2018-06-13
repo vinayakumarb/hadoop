@@ -74,7 +74,7 @@ public class TestBootstrapStandby {
 
     cluster = new MiniDFSCluster.Builder(conf)
         .nnTopology(topology)
-        .numDataNodes(0)
+
         .build();
     cluster.waitActive();
 

@@ -65,7 +65,7 @@ public class TestParallelImageWrite {
 
     try {
       cluster = new MiniDFSCluster.Builder(conf).format(true)
-          .numDataNodes(NUM_DATANODES).build();
+          .build();
       String[] nameNodeDirs = conf.getStrings(
           DFSConfigKeys.DFS_NAMENODE_NAME_DIR_KEY, new String[] {});
       numNamenodeDirs = nameNodeDirs.length;
@@ -90,7 +90,7 @@ public class TestParallelImageWrite {
 
       // Here we restart the MiniDFScluster without formatting namenode
       cluster = new MiniDFSCluster.Builder(conf).format(false)
-          .numDataNodes(NUM_DATANODES).build();
+          .build();
       fsn = cluster.getNamesystem();
       FileSystem fs = cluster.getFileSystem();
       assertTrue("Filesystem corrupted after restart.",

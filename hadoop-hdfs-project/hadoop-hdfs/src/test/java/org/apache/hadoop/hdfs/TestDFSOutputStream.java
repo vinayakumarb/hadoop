@@ -41,7 +41,6 @@ import org.apache.hadoop.fs.StreamCapabilities.StreamCapability;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hdfs.DataStreamer.LastExceptionInStreamer;
 import org.apache.hadoop.hdfs.client.impl.DfsClientConf;
-import org.apache.hadoop.hdfs.protocol.BlockListAsLongs;
 import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants;
@@ -83,7 +82,7 @@ public class TestDFSOutputStream {
   @BeforeClass
   public static void setup() throws IOException {
     Configuration conf = new Configuration();
-    cluster = new MiniDFSCluster.Builder(conf).numDataNodes(3).build();
+    cluster = new MiniDFSCluster.Builder(conf).build();
   }
 
   /**
@@ -206,7 +205,7 @@ public class TestDFSOutputStream {
           baseDir.getAbsolutePath());
       dfsConf.setInt(DFS_CLIENT_WRITE_PACKET_SIZE_KEY,
           configuredWritePacketSize);
-      dfsCluster = new MiniDFSCluster.Builder(dfsConf).numDataNodes(1).build();
+      dfsCluster = new MiniDFSCluster.Builder(dfsConf).build();
       dfsCluster.waitActive();
 
       final FSDataOutputStream os = dfsCluster.getFileSystem()
@@ -275,7 +274,7 @@ public class TestDFSOutputStream {
         mock(HdfsFileStatus.class),
         mock(ExtendedBlock.class),
         client,
-        "foo", null, null, null, null, null, null);
+        "foo", null, null, null, null, null);
 
     DataOutputStream blockStream = mock(DataOutputStream.class);
     doThrow(new IOException()).when(blockStream).flush();
@@ -294,47 +293,6 @@ public class TestDFSOutputStream {
     dataQueue.add(packet);
     stream.run();
     Assert.assertTrue(congestedNodes.isEmpty());
-  }
-
-  @Test
-  public void testNoLocalWriteFlag() throws IOException {
-    DistributedFileSystem fs = cluster.getFileSystem();
-    EnumSet<CreateFlag> flags = EnumSet.of(CreateFlag.NO_LOCAL_WRITE,
-        CreateFlag.CREATE);
-    BlockManager bm = cluster.getNameNode().getNamesystem().getBlockManager();
-    DatanodeManager dm = bm.getDatanodeManager();
-    try(FSDataOutputStream os = fs.create(new Path("/test-no-local"),
-        FsPermission.getDefault(),
-        flags, 512, (short)2, 512, null)) {
-      // Inject a DatanodeManager that returns one DataNode as local node for
-      // the client.
-      DatanodeManager spyDm = spy(dm);
-      DatanodeDescriptor dn1 = dm.getDatanodeListForReport
-          (HdfsConstants.DatanodeReportType.LIVE).get(0);
-      doReturn(dn1).when(spyDm).getDatanodeByHost("127.0.0.1");
-      Whitebox.setInternalState(bm, "datanodeManager", spyDm);
-      byte[] buf = new byte[512 * 16];
-      new Random().nextBytes(buf);
-      os.write(buf);
-    } finally {
-      Whitebox.setInternalState(bm, "datanodeManager", dm);
-    }
-    cluster.triggerBlockReports();
-    final String bpid = cluster.getNamesystem().getBlockPoolId();
-    // Total number of DataNodes is 3.
-    assertEquals(3, cluster.getAllBlockReports(bpid).size());
-    int numDataNodesWithData = 0;
-    for (Map<DatanodeStorage, BlockListAsLongs> dnBlocks :
-        cluster.getAllBlockReports(bpid)) {
-      for (BlockListAsLongs blocks : dnBlocks.values()) {
-        if (blocks.getNumberOfBlocks() > 0) {
-          numDataNodesWithData++;
-          break;
-        }
-      }
-    }
-    // Verify that only one DN has no data.
-    assertEquals(1, 3 - numDataNodesWithData);
   }
 
   @Test

@@ -87,7 +87,6 @@ public class TestDFSUpgradeFromImage {
   
   static {
     upgradeConf = new HdfsConfiguration();
-    upgradeConf.setInt(DFSConfigKeys.DFS_DATANODE_SCAN_PERIOD_HOURS_KEY, -1); // block scanning off
     if (System.getProperty(GenericTestUtils.SYSPROP_TEST_DATA_DIR) == null) {
       // to allow test to be run outside of Maven
       System.setProperty(GenericTestUtils.SYSPROP_TEST_DATA_DIR,
@@ -271,9 +270,8 @@ public class TestDFSUpgradeFromImage {
 
     MiniDFSCluster cluster = null;
     try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(0)
+      cluster = new MiniDFSCluster.Builder(conf)
         .format(false)
-        .manageDataDfsDirs(false)
         .manageNameDfsDirs(false)
         .startupOption(StartupOption.REGULAR)
         .build();
@@ -296,8 +294,7 @@ public class TestDFSUpgradeFromImage {
   @Test
   public void testUpgradeFromRel22Image() throws IOException {
     unpackStorage(HADOOP22_IMAGE, HADOOP_DFS_DIR_TXT);
-    upgradeAndVerify(new MiniDFSCluster.Builder(upgradeConf).
-        numDataNodes(4), null);
+    upgradeAndVerify(new MiniDFSCluster.Builder(upgradeConf), null);
   }
   
   /**
@@ -324,8 +321,7 @@ public class TestDFSUpgradeFromImage {
 
     // Upgrade should now fail
     try {
-      upgradeAndVerify(new MiniDFSCluster.Builder(upgradeConf).
-          numDataNodes(4), null);
+      upgradeAndVerify(new MiniDFSCluster.Builder(upgradeConf), null);
       fail("Upgrade did not fail with bad MD5");
     } catch (IOException ioe) {
       String msg = StringUtils.stringifyException(ioe);
@@ -356,7 +352,7 @@ public class TestDFSUpgradeFromImage {
           new MiniDFSCluster.Builder(conf)
               .format(false)
               .startupOption(StartupOption.UPGRADE)
-              .numDataNodes(0).build();
+              .build();
       DistributedFileSystem dfs = cluster.getFileSystem();
       // Make sure the paths were renamed as expected
       // Also check that paths are present after a restart, checks that the
@@ -426,7 +422,7 @@ public class TestDFSUpgradeFromImage {
           new MiniDFSCluster.Builder(conf)
               .format(false)
               .startupOption(StartupOption.UPGRADE)
-              .numDataNodes(0).build();
+              .build();
       DistributedFileSystem dfs = cluster.getFileSystem();
       // Make sure the paths were renamed as expected
       // Also check that paths are present after a restart, checks that the
@@ -487,7 +483,7 @@ public class TestDFSUpgradeFromImage {
           new MiniDFSCluster.Builder(conf)
               .format(false)
               .startupOption(StartupOption.UPGRADE)
-              .numDataNodes(0).build();
+              .build();
     } catch (IOException ioe) {
         Throwable cause = ioe.getCause();
         if (cause != null && cause instanceof IllegalReservedPathException) {
@@ -511,7 +507,7 @@ public class TestDFSUpgradeFromImage {
           new MiniDFSCluster.Builder(conf)
               .format(false)
               .startupOption(StartupOption.UPGRADE)
-              .numDataNodes(0).build();
+              .build();
       DistributedFileSystem dfs = cluster.getFileSystem();
       // Make sure the paths were renamed as expected
       // Also check that paths are present after a restart, checks that the
@@ -631,14 +627,8 @@ public class TestDFSUpgradeFromImage {
   public void testUpgradeFromRel1BBWImage() throws IOException {
     unpackStorage(HADOOP1_BBW_IMAGE, HADOOP_DFS_DIR_TXT);
     Configuration conf = new Configuration(upgradeConf);
-    conf.set(DFSConfigKeys.DFS_DATANODE_DATA_DIR_KEY, 
-        GenericTestUtils.getTempPath(
-        "dfs" + File.separator + 
-        "data" + File.separator + 
-        "data1"));
     upgradeAndVerify(new MiniDFSCluster.Builder(conf).
-          numDataNodes(1).enableManagedDfsDirsRedundancy(false).
-          manageDataDfsDirs(false), null);
+          enableManagedDfsDirsRedundancy(false), null);
   }
 
   @Test
@@ -654,9 +644,8 @@ public class TestDFSUpgradeFromImage {
      */
     Configuration conf = new HdfsConfiguration();
     conf = UpgradeUtilities.initializeStorageStateConf(1, conf);
-    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).numDataNodes(0)
+    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
         .format(false)
-        .manageDataDfsDirs(false)
         .manageNameDfsDirs(false)
         .startupOption(StartupOption.UPGRADE)
         .build();

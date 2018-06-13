@@ -21,7 +21,6 @@ package org.apache.hadoop.hdfs;
 import static org.apache.hadoop.fs.CommonConfigurationKeysPublic.FS_DEFAULT_NAME_KEY;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_HA_NAMENODES_KEY_PREFIX;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_INTERNAL_NAMESERVICES_KEY;
-import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_NAMENODE_BACKUP_ADDRESS_KEY;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_NAMENODE_HTTPS_PORT_DEFAULT;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_NAMENODE_HTTP_ADDRESS_KEY;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_NAMENODE_HTTP_PORT_DEFAULT;
@@ -101,22 +100,13 @@ public class TestDFSUtil {
    */
   @Test
   public void testLocatedBlocks2Locations() {
-    DatanodeInfo d = DFSTestUtil.getLocalDatanodeInfo();
-    DatanodeInfo[] ds = new DatanodeInfo[1];
-    ds[0] = d;
-
-    // ok
     ExtendedBlock b1 = new ExtendedBlock("bpid", 1, 1, 1);
-    LocatedBlock l1 = new LocatedBlock(b1, ds);
+    LocatedBlock l1 = new LocatedBlock(b1, 0);
     l1.setStartOffset(0);
-    l1.setCorrupt(false);
-
     // corrupt
     ExtendedBlock b2 = new ExtendedBlock("bpid", 2, 1, 1);
-    LocatedBlock l2 = new LocatedBlock(b2, ds);
+    LocatedBlock l2 = new LocatedBlock(b2, 0);
     l2.setStartOffset(0);
-    l2.setCorrupt(true);
-
     List<LocatedBlock> ls = Arrays.asList(l1, l2);
     LocatedBlocks lbs = new LocatedBlocks(10, false, ls, l2, true, null);
 
@@ -124,35 +114,9 @@ public class TestDFSUtil {
 
     assertTrue("expected 2 blocks but got " + bs.length,
                bs.length == 2);
-
-    int corruptCount = 0;
-    for (BlockLocation b: bs) {
-      if (b.isCorrupt()) {
-        corruptCount++;
-      }
-    }
-
-    assertTrue("expected 1 corrupt files but got " + corruptCount,
-        corruptCount == 1);
-
     // test an empty location
     bs = DFSUtilClient.locatedBlocks2Locations(new LocatedBlocks());
     assertEquals(0, bs.length);
-  }
-
-  /**
-   * Test constructing LocatedBlock with null cachedLocs
-   */
-  @Test
-  public void testLocatedBlockConstructorWithNullCachedLocs() {
-    DatanodeInfo d = DFSTestUtil.getLocalDatanodeInfo();
-    DatanodeInfo[] ds = new DatanodeInfo[1];
-    ds[0] = d;
-    
-    ExtendedBlock b1 = new ExtendedBlock("bpid", 1, 1, 1);
-    LocatedBlock l1 = new LocatedBlock(b1, ds, null, null, 0, false, null);
-    final DatanodeInfo[] cachedLocs = l1.getCachedLocations();
-    assertTrue(cachedLocs.length == 0);
   }
 
   private Configuration setupAddress(String key) {
@@ -182,17 +146,6 @@ public class TestDFSUtil {
   public void getNameNodeNameServiceId() {
     Configuration conf = setupAddress(DFS_NAMENODE_RPC_ADDRESS_KEY);
     assertEquals("nn1", DFSUtil.getNamenodeNameServiceId(conf));
-  }
-
-  /**
-   * Test {@link DFSUtil#getBackupNameServiceId(Configuration)} to ensure
-   * nameserviceId for backup node is determined based on matching the address
-   * with local node's address
-   */
-  @Test
-  public void getBackupNameServiceId() {
-    Configuration conf = setupAddress(DFS_NAMENODE_BACKUP_ADDRESS_KEY);
-    assertEquals("nn1", DFSUtil.getBackupNameServiceId(conf));
   }
 
   /**
@@ -431,7 +384,6 @@ public class TestDFSUtil {
   /**
    * Tests for empty configuration, an exception is thrown from
    * {@link DFSUtil#getNNServiceRpcAddresses(Configuration)}
-   * {@link DFSUtil#getBackupNodeAddresses(Configuration)}
    * {@link DFSUtil#getSecondaryNameNodeAddresses(Configuration)}
    */
   @Test
@@ -440,15 +392,6 @@ public class TestDFSUtil {
     try {
       Map<String, Map<String, InetSocketAddress>> map =
           DFSUtil.getNNServiceRpcAddresses(conf);
-      fail("Expected IOException is not thrown, result was: " +
-          DFSUtil.addressMapToString(map));
-    } catch (IOException expected) {
-      /** Expected */
-    }
-
-    try {
-      Map<String, Map<String, InetSocketAddress>> map =
-        DFSUtil.getBackupNodeAddresses(conf);
       fail("Expected IOException is not thrown, result was: " +
           DFSUtil.addressMapToString(map));
     } catch (IOException expected) {

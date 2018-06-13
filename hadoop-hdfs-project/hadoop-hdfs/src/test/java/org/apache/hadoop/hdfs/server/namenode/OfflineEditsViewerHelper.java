@@ -101,7 +101,7 @@ public class OfflineEditsViewerHelper {
     final int numDataNodes = 9;
     cluster =
       new MiniDFSCluster.Builder(config).manageNameDfsDirs(false)
-          .numDataNodes(numDataNodes).build();
+          .build();
     cluster.waitClusterUp();
   }
 

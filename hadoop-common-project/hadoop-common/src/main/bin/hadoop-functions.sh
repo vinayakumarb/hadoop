@@ -857,18 +857,6 @@ function hadoop_basic_init
     export HADOOP_HDFS_HOME="${HADOOP_HOME}"
   fi
 
-  # define HADOOP_YARN_HOME
-  if [[ -z "${HADOOP_YARN_HOME}" ]] &&
-     [[ -d "${HADOOP_HOME}/${YARN_DIR}" ]]; then
-    export HADOOP_YARN_HOME="${HADOOP_HOME}"
-  fi
-
-  # define HADOOP_MAPRED_HOME
-  if [[ -z "${HADOOP_MAPRED_HOME}" ]] &&
-     [[ -d "${HADOOP_HOME}/${MAPRED_DIR}" ]]; then
-    export HADOOP_MAPRED_HOME="${HADOOP_HOME}"
-  fi
-
   if [[ ! -d "${HADOOP_COMMON_HOME}" ]]; then
     hadoop_error "ERROR: Invalid HADOOP_COMMON_HOME"
     exit 1
@@ -876,16 +864,6 @@ function hadoop_basic_init
 
   if [[ ! -d "${HADOOP_HDFS_HOME}" ]]; then
     hadoop_error "ERROR: Invalid HADOOP_HDFS_HOME"
-    exit 1
-  fi
-
-  if [[ ! -d "${HADOOP_YARN_HOME}" ]]; then
-    hadoop_error "ERROR: Invalid HADOOP_YARN_HOME"
-    exit 1
-  fi
-
-  if [[ ! -d "${HADOOP_MAPRED_HOME}" ]]; then
-    hadoop_error "ERROR: Invalid HADOOP_MAPRED_HOME"
     exit 1
   fi
 

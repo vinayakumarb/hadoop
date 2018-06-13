@@ -60,7 +60,7 @@ public class TestSequentialBlockId {
     Configuration conf = new HdfsConfiguration();
     conf.setInt(DFSConfigKeys.DFS_REPLICATION_KEY, 1);
     MiniDFSCluster cluster =
-        new MiniDFSCluster.Builder(conf).numDataNodes(1).build();
+        new MiniDFSCluster.Builder(conf).build();
 
     try {
       cluster.waitActive();
@@ -96,7 +96,7 @@ public class TestSequentialBlockId {
     Configuration conf = new HdfsConfiguration();
     conf.setInt(DFSConfigKeys.DFS_REPLICATION_KEY, 1);
     MiniDFSCluster cluster =
-        new MiniDFSCluster.Builder(conf).numDataNodes(1).build();
+        new MiniDFSCluster.Builder(conf).build();
 
     try {
       cluster.waitActive();

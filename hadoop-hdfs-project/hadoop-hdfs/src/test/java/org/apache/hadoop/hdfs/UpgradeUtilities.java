@@ -28,7 +28,6 @@ import java.io.OutputStream;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Properties;
 import java.util.zip.CRC32;
 
 import org.apache.hadoop.conf.Configuration;
@@ -37,18 +36,13 @@ import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.fs.LocalFileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants.SafeModeAction;
-import org.apache.hadoop.hdfs.protocol.LayoutVersion;
 import org.apache.hadoop.hdfs.server.common.HdfsServerConstants;
 import org.apache.hadoop.hdfs.server.common.HdfsServerConstants.NodeType;
 import org.apache.hadoop.hdfs.server.common.HdfsServerConstants.StartupOption;
 import org.apache.hadoop.hdfs.server.common.Storage;
 import org.apache.hadoop.hdfs.server.common.Storage.StorageDirectory;
 import org.apache.hadoop.hdfs.server.common.StorageInfo;
-import org.apache.hadoop.hdfs.server.datanode.BlockPoolSliceStorage;
-import org.apache.hadoop.hdfs.server.datanode.DataNodeLayoutVersion;
-import org.apache.hadoop.hdfs.server.datanode.DataStorage;
 import org.apache.hadoop.hdfs.server.namenode.NNStorage;
-import org.apache.hadoop.hdfs.server.protocol.DatanodeStorage;
 import org.apache.hadoop.hdfs.server.protocol.NamenodeProtocols;
 
 import com.google.common.base.Preconditions;
@@ -107,20 +101,14 @@ public class UpgradeUtilities {
     Configuration config = new HdfsConfiguration();
     config.set(DFSConfigKeys.DFS_NAMENODE_NAME_DIR_KEY, namenodeStorage.toString());
     config.set(DFSConfigKeys.DFS_NAMENODE_EDITS_DIR_KEY, namenodeStorage.toString());
-    config.set(DFSConfigKeys.DFS_DATANODE_DATA_DIR_KEY, datanodeStorage.toString());
     MiniDFSCluster cluster = null;
     String bpid = null;
     try {
-      // format data-node
-      createEmptyDirs(new String[] {datanodeStorage.toString()});
-      
       // format and start NameNode and start DataNode
       DFSTestUtil.formatNameNode(config);
       cluster =  new MiniDFSCluster.Builder(config)
-                                   .numDataNodes(1)
                                    .startupOption(StartupOption.REGULAR)
                                    .format(false)
-                                   .manageDataDfsDirs(false)
                                    .manageNameDfsDirs(false)
                                    .build();
         
@@ -159,22 +147,6 @@ public class UpgradeUtilities {
     }
     namenodeStorageChecksum = checksumContents(NAME_NODE, 
         new File(namenodeStorage, "current"), false);
-    File dnCurDir = new File(datanodeStorage, "current");
-    datanodeStorageChecksum = checksumContents(DATA_NODE, dnCurDir, false);
-    
-    File bpCurDir = new File(BlockPoolSliceStorage.getBpRoot(bpid, dnCurDir),
-        "current");
-    blockPoolStorageChecksum = checksumContents(DATA_NODE, bpCurDir, false);
-    
-    File bpCurFinalizeDir = new File(BlockPoolSliceStorage.getBpRoot(bpid, dnCurDir),
-        "current/"+DataStorage.STORAGE_DIR_FINALIZED);
-    blockPoolFinalizedStorageChecksum = checksumContents(DATA_NODE,
-        bpCurFinalizeDir, true);
-    
-    File bpCurRbwDir = new File(BlockPoolSliceStorage.getBpRoot(bpid, dnCurDir),
-        "current/"+DataStorage.STORAGE_DIR_RBW);
-    blockPoolRbwStorageChecksum = checksumContents(DATA_NODE, bpCurRbwDir,
-        false);
   }
   
   // Private helper method that writes a file to the given file system.
@@ -188,8 +160,7 @@ public class UpgradeUtilities {
   }
   
   /**
-   * Initialize {@link DFSConfigKeys#DFS_NAMENODE_NAME_DIR_KEY} and 
-   * {@link DFSConfigKeys#DFS_DATANODE_DATA_DIR_KEY} with the specified 
+   * Initialize {@link DFSConfigKeys#DFS_NAMENODE_NAME_DIR_KEY} with the specified
    * number of directory entries. Also initialize dfs.blockreport.intervalMsec.
    */
   public static Configuration initializeStorageStateConf(int numDirs,
@@ -207,8 +178,6 @@ public class UpgradeUtilities {
     }
     conf.set(DFSConfigKeys.DFS_NAMENODE_NAME_DIR_KEY, nameNodeDirs.toString());
     conf.set(DFSConfigKeys.DFS_NAMENODE_EDITS_DIR_KEY, nameNodeDirs.toString());
-    conf.set(DFSConfigKeys.DFS_DATANODE_DATA_DIR_KEY, dataNodeDirs.toString());
-    conf.setInt(DFSConfigKeys.DFS_BLOCKREPORT_INTERVAL_MSEC_KEY, 10000);
     return conf;
   }
   
@@ -355,76 +324,7 @@ public class UpgradeUtilities {
     }
     return retVal;
   }  
-  
-  /**
-   * Simulate the {@link DFSConfigKeys#DFS_DATANODE_DATA_DIR_KEY} of a 
-   * populated DFS filesystem.
-   * This method populates for each parent directory, <code>parent/dirName</code>
-   * with the content of datanode storage directory that comes from a singleton
-   * datanode master (that contains version and block files). If the destination
-   * directory does not exist, it will be created.  If the directory already 
-   * exists, it will first be deleted.
-   * 
-   * @param parents parent directory where {@code dirName} is created
-   * @param dirName directory under which storage directory is created
-   * @return the array of created directories
-   */
-  public static File[] createDataNodeStorageDirs(String[] parents,
-      String dirName) throws Exception {
-    File[] retVal = new File[parents.length];
-    for (int i = 0; i < parents.length; i++) {
-      File newDir = new File(parents[i], dirName);
-      createEmptyDirs(new String[] {newDir.toString()});
-      LocalFileSystem localFS = FileSystem.getLocal(new HdfsConfiguration());
-      localFS.copyToLocalFile(new Path(datanodeStorage.toString(), "current"),
-                              new Path(newDir.toString()),
-                              false);
-      // Change the storage UUID to avoid conflicts when DN starts up.
-      StorageDirectory sd = new StorageDirectory(
-          new File(datanodeStorage.toString()));
-      sd.setStorageUuid(DatanodeStorage.generateUuid());
-      Properties properties = Storage.readPropertiesFile(sd.getVersionFile());
-      if (properties != null) {
-        properties.setProperty("storageID", sd.getStorageUuid());
-        Storage.writeProperties(sd.getVersionFile(), properties);
-      }
 
-      retVal[i] = newDir;
-    }
-    return retVal;
-  }
-  
-  /**
-   * Simulate the {@link DFSConfigKeys#DFS_DATANODE_DATA_DIR_KEY} of a 
-   * populated DFS filesystem.
-   * This method populates for each parent directory, <code>parent/dirName</code>
-   * with the content of block pool storage directory that comes from a singleton
-   * datanode master (that contains version and block files). If the destination
-   * directory does not exist, it will be created.  If the directory already 
-   * exists, it will first be deleted.
-   * 
-   * @param parents parent directory where {@code dirName} is created
-   * @param dirName directory under which storage directory is created
-   * @param bpid block pool id for which the storage directory is created.
-   * @return the array of created directories
-   */
-  public static File[] createBlockPoolStorageDirs(String[] parents,
-      String dirName, String bpid) throws Exception {
-    File[] retVal = new File[parents.length];
-    Path bpCurDir = new Path(MiniDFSCluster.getBPDir(datanodeStorage,
-        bpid, Storage.STORAGE_DIR_CURRENT));
-    for (int i = 0; i < parents.length; i++) {
-      File newDir = new File(parents[i] + "/current/" + bpid, dirName);
-      createEmptyDirs(new String[] {newDir.toString()});
-      LocalFileSystem localFS = FileSystem.getLocal(new HdfsConfiguration());
-      localFS.copyToLocalFile(bpCurDir,
-                              new Path(newDir.toString()),
-                              false);
-      retVal[i] = newDir;
-    }
-    return retVal;
-  }
-  
   /**
    * Create a <code>version</code> file for namenode inside the specified parent
    * directory.  If such a file already exists, it will be overwritten.
@@ -451,65 +351,7 @@ public class UpgradeUtilities {
     }
     return versionFiles;
   }
-  
-  /**
-   * Create a <code>version</code> file for datanode inside the specified parent
-   * directory.  If such a file already exists, it will be overwritten.
-   * The given version string will be written to the file as the layout
-   * version. None of the parameters may be null.
-   *
-   * @param parent directory where namenode VERSION file is stored
-   * @param version StorageInfo to create VERSION file from
-   * @param bpid Block pool Id
-   */
-  public static void createDataNodeVersionFile(File[] parent,
-      StorageInfo version, String bpid, Configuration conf)
-          throws IOException {
-    createDataNodeVersionFile(parent, version, bpid, bpid, conf);
-  }
-  
-  /**
-   * Create a <code>version</code> file for datanode inside the specified parent
-   * directory.  If such a file already exists, it will be overwritten.
-   * The given version string will be written to the file as the layout
-   * version. None of the parameters may be null.
-   *
-   * @param parent directory where namenode VERSION file is stored
-   * @param version StorageInfo to create VERSION file from
-   * @param bpid Block pool Id
-   * @param bpidToWrite Block pool Id to write into the version file
-   */
-  public static void createDataNodeVersionFile(File[] parent,
-      StorageInfo version, String bpid, String bpidToWrite, Configuration conf)
-          throws IOException {
-    DataStorage storage = new DataStorage(version);
-    storage.setDatanodeUuid("FixedDatanodeUuid");
 
-    File[] versionFiles = new File[parent.length];
-    for (int i = 0; i < parent.length; i++) {
-      File versionFile = new File(parent[i], "VERSION");
-      StorageDirectory sd = new StorageDirectory(parent[i].getParentFile());
-      DataStorage.createStorageID(sd, false, conf);
-      storage.writeProperties(versionFile, sd);
-      versionFiles[i] = versionFile;
-      File bpDir = BlockPoolSliceStorage.getBpRoot(bpid, parent[i]);
-      createBlockPoolVersionFile(bpDir, version, bpidToWrite);
-    }
-  }
-  
-  public static void createBlockPoolVersionFile(File bpDir,
-      StorageInfo version, String bpid) throws IOException {
-    // Create block pool version files
-    if (DataNodeLayoutVersion.supports(
-        LayoutVersion.Feature.FEDERATION, version.layoutVersion)) {
-      File bpCurDir = new File(bpDir, Storage.STORAGE_DIR_CURRENT);
-      BlockPoolSliceStorage bpStorage = new BlockPoolSliceStorage(version,
-          bpid);
-      File versionFile = new File(bpCurDir, "VERSION");
-      StorageDirectory sd = new StorageDirectory(bpDir);
-      bpStorage.writeProperties(versionFile, sd);
-    }
-  }
   
   /**
    * Corrupt the specified file.  Some random bytes within the file
@@ -598,20 +440,6 @@ public class UpgradeUtilities {
       return cluster.getNameNodeRpc().versionRequest().getCTime();
     }
     return namenodeStorageFsscTime;
-  }
-
-  /**
-   * Create empty block pool directories
-   * @return array of block pool directories
-   */
-  public static String[] createEmptyBPDirs(String[] baseDirs, String bpid)
-      throws IOException {
-    String[] bpDirs = new String[baseDirs.length];
-    for (int i = 0; i < baseDirs.length; i++) {
-      bpDirs[i] = MiniDFSCluster.getBPDir(new File(baseDirs[i]), bpid);
-    }
-    createEmptyDirs(bpDirs);
-    return bpDirs;
   }
 }
 

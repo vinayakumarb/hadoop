@@ -114,7 +114,7 @@ public class TestAllowFormat {
     NameNode nn;
     // 1. Create a new cluster and format DFS
     config.setBoolean(DFS_NAMENODE_SUPPORT_ALLOW_FORMAT_KEY, true);
-    cluster = new MiniDFSCluster.Builder(config).manageDataDfsDirs(false)
+    cluster = new MiniDFSCluster.Builder(config)
                                                 .manageNameDfsDirs(false)
                                                 .build();
     cluster.waitActive();

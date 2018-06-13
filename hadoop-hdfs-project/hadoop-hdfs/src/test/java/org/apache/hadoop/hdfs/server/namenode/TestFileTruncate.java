@@ -102,7 +102,7 @@ public class TestFileTruncate {
         DFSConfigKeys.DFS_NAMENODE_RECONSTRUCTION_PENDING_TIMEOUT_SEC_KEY, 1);
     cluster = new MiniDFSCluster.Builder(conf)
         .format(true)
-        .numDataNodes(DATANODE_NUM)
+
         .waitSafeMode(true)
         .build();
     fs = cluster.getFileSystem();
@@ -618,7 +618,6 @@ public class TestFileTruncate {
       }
     }
 
-    cluster.shutdownDataNodes();
     NameNodeAdapter.getLeaseManager(cluster.getNamesystem())
         .setLeasePeriod(LOW_SOFTLIMIT, LOW_HARDLIMIT);
 
@@ -650,8 +649,6 @@ public class TestFileTruncate {
     }
     assertThat("lease recovery should have occurred in ~" +
         SLEEP * RECOVERY_ATTEMPTS + " ms.", recoveryTriggered, is(true));
-    cluster.startDataNodes(conf, DATANODE_NUM, true,
-        StartupOption.REGULAR, null);
     cluster.waitActive();
 
     checkBlockRecovery(p);
@@ -1061,22 +1058,10 @@ public class TestFileTruncate {
     cluster.shutdown();
     if(StartupOption.ROLLBACK == o)
       NameNode.doRollback(conf, false);
-    cluster = new MiniDFSCluster.Builder(conf).numDataNodes(DATANODE_NUM)
+    cluster = new MiniDFSCluster.Builder(conf)
         .format(false)
         .startupOption(o==StartupOption.ROLLBACK ? StartupOption.REGULAR : o)
-        .dnStartupOption(o!=StartupOption.ROLLBACK ? StartupOption.REGULAR : o)
         .build();
     fs = cluster.getFileSystem();
-  }
-
-  private void truncateAndRestartDN(Path p, int dn, int newLength)
-      throws IOException {
-    try {
-      boolean isReady = fs.truncate(p, newLength);
-      assertFalse(isReady);
-    } finally {
-      cluster.restartDataNode(dn, false, true);
-      cluster.waitActive();
-    }
   }
 }

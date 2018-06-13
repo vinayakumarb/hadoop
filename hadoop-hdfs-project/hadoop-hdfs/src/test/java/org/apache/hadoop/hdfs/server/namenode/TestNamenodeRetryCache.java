@@ -79,11 +79,6 @@ import org.junit.Test;
 public class TestNamenodeRetryCache {
   private static final byte[] CLIENT_ID = ClientId.getClientId();
   private static MiniDFSCluster cluster;
-  private static ErasureCodingPolicy defaultEcPolicy =
-      SystemErasureCodingPolicies.getByID(
-          SystemErasureCodingPolicies.RS_6_3_POLICY_ID);
-  private static int numDataNodes = defaultEcPolicy.getNumDataUnits() +
-      defaultEcPolicy.getNumParityUnits() + 1;
   private static NamenodeProtocols nnRpc;
   private static final FsPermission perm = FsPermission.getDefault();
   private static DistributedFileSystem filesystem;
@@ -99,7 +94,7 @@ public class TestNamenodeRetryCache {
     conf.setBoolean(DFSConfigKeys.DFS_NAMENODE_ENABLE_RETRY_CACHE_KEY, true);
     conf.setBoolean(DFSConfigKeys.DFS_NAMENODE_ACLS_ENABLED_KEY, true);
     cluster = new MiniDFSCluster.Builder(conf)
-        .numDataNodes(numDataNodes).build();
+        .build();
     cluster.waitActive();
     nnRpc = cluster.getNameNode().getRpcServer();
     filesystem = cluster.getFileSystem();
@@ -326,43 +321,7 @@ public class TestNamenodeRetryCache {
       // expected
     }
   }
-  
-  /**
-   * Make sure a retry call does not hang because of the exception thrown in the
-   * first call.
-   */
-  @Test(timeout = 60000)
-  public void testUpdatePipelineWithFailOver() throws Exception {
-    cluster.shutdown();
-    nnRpc = null;
-    filesystem = null;
-    cluster = new MiniDFSCluster.Builder(conf).nnTopology(
-        MiniDFSNNTopology.simpleHATopology()).numDataNodes(1).build();
-    cluster.waitActive();
-    NamenodeProtocols ns0 = cluster.getNameNodeRpc(0);
-    ExtendedBlock oldBlock = new ExtendedBlock();
-    ExtendedBlock newBlock = new ExtendedBlock();
-    DatanodeID[] newNodes = new DatanodeID[2];
-    String[] newStorages = new String[2];
-    
-    newCall();
-    try {
-      ns0.updatePipeline("testClient", oldBlock, newBlock, newNodes, newStorages);
-      fail("Expect StandbyException from the updatePipeline call");
-    } catch (StandbyException e) {
-      // expected, since in the beginning both nn are in standby state
-      GenericTestUtils.assertExceptionContains(
-          HAServiceState.STANDBY.toString(), e);
-    }
-    
-    cluster.transitionToActive(0);
-    try {
-      ns0.updatePipeline("testClient", oldBlock, newBlock, newNodes, newStorages);
-    } catch (IOException e) {
-      // ignore call should not hang.
-    }
-  }
-  
+
   /**
    * Test for crateSnapshot
    */

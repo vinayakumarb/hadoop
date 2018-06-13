@@ -27,7 +27,6 @@ import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.DFSTestUtil;
 import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
-import org.apache.hadoop.hdfs.MiniDFSCluster.DataNodeProperties;
 import org.apache.hadoop.hdfs.protocol.ClientProtocol;
 import org.apache.hadoop.test.GenericTestUtils;
 import org.apache.log4j.Level;
@@ -66,7 +65,7 @@ public class TestPendingInvalidateBlock {
     conf.setInt(DFSConfigKeys.DFS_NAMENODE_REDUNDANCY_INTERVAL_SECONDS_KEY, 1);
     // disable the RPC timeout for debug
     conf.setLong(CommonConfigurationKeys.IPC_PING_INTERVAL_KEY, 0);
-    cluster = new MiniDFSCluster.Builder(conf).numDataNodes(REPLICATION)
+    cluster = new MiniDFSCluster.Builder(conf)
         .build();
     cluster.waitActive();
     dfs = cluster.getFileSystem();
@@ -137,7 +136,6 @@ public class TestPendingInvalidateBlock {
   public void testPendingDeleteUnknownBlocks() throws Exception {
     final int fileNum = 5; // 5 files
     final Path[] files = new Path[fileNum];
-    final DataNodeProperties[] dnprops = new DataNodeProperties[REPLICATION];
     // create a group of files, each file contains 1 block
     for (int i = 0; i < fileNum; i++) {
       files[i] = new Path("/file" + i);
@@ -162,9 +160,6 @@ public class TestPendingInvalidateBlock {
 
     Assert.assertEquals(0L, cluster.getNamesystem().getPendingDeletionBlocks());
     // restart DataNodes
-    for (int i = 0; i < REPLICATION; i++) {
-      cluster.restartDataNode(dnprops[i]);
-    }
     cluster.waitActive();
 
     Thread.sleep(2000);
@@ -185,8 +180,6 @@ public class TestPendingInvalidateBlock {
       @Override
       public Boolean get() {
         try {
-          cluster.triggerBlockReports();
-
           if (cluster.getNamesystem().getPendingDeletionBlocks()
               == numBlocks) {
             return true;

@@ -86,7 +86,7 @@ public class TestHAStateTransitions {
     Configuration conf = new Configuration();
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
       .nnTopology(MiniDFSNNTopology.simpleHATopology())
-      .numDataNodes(1)
+
       .build();
     try {
       cluster.waitActive();
@@ -145,7 +145,7 @@ public class TestHAStateTransitions {
     conf.setLong(DFSConfigKeys.DFS_NAMENODE_PATH_BASED_CACHE_REFRESH_INTERVAL_MS, 1L);
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
       .nnTopology(MiniDFSNNTopology.simpleHATopology())
-      .numDataNodes(1)
+
       .build();
     LinkedList<Thread> crmThreads = new LinkedList<Thread>();
     try {
@@ -216,7 +216,7 @@ public class TestHAStateTransitions {
     Configuration conf = new Configuration();
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
       .nnTopology(MiniDFSNNTopology.simpleHATopology())
-      .numDataNodes(1)
+
       .build();
     try {
       cluster.waitActive();
@@ -239,7 +239,7 @@ public class TestHAStateTransitions {
     Configuration conf = new Configuration();
     final MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
       .nnTopology(MiniDFSNNTopology.simpleHATopology())
-      .numDataNodes(0)
+
       .build();
     try {
       cluster.waitActive();
@@ -293,7 +293,7 @@ public class TestHAStateTransitions {
     conf.setInt(DFSConfigKeys.DFS_HA_TAILEDITS_PERIOD_KEY, 1);
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
       .nnTopology(MiniDFSNNTopology.simpleHATopology())
-      .numDataNodes(1)
+
       .build();
     FSDataOutputStream stm = null;
     FileSystem fs = HATestUtil.configureFailoverFs(cluster, conf);
@@ -345,7 +345,7 @@ public class TestHAStateTransitions {
     
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
         .nnTopology(MiniDFSNNTopology.simpleHATopology())
-        .numDataNodes(0)
+
         .build();
     try {
       cluster.waitActive();
@@ -379,7 +379,7 @@ public class TestHAStateTransitions {
     Configuration conf = new Configuration();
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
       .nnTopology(MiniDFSNNTopology.simpleHAFederatedTopology(2))
-      .numDataNodes(1)
+
       .build();
     try {
       cluster.waitActive();
@@ -411,7 +411,7 @@ public class TestHAStateTransitions {
     conf.setInt(DFSConfigKeys.DFS_HA_TAILEDITS_PERIOD_KEY, Integer.MAX_VALUE);
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
       .nnTopology(MiniDFSNNTopology.simpleHATopology())
-      .numDataNodes(0)
+
       .build();
     FileSystem fs = HATestUtil.configureFailoverFs(cluster, conf);
     try {
@@ -473,7 +473,7 @@ public class TestHAStateTransitions {
     conf.setInt(DFSConfigKeys.DFS_BLOCK_SIZE_KEY, 1024);
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
         .nnTopology(MiniDFSNNTopology.simpleHATopology())
-        .numDataNodes(1)
+
          .waitSafeMode(false)
         .build();
     try {
@@ -565,7 +565,7 @@ public class TestHAStateTransitions {
   public void testIsAtLeastOneActive() throws Exception {
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(new HdfsConfiguration())
         .nnTopology(MiniDFSNNTopology.simpleHATopology())
-        .numDataNodes(0)
+
         .build();
     try {
       Configuration conf = new HdfsConfiguration();

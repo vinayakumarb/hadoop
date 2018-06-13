@@ -77,7 +77,7 @@ public class TestFetchImage {
 
     cluster = new MiniDFSCluster.Builder(conf)
         .nnTopology(MiniDFSNNTopology.simpleHATopology())
-        .numDataNodes(1)
+
         .build();
     nn0 = cluster.getNameNode(0);
     nn1 = cluster.getNameNode(1);

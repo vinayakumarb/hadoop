@@ -198,7 +198,7 @@ public class TestDeleteRace {
     config.setInt(DFSConfigKeys.DFS_BLOCK_SIZE_KEY, BLOCK_SIZE);
     FSDataOutputStream stm = null;
     try {
-      cluster = new MiniDFSCluster.Builder(config).numDataNodes(3).build();
+      cluster = new MiniDFSCluster.Builder(config).build();
       cluster.waitActive();
 
       final DistributedFileSystem fs = cluster.getFileSystem();

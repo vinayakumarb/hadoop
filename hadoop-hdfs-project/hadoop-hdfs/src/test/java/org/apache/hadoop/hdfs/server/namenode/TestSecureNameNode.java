@@ -51,7 +51,7 @@ public class TestSecureNameNode extends SaslDataTransferTestCase {
     HdfsConfiguration conf = createSecureConfig(
         "authentication,privacy");
     try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(NUM_OF_DATANODES)
+      cluster = new MiniDFSCluster.Builder(conf)
           .build();
       final MiniDFSCluster clusterRef = cluster;
       cluster.waitActive();

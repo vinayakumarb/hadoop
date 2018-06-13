@@ -95,7 +95,7 @@ public class TestNameNodeResourceChecker {
       conf.setLong(DFSConfigKeys.DFS_NAMENODE_RESOURCE_CHECK_INTERVAL_KEY, 1);
       
       cluster = new MiniDFSCluster.Builder(conf)
-          .numDataNodes(1).build();
+          .build();
 
       MockNameNodeResourceChecker mockResourceChecker =
           new MockNameNodeResourceChecker(conf);

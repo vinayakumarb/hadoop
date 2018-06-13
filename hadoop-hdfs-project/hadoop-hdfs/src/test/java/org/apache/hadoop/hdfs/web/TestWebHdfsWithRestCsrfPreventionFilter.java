@@ -93,12 +93,10 @@ public class TestWebHdfsWithRestCsrfPreventionFilter {
     // Set configuration to treat anything as a browser, so that CSRF prevention
     // checks actually get enforced.
     nnConf.set(DFS_WEBHDFS_REST_CSRF_BROWSER_USERAGENTS_REGEX_KEY, ".*");
-    cluster = new MiniDFSCluster.Builder(nnConf).numDataNodes(0).build();
+    cluster = new MiniDFSCluster.Builder(nnConf).build();
 
     Configuration dnConf = new Configuration(nnConf);
     dnConf.setBoolean(DFS_WEBHDFS_REST_CSRF_ENABLED_KEY, dnRestCsrf);
-    cluster.startDataNodes(dnConf, 1, true, null, null, null, null, false);
-
     cluster.waitActive();
     fs = cluster.getFileSystem();
 

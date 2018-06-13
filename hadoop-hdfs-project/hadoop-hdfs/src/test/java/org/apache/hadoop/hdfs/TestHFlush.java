@@ -32,7 +32,6 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.client.HdfsClientConfigKeys;
 import org.apache.hadoop.hdfs.client.HdfsDataOutputStream.SyncFlag;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
-import org.apache.hadoop.hdfs.server.datanode.DataNode;
 import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.test.GenericTestUtils;
 import org.apache.log4j.Level;
@@ -42,7 +41,6 @@ import org.junit.Test;
  * newly introduced {@link FSDataOutputStream#hflush()} method */
 public class TestHFlush {
   {
-    GenericTestUtils.setLogLevel(DataNode.LOG, Level.ALL);
     GenericTestUtils.setLogLevel(DFSClient.LOG, Level.ALL);
   }
   
@@ -104,8 +102,7 @@ public class TestHFlush {
   @Test
   public void hSyncUpdateLength_00() throws IOException {
     Configuration conf = new HdfsConfiguration();
-    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).numDataNodes(
-        2).build();
+    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).build();
     DistributedFileSystem fileSystem =
         cluster.getFileSystem();
     
@@ -133,7 +130,7 @@ public class TestHFlush {
     final int preferredBlockSize = 1024;
     Configuration conf = new HdfsConfiguration();
     conf.setInt(DFSConfigKeys.DFS_BLOCK_SIZE_KEY, preferredBlockSize);
-    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).numDataNodes(2)
+    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
         .build();
     DistributedFileSystem fileSystem = cluster.getFileSystem();
     FSDataOutputStream stm = null;
@@ -306,7 +303,7 @@ public class TestHFlush {
 
     fileContent = AppendTestUtil.initBuffer(AppendTestUtil.FILE_SIZE);
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
-                                               .numDataNodes(replicas).build();
+                                               .build();
     // Make sure we work with DFS in order to utilize all its functionality
     DistributedFileSystem fileSystem = cluster.getFileSystem();
 
@@ -393,7 +390,7 @@ public class TestHFlush {
     final Path p = new Path("/pipelineHeartbeat/foo");
     System.out.println("p=" + p);
     
-    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).numDataNodes(DATANODE_NUM).build();
+    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).build();
     try {
       DistributedFileSystem fs = cluster.getFileSystem();
 
@@ -443,7 +440,7 @@ public class TestHFlush {
 
     System.out.println("p=" + p);
 
-    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).numDataNodes(DATANODE_NUM).build();
+    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).build();
     try {
       DistributedFileSystem fs = cluster.getFileSystem();
 

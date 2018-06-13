@@ -62,7 +62,7 @@ public class TestSetQuotaWithSnapshot {
   public void setUp() throws Exception {
     conf = new Configuration();
     conf.setLong(DFSConfigKeys.DFS_BLOCK_SIZE_KEY, BLOCKSIZE);
-    cluster = new MiniDFSCluster.Builder(conf).numDataNodes(REPLICATION)
+    cluster = new MiniDFSCluster.Builder(conf)
         .format(true).build();
     cluster.waitActive();
 

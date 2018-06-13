@@ -57,7 +57,7 @@ public class TestHDFSFileContextMainOperations extends
   @BeforeClass
   public static void clusterSetupAtBegining() throws IOException,
       LoginException, URISyntaxException {
-    cluster = new MiniDFSCluster.Builder(CONF).numDataNodes(2).build();
+    cluster = new MiniDFSCluster.Builder(CONF).build();
     cluster.waitClusterUp();
     URI uri0 = cluster.getURI(0);
     fc = FileContext.getFileContext(uri0, CONF);
@@ -71,7 +71,7 @@ public class TestHDFSFileContextMainOperations extends
       cluster.shutdown();
       cluster = null;
     }
-    cluster = new MiniDFSCluster.Builder(CONF).numDataNodes(1)
+    cluster = new MiniDFSCluster.Builder(CONF)
                                               .format(false).build();
     cluster.waitClusterUp();
     fc = FileContext.getFileContext(cluster.getURI(0), CONF);

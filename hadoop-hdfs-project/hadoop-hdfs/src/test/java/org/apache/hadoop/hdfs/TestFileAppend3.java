@@ -20,46 +20,36 @@ package org.apache.hadoop.hdfs;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 import java.util.EnumSet;
 import java.util.List;
 
-import org.apache.hadoop.fs.CreateFlag;
-import org.apache.hadoop.hdfs.server.datanode.FsDatasetTestUtils.MaterializedReplica;
-import org.apache.hadoop.test.GenericTestUtils;
-import org.mockito.invocation.InvocationOnMock;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.when;
-import org.mockito.stubbing.Answer;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.CommonConfigurationKeys;
+import org.apache.hadoop.fs.CreateFlag;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hdfs.protocol.Block;
-import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
 import org.apache.hadoop.hdfs.protocol.HdfsFileStatus;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
-import org.apache.hadoop.hdfs.server.datanode.DataNode;
-import org.apache.hadoop.hdfs.server.datanode.DataNodeTestUtils;
-import org.apache.hadoop.hdfs.server.protocol.InterDatanodeProtocol;
+import org.apache.hadoop.test.GenericTestUtils;
 import org.apache.log4j.Level;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
 
 /** This class implements some of tests posted in HADOOP-2658. */
 public class TestFileAppend3  {
   {
     DFSTestUtil.setNameNodeLogLevel(Level.ALL);
-    GenericTestUtils.setLogLevel(DataNode.LOG, Level.ALL);
     GenericTestUtils.setLogLevel(DFSClient.LOG, Level.ALL);
-    GenericTestUtils.setLogLevel(InterDatanodeProtocol.LOG, org.slf4j
-        .event.Level.TRACE);
   }
 
   static final long BLOCK_SIZE = 64 * 1024;
@@ -77,7 +67,7 @@ public class TestFileAppend3  {
     conf = new HdfsConfiguration();
     conf.setInt(DFSConfigKeys.DFS_BYTES_PER_CHECKSUM_KEY, 512);
     buffersize = conf.getInt(CommonConfigurationKeys.IO_FILE_BUFFER_SIZE_KEY, 4096);
-    cluster = new MiniDFSCluster.Builder(conf).numDataNodes(DATANODE_NUM).build();
+    cluster = new MiniDFSCluster.Builder(conf).build();
     fs = cluster.getFileSystem();
   }
    
@@ -286,60 +276,6 @@ public class TestFileAppend3  {
   }
 
   /**
-   * TC7: Corrupted replicas are present.
-   * @throws IOException an exception might be thrown
-   */
-  private void testTC7(boolean appendToNewBlock) throws Exception {
-    final short repl = 2;
-    final Path p = new Path("/TC7/foo" + (appendToNewBlock ? "0" : "1"));
-    System.out.println("p=" + p);
-    
-    //a. Create file with replication factor of 2. Write half block of data. Close file.
-    final int len1 = (int)(BLOCK_SIZE/2); 
-    {
-      FSDataOutputStream out = fs.create(p, false, buffersize, repl, BLOCK_SIZE);
-      AppendTestUtil.write(out, 0, len1);
-      out.close();
-    }
-    DFSTestUtil.waitReplication(fs, p, repl);
-
-    //b. Log into one datanode that has one replica of this block.
-    //   Find the block file on this datanode and truncate it to zero size.
-    final LocatedBlocks locatedblocks = fs.dfs.getNamenode().getBlockLocations(p.toString(), 0L, len1);
-    assertEquals(1, locatedblocks.locatedBlockCount());
-    final LocatedBlock lb = locatedblocks.get(0);
-    final ExtendedBlock blk = lb.getBlock();
-    assertEquals(len1, lb.getBlockSize());
-
-    DatanodeInfo[] datanodeinfos = lb.getLocations();
-    assertEquals(repl, datanodeinfos.length);
-    final DataNode dn = cluster.getDataNode(datanodeinfos[0].getIpcPort());
-    cluster.getMaterializedReplica(dn, blk).truncateData(0);
-
-    //c. Open file in "append mode".  Append a new block worth of data. Close file.
-    final int len2 = (int)BLOCK_SIZE; 
-    {
-      FSDataOutputStream out = appendToNewBlock ?
-          fs.append(p, EnumSet.of(CreateFlag.APPEND, CreateFlag.NEW_BLOCK), 4096, null) : fs.append(p);
-      AppendTestUtil.write(out, len1, len2);
-      out.close();
-    }
-
-    //d. Reopen file and read two blocks worth of data.
-    AppendTestUtil.check(fs, p, len1 + len2);
-  }
-
-  @Test
-  public void testTC7() throws Exception {
-    testTC7(false);
-  }
-
-  @Test
-  public void testTC7ForAppend2() throws Exception {
-    testTC7(true);
-  }
-
-  /**
    * TC11: Racing rename
    */
   private void testTC11(boolean appendToNewBlock) throws Exception {
@@ -379,12 +315,6 @@ public class TestFileAppend3  {
       final long size = lb.getBlockSize();
       if (i < numblock - 1) {
         assertEquals(BLOCK_SIZE, size);
-      }
-      for(DatanodeInfo datanodeinfo : lb.getLocations()) {
-        final DataNode dn = cluster.getDataNode(datanodeinfo.getIpcPort());
-        final Block metainfo = DataNodeTestUtils.getFSDataset(dn).getStoredBlock(
-            blk.getBlockPoolId(), blk.getBlockId());
-        assertEquals(size, metainfo.getNumBytes());
       }
     }
   }

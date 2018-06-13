@@ -83,7 +83,7 @@ public class TestViewFileSystemLinkMergeSlash extends ViewFileSystemBaseTest {
     cluster = new MiniDFSCluster.Builder(CONF)
         .nnTopology(MiniDFSNNTopology.simpleFederatedTopology(
             NAME_SPACES_COUNT))
-        .numDataNodes(DATA_NODES_COUNT)
+
         .build();
     cluster.waitClusterUp();
 

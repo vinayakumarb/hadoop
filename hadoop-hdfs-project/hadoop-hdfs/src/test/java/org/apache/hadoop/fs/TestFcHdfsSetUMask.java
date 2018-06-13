@@ -87,7 +87,7 @@ public class TestFcHdfsSetUMask {
     Configuration conf = new HdfsConfiguration();
     // set permissions very restrictive
     conf.set(CommonConfigurationKeys.FS_PERMISSIONS_UMASK_KEY,  "077");
-    cluster = new MiniDFSCluster.Builder(conf).numDataNodes(2).build();
+    cluster = new MiniDFSCluster.Builder(conf).build();
     fc = FileContext.getFileContext(cluster.getURI(0), conf);
     defaultWorkingDirectory = fc.makeQualified( new Path("/user/" + 
         UserGroupInformation.getCurrentUser().getShortUserName()));

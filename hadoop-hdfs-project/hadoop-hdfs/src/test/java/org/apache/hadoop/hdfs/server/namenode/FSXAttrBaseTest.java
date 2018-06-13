@@ -1372,7 +1372,7 @@ public class FSXAttrBaseTest {
    * @throws Exception if any step fails
    */
   protected static void initCluster(boolean format) throws Exception {
-    dfsCluster = new MiniDFSCluster.Builder(conf).numDataNodes(1).format(format)
+    dfsCluster = new MiniDFSCluster.Builder(conf).format(format)
       .build();
     dfsCluster.waitActive();
   }

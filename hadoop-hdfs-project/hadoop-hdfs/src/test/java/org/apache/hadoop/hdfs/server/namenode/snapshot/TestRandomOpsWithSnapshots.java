@@ -181,7 +181,7 @@ public class TestRandomOpsWithSnapshots {
   @Before
   public void setUp() throws Exception {
     CONFIG.setLong(DFSConfigKeys.DFS_BLOCK_SIZE_KEY, BLOCKSIZE);
-    cluster = new MiniDFSCluster.Builder(CONFIG).numDataNodes(REPL).
+    cluster = new MiniDFSCluster.Builder(CONFIG).
         format(true).build();
     cluster.waitActive();
 
@@ -598,7 +598,6 @@ public class TestRandomOpsWithSnapshots {
     }, 10, 100000);
 
     assertTrue("NameNode is up", cluster.getNameNode().isActiveState());
-    assertTrue("DataNode is up and running", cluster.isDataNodeUp());
     assertTrue("Cluster is up and running", cluster.isClusterUp());
     LOG.info("checkClusterHealth, cluster is healthy.");
 

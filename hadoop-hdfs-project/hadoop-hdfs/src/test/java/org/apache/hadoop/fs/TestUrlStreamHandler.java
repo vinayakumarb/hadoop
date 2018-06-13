@@ -70,7 +70,7 @@ public class TestUrlStreamHandler {
   public void testDfsUrls() throws IOException {
 
     Configuration conf = new HdfsConfiguration();
-    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).numDataNodes(2).build();
+    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).build();
     FileSystem fs = cluster.getFileSystem();
     Path filePath = new Path("/thefile");
 

@@ -96,7 +96,7 @@ public class TestStandbyCheckpoints {
 
         cluster = new MiniDFSCluster.Builder(conf)
             .nnTopology(topology)
-            .numDataNodes(1)
+
             .build();
         cluster.waitActive();
 

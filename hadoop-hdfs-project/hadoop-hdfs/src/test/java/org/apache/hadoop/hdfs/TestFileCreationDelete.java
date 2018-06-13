@@ -50,7 +50,7 @@ public class TestFileCreationDelete {
       // create file1.
       Path dir = new Path("/foo");
       Path file1 = new Path(dir, "file1");
-      FSDataOutputStream stm1 = TestFileCreation.createFile(fs, file1, 1);
+      FSDataOutputStream stm1 = TestFileCreation.createFile(fs, file1);
       System.out.println("testFileCreationDeleteParent: "
           + "Created file " + file1);
       TestFileCreation.writeFile(stm1, 1000);
@@ -58,7 +58,7 @@ public class TestFileCreationDelete {
 
       // create file2.
       Path file2 = new Path("/file2");
-      FSDataOutputStream stm2 = TestFileCreation.createFile(fs, file2, 1);
+      FSDataOutputStream stm2 = TestFileCreation.createFile(fs, file2);
       System.out.println("testFileCreationDeleteParent: "
           + "Created file " + file2);
       TestFileCreation.writeFile(stm2, 1000);

@@ -122,7 +122,7 @@ public class TestAuditLogs {
     conf.setBoolean(DFSConfigKeys.DFS_NAMENODE_EDITS_ASYNC_LOGGING, useAsyncEdits);
     util = new DFSTestUtil.Builder().setName("TestAuditAllowed").
         setNumFiles(20).build();
-    cluster = new MiniDFSCluster.Builder(conf).numDataNodes(4).build();
+    cluster = new MiniDFSCluster.Builder(conf).build();
     fs = cluster.getFileSystem();
     util.createFiles(fs, fileName);
 
@@ -134,7 +134,7 @@ public class TestAuditLogs {
     assertEquals(useAsyncLog, appenders.get(0) instanceof AsyncAppender);
     
     fnames = util.getFileNames(fileName);
-    util.waitReplication(fs, fileName, (short)3);
+    util.waitReplication(fs, new Path(fileName), (short)3);
     userGroupInfo = UserGroupInformation.createUserForTesting(username, groups);
  }
 

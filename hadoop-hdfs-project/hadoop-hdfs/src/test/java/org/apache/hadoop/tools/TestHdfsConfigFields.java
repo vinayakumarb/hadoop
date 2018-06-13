@@ -60,13 +60,6 @@ public class TestHdfsConfigFields extends TestConfigurationFieldsBase {
     // Remove support property
     configurationPropsToSkipCompare
         .add(DFSConfigKeys.DFS_NAMENODE_MIN_SUPPORTED_DATANODE_VERSION_KEY);
-    configurationPropsToSkipCompare
-        .add(DFSConfigKeys.DFS_DATANODE_MIN_SUPPORTED_NAMENODE_VERSION_KEY);
-
-    // Purposely hidden, based on comments in DFSConfigKeys
-    configurationPropsToSkipCompare
-        .add(DFSConfigKeys.DFS_DATANODE_XCEIVER_STOP_TIMEOUT_MILLIS_KEY);
-
     // Fully deprecated properties?
     configurationPropsToSkipCompare
         .add("dfs.corruptfilesreturned.max");
@@ -90,17 +83,9 @@ public class TestHdfsConfigFields extends TestConfigurationFieldsBase {
     // Example (not real) property in hdfs-default.xml
     configurationPropsToSkipCompare.add("dfs.ha.namenodes");
 
-    // Property used for internal testing only
-    configurationPropsToSkipCompare
-        .add(DFSConfigKeys.DFS_DATANODE_DUPLICATE_REPLICA_DELETION);
-
     // Property not intended for users
     configurationPropsToSkipCompare
-        .add(DFSConfigKeys.DFS_DATANODE_STARTUP_KEY);
-    configurationPropsToSkipCompare
         .add(DFSConfigKeys.DFS_NAMENODE_STARTUP_KEY);
-    configurationPropsToSkipCompare.add(DFSConfigKeys
-        .DFS_DATANODE_ENABLE_FILEIO_FAULT_INJECTION_KEY);
 
     // Allocate
     xmlPropsToSkipCompare = new HashSet<String>();

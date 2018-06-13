@@ -48,9 +48,7 @@ import org.apache.hadoop.fs.permission.AclEntry;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hdfs.client.HdfsClientConfigKeys;
 import org.apache.hadoop.hdfs.protocol.Block;
-import org.apache.hadoop.hdfs.protocol.BlockListAsLongs;
 import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
-import org.apache.hadoop.hdfs.server.datanode.FsDatasetTestUtils.MaterializedReplica;
 import org.apache.hadoop.hdfs.server.namenode.FSDirectory;
 import org.apache.hadoop.hdfs.server.protocol.DatanodeStorage;
 import org.apache.hadoop.hdfs.tools.DFSAdmin;
@@ -118,7 +116,7 @@ public class TestDFSShell {
     conf.setBoolean(DFSConfigKeys.DFS_NAMENODE_ACLS_ENABLED_KEY, true);
     conf.setLong(DFSConfigKeys.DFS_NAMENODE_ACCESSTIME_PRECISION_KEY, 1000);
 
-    miniCluster = new MiniDFSCluster.Builder(conf).numDataNodes(2).build();
+    miniCluster = new MiniDFSCluster.Builder(conf).build();
     miniCluster.waitActive();
     dfs = miniCluster.getFileSystem();
   }
@@ -776,7 +774,6 @@ public class TestDFSShell {
     try {
       cluster = new MiniDFSCluster.Builder(conf)
           .format(true)
-          .numDataNodes(2)
           .nameNodePort(ServerSocketUtil.waitForPort(
               HdfsClientConfigKeys.DFS_NAMENODE_RPC_PORT_DEFAULT, 60))
           .waitSafeMode(true)
@@ -810,9 +807,9 @@ public class TestDFSShell {
     File bak = new File(PathUtils.getTestDir(getClass()), "testURIPaths");
     bak.mkdirs();
     try{
-      srcCluster = new MiniDFSCluster.Builder(srcConf).numDataNodes(2).build();
+      srcCluster = new MiniDFSCluster.Builder(srcConf).build();
       dstConf.set(MiniDFSCluster.HDFS_MINIDFS_BASEDIR, bak.getAbsolutePath());
-      dstCluster = new MiniDFSCluster.Builder(dstConf).numDataNodes(2).build();
+      dstCluster = new MiniDFSCluster.Builder(dstConf).build();
       FileSystem srcFs = srcCluster.getFileSystem();
       FileSystem dstFs = dstCluster.getFileSystem();
       FsShell shell = new FsShell();
@@ -1857,34 +1854,6 @@ public class TestDFSShell {
     }
   }
 
-  private static List<MaterializedReplica> getMaterializedReplicas(
-      MiniDFSCluster cluster) throws IOException {
-    List<MaterializedReplica> replicas = new ArrayList<>();
-    String poolId = cluster.getNamesystem().getBlockPoolId();
-    List<Map<DatanodeStorage, BlockListAsLongs>> blocks =
-        cluster.getAllBlockReports(poolId);
-    for(int i = 0; i < blocks.size(); i++) {
-      Map<DatanodeStorage, BlockListAsLongs> map = blocks.get(i);
-      for(Map.Entry<DatanodeStorage, BlockListAsLongs> e : map.entrySet()) {
-        for(Block b : e.getValue()) {
-          replicas.add(cluster.getMaterializedReplica(i,
-              new ExtendedBlock(poolId, b)));
-        }
-      }
-    }
-    return replicas;
-  }
-
-  private static void corrupt(
-      List<MaterializedReplica> replicas, String content) throws IOException {
-    StringBuilder sb = new StringBuilder(content);
-    char c = content.charAt(0);
-    sb.setCharAt(0, ++c);
-    for(MaterializedReplica replica : replicas) {
-      replica.corruptData(sb.toString().getBytes("UTF8"));
-    }
-  }
-
   static interface TestGetRunner {
     String run(int exitcode, String... options) throws IOException;
   }
@@ -1966,7 +1935,7 @@ public class TestDFSShell {
     DistributedFileSystem dfs = null;
 
     try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(2).format(true)
+      cluster = new MiniDFSCluster.Builder(conf).format(true)
         .build();
       dfs = cluster.getFileSystem();
 
@@ -1976,9 +1945,6 @@ public class TestDFSShell {
 
       assertEquals(localfcontent, runner.run(0));
       assertEquals(localfcontent, runner.run(0, "-ignoreCrc"));
-
-      // find block files to modify later
-      List<MaterializedReplica> replicas = getMaterializedReplicas(cluster);
 
       // Shut down miniCluster and then corrupt the block files by overwriting a
       // portion with junk data.  We must shut down the miniCluster so that threads
@@ -1990,12 +1956,8 @@ public class TestDFSShell {
       // DataXceiver threads exit, preventing this problem.
       dfs.close();
       cluster.shutdown();
-
-      show("replicas=" + replicas);
-      corrupt(replicas, localfcontent);
-
       // Start the miniCluster again, but do not reformat, so prior files remain.
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(2).format(false)
+      cluster = new MiniDFSCluster.Builder(conf).format(false)
         .build();
       dfs = cluster.getFileSystem();
 
@@ -2794,7 +2756,7 @@ public class TestDFSShell {
     conf.setInt(DFSConfigKeys.DFS_NAMENODE_REPLICATION_MIN_KEY, 2);
 
     MiniDFSCluster.Builder builder = new MiniDFSCluster.Builder(conf);
-    MiniDFSCluster cluster = builder.numDataNodes(2).format(true).build();
+    MiniDFSCluster cluster = builder.format(true).build();
     FsShell shell = new FsShell(conf);
 
     cluster.waitActive();
@@ -2891,7 +2853,7 @@ public class TestDFSShell {
     }
 
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(serverConf)
-      .numDataNodes(1).format(true).build();
+      .format(true).build();
     Configuration clientConf = new Configuration(serverConf);
 
     // Create a client, optionally with trash enabled
@@ -2954,7 +2916,7 @@ public class TestDFSShell {
     createLocalFileWithRandomData(inputFileLength, file2);
 
     Configuration conf = new HdfsConfiguration();
-    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).numDataNodes(1).build();
+    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).build();
     cluster.waitActive();
 
     try {
@@ -3454,7 +3416,7 @@ public class TestDFSShell {
   public void testListReserved() throws IOException {
     Configuration conf = new HdfsConfiguration();
     MiniDFSCluster cluster =
-        new MiniDFSCluster.Builder(conf).numDataNodes(2).build();
+        new MiniDFSCluster.Builder(conf).build();
     FileSystem fs = cluster.getFileSystem();
     FsShell shell = new FsShell();
     shell.setConf(conf);

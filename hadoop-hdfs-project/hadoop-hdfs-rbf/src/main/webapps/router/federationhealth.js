@@ -21,7 +21,6 @@
   dust.loadSource(dust.compile($('#tmpl-federationhealth').html(), 'federationhealth'));
   dust.loadSource(dust.compile($('#tmpl-namenode').html(), 'namenode-info'));
   dust.loadSource(dust.compile($('#tmpl-router').html(), 'router-info'));
-  dust.loadSource(dust.compile($('#tmpl-datanode').html(), 'datanode-info'));
   dust.loadSource(dust.compile($('#tmpl-mounttable').html(), 'mounttable'));
 
   $.fn.dataTable.ext.order['ng-value'] = function (settings, col)
@@ -64,7 +63,6 @@
 
     // Workarounds for the fact that JMXJsonServlet returns non-standard JSON strings
     function workaround(nn) {
-      nn.NodeUsage = JSON.parse(nn.NodeUsage);
       return nn;
     }
 
@@ -223,92 +221,6 @@
       })).error(ajax_error_handler);
   }
 
-  // TODO Copied directly from dfshealth.js; is there a way to import this function?
-  function load_datanode_info() {
-
-    var HELPERS = {
-      'helper_relative_time' : function (chunk, ctx, bodies, params) {
-        var value = dust.helpers.tap(params.value, chunk, ctx);
-        return chunk.write(moment().subtract(Number(value), 'seconds').format('YYYY-MM-DD HH:mm:ss'));
-      },
-      'helper_usage_bar' : function (chunk, ctx, bodies, params) {
-        var value = dust.helpers.tap(params.value, chunk, ctx);
-        var v = Number(value);
-        var r = null;
-        if (v < 70) {
-          r = 'progress-bar-success';
-        } else if (v < 85) {
-          r = 'progress-bar-warning';
-        } else {
-          r = "progress-bar-danger";
-        }
-        return chunk.write(r);
-      },
-    };
-
-    function workaround(r) {
-      function node_map_to_array(nodes) {
-        var res = [];
-        for (var n in nodes) {
-          var p = nodes[n];
-          p.name = n;
-          res.push(p);
-        }
-        return res;
-      }
-
-      function augment_live_nodes(nodes) {
-        for (var i = 0, e = nodes.length; i < e; ++i) {
-          var n = nodes[i];
-          n.usedPercentage = Math.round((n.used + n.nonDfsUsedSpace) * 1.0 / n.capacity * 100);
-          if (n.adminState === "In Service") {
-            n.state = "alive";
-          } else if (nodes[i].adminState === "Decommission In Progress") {
-            n.state = "decommissioning";
-          } else if (nodes[i].adminState === "Decommissioned") {
-            n.state = "decommissioned";
-          }
-        }
-      }
-
-      function augment_dead_nodes(nodes) {
-        for (var i = 0, e = nodes.length; i < e; ++i) {
-          if (nodes[i].decommissioned) {
-            nodes[i].state = "down-decommissioned";
-          } else {
-            nodes[i].state = "down";
-          }
-        }
-      }
-
-      r.LiveNodes = node_map_to_array(JSON.parse(r.LiveNodes));
-      augment_live_nodes(r.LiveNodes);
-      r.DeadNodes = node_map_to_array(JSON.parse(r.DeadNodes));
-      augment_dead_nodes(r.DeadNodes);
-      r.DecomNodes = node_map_to_array(JSON.parse(r.DecomNodes));
-      return r;
-    }
-
-    $.get(
-      '/jmx?qry=Hadoop:service=NameNode,name=NameNodeInfo',
-      guard_with_startup_progress(function (resp) {
-        var data = workaround(resp.beans[0]);
-        var base = dust.makeBase(HELPERS);
-        dust.render('datanode-info', base.push(data), function(err, out) {
-          $('#tab-datanode').html(out);
-          $('#table-datanodes').dataTable( {
-            'lengthMenu': [ [25, 50, 100, -1], [25, 50, 100, "All"] ],
-            'columns': [
-              { 'orderDataType': 'ng-value', 'searchable': true },
-              { 'orderDataType': 'ng-value', 'type': 'numeric' },
-              { 'orderDataType': 'ng-value', 'type': 'numeric' },
-              { 'orderDataType': 'ng-value', 'type': 'numeric'}
-            ]});
-          $('#ui-tabs a[href="#tab-datanode"]').tab('show');
-        });
-      })).error(ajax_error_handler);
-  }
-
   function load_mount_table() {
     var HELPERS = {}
 
@@ -378,9 +290,6 @@
         break;
       case "#tab-router":
         load_router_info();
-        break;
-      case "#tab-datanode":
-        load_datanode_info();
         break;
       case "#tab-mounttable":
         load_mount_table();

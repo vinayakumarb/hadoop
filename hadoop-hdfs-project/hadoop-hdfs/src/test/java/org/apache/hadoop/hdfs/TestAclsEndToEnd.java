@@ -198,7 +198,7 @@ public class TestAclsEndToEnd {
 
     MiniDFSCluster.Builder clusterBuilder = new MiniDFSCluster.Builder(conf);
 
-    cluster = clusterBuilder.numDataNodes(1).format(resetDfs).build();
+    cluster = clusterBuilder.format(resetDfs).build();
     fs = cluster.getFileSystem();
   }
 

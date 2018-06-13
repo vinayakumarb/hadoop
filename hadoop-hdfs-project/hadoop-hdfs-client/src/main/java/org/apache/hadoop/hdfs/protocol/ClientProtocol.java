@@ -1163,20 +1163,6 @@ public interface ClientProtocol {
       String clientName) throws IOException;
 
   /**
-   * Update a pipeline for a block under construction.
-   *
-   * @param clientName the name of the client
-   * @param oldBlock the old block
-   * @param newBlock the new block containing new generation stamp and length
-   * @param newNodes datanodes in the pipeline
-   * @throws IOException if any error occurs
-   */
-  @AtMostOnce
-  void updatePipeline(String clientName, ExtendedBlock oldBlock,
-      ExtendedBlock newBlock, DatanodeID[] newNodes, String[] newStorageIDs)
-      throws IOException;
-
-  /**
    * Get a valid Delegation Token.
    *
    * @param renewer the designated renewer for the token

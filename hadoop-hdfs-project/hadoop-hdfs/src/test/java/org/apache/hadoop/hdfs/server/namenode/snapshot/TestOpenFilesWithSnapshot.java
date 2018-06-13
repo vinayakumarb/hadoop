@@ -67,7 +67,7 @@ public class TestOpenFilesWithSnapshot {
     conf.setBoolean(
         DFSConfigKeys.DFS_NAMENODE_SNAPSHOT_CAPTURE_OPENFILES, true);
     cluster =
-        new MiniDFSCluster.Builder(conf).numDataNodes(REPLICATION).build();
+        new MiniDFSCluster.Builder(conf).build();
     conf.set("dfs.blocksize", "1048576");
     fs = cluster.getFileSystem();
   }
@@ -192,7 +192,6 @@ public class TestOpenFilesWithSnapshot {
     fs.createSnapshot(path, "s2");
     fs.delete(new Path("/test/test"), true);
     fs.deleteSnapshot(path, "s2");
-    cluster.triggerBlockReports();
     if (saveNamespace) {
       NameNode nameNode = cluster.getNameNode();
       NameNodeAdapter.enterSafeMode(nameNode, false);
@@ -1003,7 +1002,6 @@ public class TestOpenFilesWithSnapshot {
   }
 
   private void restartNameNode() throws Exception {
-    cluster.triggerBlockReports();
     NameNode nameNode = cluster.getNameNode();
     NameNodeAdapter.enterSafeMode(nameNode, false);
     NameNodeAdapter.saveNamespace(nameNode);

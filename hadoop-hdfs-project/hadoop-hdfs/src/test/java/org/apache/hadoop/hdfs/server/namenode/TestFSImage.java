@@ -62,9 +62,6 @@ public class TestFSImage {
 
   private static final String HADOOP_2_7_ZER0_BLOCK_SIZE_TGZ =
       "image-with-zero-block-size.tar.gz";
-  private static final ErasureCodingPolicy testECPolicy =
-      SystemErasureCodingPolicies.getByID(
-          SystemErasureCodingPolicies.RS_10_4_POLICY_ID);
 
   @Test
   public void testPersist() throws IOException {
@@ -156,7 +153,7 @@ public class TestFSImage {
     Configuration conf = new HdfsConfiguration();
     try {
       cluster = new MiniDFSCluster.Builder(conf).
-          numDataNodes(1).format(true).build();
+          format(true).build();
       conf.set(DFSConfigKeys.DFS_NAMENODE_SECONDARY_HTTP_ADDRESS_KEY,
           "0.0.0.0:0");
       secondary = new SecondaryNameNode(conf);
@@ -194,7 +191,7 @@ public class TestFSImage {
     Configuration conf = new Configuration();
     MiniDFSCluster cluster = null;
     try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(0).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       DistributedFileSystem fs = cluster.getFileSystem();
       fs.setSafeMode(SafeModeAction.SAFEMODE_ENTER);
       fs.saveNamespace();
@@ -220,7 +217,7 @@ public class TestFSImage {
     Configuration conf = new Configuration();
     MiniDFSCluster cluster = null;
     try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(1).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       cluster.waitActive();
       DistributedFileSystem hdfs = cluster.getFileSystem();
       String userDir = hdfs.getHomeDirectory().toUri().getPath().toString();
@@ -243,7 +240,7 @@ public class TestFSImage {
       hdfs.setSafeMode(HdfsConstants.SafeModeAction.SAFEMODE_LEAVE);
       cluster.shutdown();
       cluster = new MiniDFSCluster.Builder(conf).format(false)
-          .numDataNodes(1).build();
+          .build();
       cluster.waitActive();
       hdfs = cluster.getFileSystem();
       
@@ -268,7 +265,7 @@ public class TestFSImage {
     MiniDFSCluster cluster = null;
     try {
       final long pre = Time.now();
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(1).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       cluster.waitActive();
       final long post = Time.now();
       final long ctime = cluster.getNamesystem().getCTime();
@@ -305,9 +302,9 @@ public class TestFSImage {
     GenericTestUtils.assertExists(nameDir);
     conf.set(DFSConfigKeys.DFS_NAMENODE_NAME_DIR_KEY, 
         nameDir.getAbsolutePath());
-    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).numDataNodes(1)
+    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
         .format(false)
-        .manageDataDfsDirs(false)
+
         .manageNameDfsDirs(false)
         .waitSafeMode(false).startupOption(StartupOption.UPGRADE)
         .build();

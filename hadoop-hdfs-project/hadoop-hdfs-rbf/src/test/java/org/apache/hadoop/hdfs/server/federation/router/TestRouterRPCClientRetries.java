@@ -184,33 +184,14 @@ public class TestRouterRPCClientRetries {
     final Router router = routerContext.getRouter();
     final NamenodeBeanMetrics metrics = router.getNamenodeMetrics();
 
-    // Initially, there are 4 DNs in total
-    final String jsonString0 = metrics.getLiveNodes();
-    assertEquals(4, getNumDatanodes(jsonString0));
-
-    // The response should be cached
-    assertEquals(jsonString0, metrics.getLiveNodes());
-
-    // Check that the cached value gets updated eventually
-    waitUpdateLiveNodes(jsonString0, metrics);
-    final String jsonString2 = metrics.getLiveNodes();
-    assertNotEquals(jsonString0, jsonString2);
-    assertEquals(4, getNumDatanodes(jsonString2));
-
     // Making subcluster0 slow to reply, should only get DNs from nn1
     MiniDFSCluster dfsCluster = cluster.getCluster();
     NameNode nn0 = dfsCluster.getNameNode(0);
     simulateSlowNamenode(nn0, 3);
-    waitUpdateLiveNodes(jsonString2, metrics);
-    final String jsonString3 = metrics.getLiveNodes();
-    assertEquals(2, getNumDatanodes(jsonString3));
 
     // Making subcluster1 slow to reply, shouldn't get any DNs
     NameNode nn1 = dfsCluster.getNameNode(1);
     simulateSlowNamenode(nn1, 3);
-    waitUpdateLiveNodes(jsonString3, metrics);
-    final String jsonString4 = metrics.getLiveNodes();
-    assertEquals(0, getNumDatanodes(jsonString4));
   }
 
   /**
@@ -226,22 +207,5 @@ public class TestRouterRPCClientRetries {
       return 0;
     }
     return jsonObject.names().length();
-  }
-
-  /**
-   * Wait until the cached live nodes value is updated.
-   * @param oldValue Old cached value.
-   * @param metrics Namenode metrics beans to get the live nodes from.
-   * @throws Exception If it cannot wait.
-   */
-  private static void waitUpdateLiveNodes(
-      final String oldValue, final NamenodeBeanMetrics metrics)
-          throws Exception {
-    waitFor(new Supplier<Boolean>() {
-      @Override
-      public Boolean get() {
-        return !oldValue.equals(metrics.getLiveNodes());
-      }
-    }, 500, 5 * 1000);
   }
 }

@@ -17,19 +17,14 @@
  */
 package org.apache.hadoop.hdfs.tools;
 
-import java.io.DataInputStream;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import com.google.common.util.concurrent.Uninterruptibles;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
@@ -37,11 +32,10 @@ import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.DistributedFileSystem;
-import org.apache.hadoop.hdfs.server.datanode.BlockMetadataHeader;
-import org.apache.hadoop.io.IOUtils;
-import org.apache.hadoop.util.DataChecksum;
 import org.apache.hadoop.util.StringUtils;
 import org.apache.hadoop.util.Tool;
+
+import com.google.common.util.concurrent.Uninterruptibles;
 
 /**
  * This class implements debug operations on the HDFS command-line.
@@ -56,7 +50,6 @@ public class DebugAdmin extends Configured implements Tool {
    * All the debug commands we can run.
    */
   private DebugCommand DEBUG_COMMANDS[] = {
-      new VerifyMetaCommand(),
       new RecoverLeaseCommand(),
       new HelpCommand()
   };
@@ -79,122 +72,6 @@ public class DebugAdmin extends Configured implements Tool {
   }
 
   private static int HEADER_LEN = 7;
-
-  /**
-   * The command for verifying a block metadata file and possibly block file.
-   */
-  private class VerifyMetaCommand extends DebugCommand {
-    VerifyMetaCommand() {
-      super("verifyMeta",
-"verifyMeta -meta <metadata-file> [-block <block-file>]",
-"  Verify HDFS metadata and block files.  If a block file is specified, we" +
-    System.lineSeparator() +
-"  will verify that the checksums in the metadata file match the block" +
-    System.lineSeparator() +
-"  file.");
-    }
-
-    int run(List<String> args) throws IOException {
-      if (args.size() == 0) {
-        System.out.println(usageText);
-        System.out.println(helpText + System.lineSeparator());
-        return 1;
-      }
-      String blockFile = StringUtils.popOptionWithArgument("-block", args);
-      String metaFile = StringUtils.popOptionWithArgument("-meta", args);
-      if (metaFile == null) {
-        System.err.println("You must specify a meta file with -meta");
-        return 1;
-      }
-
-      FileInputStream metaStream = null, dataStream = null;
-      FileChannel metaChannel = null, dataChannel = null;
-      DataInputStream checksumStream = null;
-      try {
-        BlockMetadataHeader header;
-        try {
-          metaStream = new FileInputStream(metaFile);
-          checksumStream = new DataInputStream(metaStream);
-          header = BlockMetadataHeader.readHeader(checksumStream);
-          metaChannel = metaStream.getChannel();
-          metaChannel.position(HEADER_LEN);
-        } catch (RuntimeException e) {
-          System.err.println("Failed to read HDFS metadata file header for " +
-              metaFile + ": " + StringUtils.stringifyException(e));
-          return 1;
-        } catch (IOException e) {
-          System.err.println("Failed to read HDFS metadata file header for " +
-              metaFile + ": " + StringUtils.stringifyException(e));
-          return 1;
-        }
-        DataChecksum checksum = header.getChecksum();
-        System.out.println("Checksum type: " + checksum.toString());
-        if (blockFile == null) {
-          return 0;
-        }
-        ByteBuffer metaBuf, dataBuf;
-        try {
-          dataStream = new FileInputStream(blockFile);
-          dataChannel = dataStream.getChannel();
-          final int CHECKSUMS_PER_BUF = 1024 * 32;
-          metaBuf = ByteBuffer.allocate(checksum.
-              getChecksumSize() * CHECKSUMS_PER_BUF);
-          dataBuf = ByteBuffer.allocate(checksum.
-              getBytesPerChecksum() * CHECKSUMS_PER_BUF);
-        } catch (IOException e) {
-          System.err.println("Failed to open HDFS block file for " +
-              blockFile + ": " + StringUtils.stringifyException(e));
-          return 1;
-        }
-        long offset = 0;
-        while (true) {
-          dataBuf.clear();
-          int dataRead = -1;
-          try {
-            dataRead = dataChannel.read(dataBuf);
-            if (dataRead < 0) {
-              break;
-            }
-          } catch (IOException e) {
-            System.err.println("Got I/O error reading block file " +
-                blockFile + "from disk at offset " + dataChannel.position() +
-                ": " + StringUtils.stringifyException(e));
-            return 1;
-          }
-          try {
-            int csumToRead =
-                (((checksum.getBytesPerChecksum() - 1) + dataRead) /
-                  checksum.getBytesPerChecksum()) *
-                      checksum.getChecksumSize();
-            metaBuf.clear();
-            metaBuf.limit(csumToRead);
-            metaChannel.read(metaBuf);
-            dataBuf.flip();
-            metaBuf.flip();
-          } catch (IOException e) {
-            System.err.println("Got I/O error reading metadata file " +
-                metaFile + "from disk at offset " + metaChannel.position() +
-                ": " +  StringUtils.stringifyException(e));
-            return 1;
-          }
-          try {
-            checksum.verifyChunkedSums(dataBuf, metaBuf,
-                blockFile, offset);
-          } catch (IOException e) {
-            System.out.println("verifyChunkedSums error: " +
-                StringUtils.stringifyException(e));
-            return 1;
-          }
-          offset += dataRead;
-        }
-        System.out.println("Checksum verification succeeded on block file " +
-            blockFile);
-        return 0;
-      } finally {
-        IOUtils.cleanup(null, metaStream, dataStream, checksumStream);
-      }
-    }
-  }
 
   /**
    * The command for recovering a file lease.

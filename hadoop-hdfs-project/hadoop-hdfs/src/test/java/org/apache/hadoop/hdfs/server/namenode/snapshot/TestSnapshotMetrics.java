@@ -56,7 +56,7 @@ public class TestSnapshotMetrics {
   public void setUp() throws Exception {
     conf = new Configuration();
     cluster = new MiniDFSCluster.Builder(conf)
-      .numDataNodes(REPLICATION)
+
       .build();
     cluster.waitActive();
     hdfs = cluster.getFileSystem();

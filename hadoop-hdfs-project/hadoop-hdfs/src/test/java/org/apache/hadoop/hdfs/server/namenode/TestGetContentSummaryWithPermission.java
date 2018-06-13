@@ -55,7 +55,7 @@ public class TestGetContentSummaryWithPermission {
     conf = new Configuration();
     conf.setLong(DFSConfigKeys.DFS_BLOCK_SIZE_KEY, BLOCKSIZE);
     cluster =
-        new MiniDFSCluster.Builder(conf).numDataNodes(REPLICATION).build();
+        new MiniDFSCluster.Builder(conf).build();
     cluster.waitActive();
 
     dfs = cluster.getFileSystem();

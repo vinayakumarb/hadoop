@@ -101,17 +101,6 @@ hadoop_uservar_su hdfs namenode "${HADOOP_HDFS_HOME}/bin/hdfs" \
 HADOOP_JUMBO_RETCOUNTER=$?
 
 #---------------------------------------------------------
-# datanodes (using default workers file)
-
-echo "Starting datanodes"
-hadoop_uservar_su hdfs datanode "${HADOOP_HDFS_HOME}/bin/hdfs" \
-    --workers \
-    --config "${HADOOP_CONF_DIR}" \
-    --daemon start \
-    datanode ${dataStartOpt}
-(( HADOOP_JUMBO_RETCOUNTER=HADOOP_JUMBO_RETCOUNTER + $? ))
-
-#---------------------------------------------------------
 # secondary namenodes (if any)
 
 SECONDARY_NAMENODES=$("${HADOOP_HDFS_HOME}/bin/hdfs" getconf -secondarynamenodes 2>/dev/null)

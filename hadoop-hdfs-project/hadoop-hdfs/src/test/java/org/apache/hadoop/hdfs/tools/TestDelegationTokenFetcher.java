@@ -122,7 +122,7 @@ public class TestDelegationTokenFetcher {
   @Test
   public void testDelegationTokenWithoutRenewerViaRPC() throws Exception {
     conf.setBoolean(DFS_NAMENODE_DELEGATION_TOKEN_ALWAYS_USE_KEY, true);
-    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).numDataNodes(0)
+    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
         .build();
     try {
       cluster.waitActive();

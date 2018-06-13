@@ -68,7 +68,7 @@ public class TestNestedSnapshots {
   
   @Before
   public void setUp() throws Exception {
-    cluster = new MiniDFSCluster.Builder(conf).numDataNodes(REPLICATION)
+    cluster = new MiniDFSCluster.Builder(conf)
         .build();
     cluster.waitActive();
     hdfs = cluster.getFileSystem();

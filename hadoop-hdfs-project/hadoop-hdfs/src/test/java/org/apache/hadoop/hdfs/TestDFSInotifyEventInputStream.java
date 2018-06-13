@@ -90,7 +90,7 @@ public class TestDFSInotifyEventInputStream {
     conf.setLong(DFSConfigKeys.DFS_NAMENODE_ACCESSTIME_PRECISION_KEY, 1);
 
     MiniQJMHACluster.Builder builder = new MiniQJMHACluster.Builder(conf);
-    builder.getDfsBuilder().numDataNodes(2);
+    builder.getDfsBuilder();
     MiniQJMHACluster cluster = builder.build();
 
     try {

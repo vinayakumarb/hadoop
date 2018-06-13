@@ -80,7 +80,7 @@ public class TestNNThroughputBenchmark {
     conf.setInt(DFSConfigKeys.DFS_NAMENODE_MIN_BLOCK_SIZE_KEY, 16);
     MiniDFSCluster cluster = null;
     try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(0).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       cluster.waitActive();
 
       final Configuration benchConf = new HdfsConfiguration();
@@ -103,7 +103,7 @@ public class TestNNThroughputBenchmark {
     conf.setInt(DFSConfigKeys.DFS_NAMENODE_MIN_BLOCK_SIZE_KEY, 16);
     MiniDFSCluster cluster = null;
     try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(0).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       cluster.waitActive();
 
       NNThroughputBenchmark.runBenchmark(new HdfsConfiguration(),

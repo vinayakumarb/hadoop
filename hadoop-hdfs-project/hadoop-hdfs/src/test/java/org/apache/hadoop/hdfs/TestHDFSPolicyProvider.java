@@ -31,7 +31,6 @@ import com.google.common.collect.Sets;
 import org.apache.commons.lang.ClassUtils;
 import org.apache.hadoop.hdfs.qjournal.server.JournalNodeRpcServer;
 import org.apache.hadoop.hdfs.server.namenode.NameNodeRpcServer;
-import org.apache.hadoop.hdfs.server.datanode.DataNode;
 import org.apache.hadoop.security.authorize.Service;
 
 import org.junit.BeforeClass;
@@ -91,7 +90,6 @@ public class TestHDFSPolicyProvider {
   public static List<Class<?>[]> data() {
     return Arrays.asList(new Class<?>[][]{
         {NameNodeRpcServer.class},
-        {DataNode.class},
         {JournalNodeRpcServer.class}
     });
   }

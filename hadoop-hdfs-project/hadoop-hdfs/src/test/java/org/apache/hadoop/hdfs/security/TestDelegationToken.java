@@ -74,7 +74,7 @@ public class TestDelegationToken {
     config.set("hadoop.security.auth_to_local",
         "RULE:[2:$1@$0](JobTracker@.*FOO.COM)s/@.*//" + "DEFAULT");
     FileSystem.setDefaultUri(config, "hdfs://localhost:" + "0");
-    cluster = new MiniDFSCluster.Builder(config).numDataNodes(0).build();
+    cluster = new MiniDFSCluster.Builder(config).build();
     cluster.waitActive();
     dtSecretManager = NameNodeAdapter.getDtSecretManager(
         cluster.getNamesystem());
@@ -277,7 +277,6 @@ public class TestDelegationToken {
    */
   @Test
   public void testDTManagerInSafeMode() throws Exception {
-    cluster.startDataNodes(config, 1, true, StartupOption.REGULAR, null);
     FileSystem fs = cluster.getFileSystem();
     for (int i = 0; i < 5; i++) {
       DFSTestUtil.createFile(fs, new Path("/test-" + i), 100, (short)1, 1L);

@@ -32,19 +32,14 @@ function hadoop_usage
   hadoop_add_option "--hosts filename" "list of hosts to use in worker mode"
   hadoop_add_option "--workers" "turn on worker mode"
 
-  hadoop_add_subcommand "balancer" daemon "run a cluster balancing utility"
-  hadoop_add_subcommand "cacheadmin" admin "configure the HDFS cache"
   hadoop_add_subcommand "classpath" client "prints the class path needed to get the hadoop jar and the required libraries"
   hadoop_add_subcommand "crypto" admin "configure HDFS encryption zones"
-  hadoop_add_subcommand "datanode" daemon "run a DFS datanode"
   hadoop_add_subcommand "debug" admin "run a Debug Admin to execute HDFS debug commands"
   hadoop_add_subcommand "dfs" client "run a filesystem command on the file system"
   hadoop_add_subcommand "dfsadmin" admin "run a DFS admin client"
   hadoop_add_subcommand "dfsrouter" daemon "run the DFS router"
   hadoop_add_subcommand "dfsrouteradmin" admin "manage Router-based federation"
-  hadoop_add_subcommand "diskbalancer" daemon "Distributes data evenly among disks on a given node"
   hadoop_add_subcommand "envvars" client "display computed Hadoop environment variables"
-  hadoop_add_subcommand "ec" admin "run a HDFS ErasureCoding CLI"
   hadoop_add_subcommand "fetchdt" client "fetch a delegation token from the NameNode"
   hadoop_add_subcommand "fsck" admin "run a DFS filesystem checking utility"
   hadoop_add_subcommand "getconf" client "get config values from configuration"
@@ -53,9 +48,7 @@ function hadoop_usage
   hadoop_add_subcommand "jmxget" admin "get JMX exported values from NameNode or DataNode."
   hadoop_add_subcommand "journalnode" daemon "run the DFS journalnode"
   hadoop_add_subcommand "lsSnapshottableDir" client "list all snapshottable dirs owned by the current user"
-  hadoop_add_subcommand "mover" daemon "run a utility to move block replicas across storage types"
   hadoop_add_subcommand "namenode" daemon "run the DFS namenode"
-  hadoop_add_subcommand "nfs3" daemon "run an NFS version 3 gateway"
   hadoop_add_subcommand "oev" admin "apply the offline edits viewer to an edits file"
   hadoop_add_subcommand "oiv" admin "apply the offline fsimage viewer to an fsimage"
   hadoop_add_subcommand "oiv_legacy" admin "apply the offline fsimage viewer to a legacy fsimage"
@@ -79,25 +72,11 @@ function hdfscmd_case
   shift
 
   case ${subcmd} in
-    balancer)
-      HADOOP_SUBCMD_SUPPORTDAEMONIZATION="true"
-      HADOOP_CLASSNAME=org.apache.hadoop.hdfs.server.balancer.Balancer
-    ;;
-    cacheadmin)
-      HADOOP_CLASSNAME=org.apache.hadoop.hdfs.tools.CacheAdmin
-    ;;
     classpath)
       hadoop_do_classpath_subcommand HADOOP_CLASSNAME "$@"
     ;;
     crypto)
       HADOOP_CLASSNAME=org.apache.hadoop.hdfs.tools.CryptoAdmin
-    ;;
-    datanode)
-      HADOOP_SUBCMD_SUPPORTDAEMONIZATION="true"
-      HADOOP_SECURE_CLASSNAME="org.apache.hadoop.hdfs.server.datanode.SecureDataNodeStarter"
-      HADOOP_CLASSNAME='org.apache.hadoop.hdfs.server.datanode.DataNode'
-      hadoop_deprecate_envvar HADOOP_SECURE_DN_PID_DIR HADOOP_SECURE_PID_DIR
-      hadoop_deprecate_envvar HADOOP_SECURE_DN_LOG_DIR HADOOP_SECURE_LOG_DIR
     ;;
     debug)
       HADOOP_CLASSNAME='org.apache.hadoop.hdfs.tools.DebugAdmin'
@@ -114,9 +93,6 @@ function hdfscmd_case
     ;;
     dfsrouteradmin)
       HADOOP_CLASSNAME='org.apache.hadoop.hdfs.tools.federation.RouterAdmin'
-    ;;
-    diskbalancer)
-      HADOOP_CLASSNAME=org.apache.hadoop.hdfs.tools.DiskBalancerCLI
     ;;
     envvars)
       echo "JAVA_HOME='${JAVA_HOME}'"
@@ -161,21 +137,10 @@ function hdfscmd_case
     lsSnapshottableDir)
       HADOOP_CLASSNAME=org.apache.hadoop.hdfs.tools.snapshot.LsSnapshottableDir
     ;;
-    mover)
-      HADOOP_SUBCMD_SUPPORTDAEMONIZATION="true"
-      HADOOP_CLASSNAME=org.apache.hadoop.hdfs.server.mover.Mover
-    ;;
     namenode)
       HADOOP_SUBCMD_SUPPORTDAEMONIZATION="true"
       HADOOP_CLASSNAME='org.apache.hadoop.hdfs.server.namenode.NameNode'
       hadoop_add_param HADOOP_OPTS hdfs.audit.logger "-Dhdfs.audit.logger=${HDFS_AUDIT_LOGGER}"
-    ;;
-    nfs3)
-      HADOOP_SUBCMD_SUPPORTDAEMONIZATION="true"
-      HADOOP_SECURE_CLASSNAME=org.apache.hadoop.hdfs.nfs.nfs3.PrivilegedNfsGatewayStarter
-      HADOOP_CLASSNAME=org.apache.hadoop.hdfs.nfs.nfs3.Nfs3
-      hadoop_deprecate_envvar HADOOP_SECURE_NFS3_LOG_DIR HADOOP_SECURE_LOG_DIR
-      hadoop_deprecate_envvar HADOOP_SECURE_NFS3_PID_DIR HADOOP_SECURE_PID_DIR
     ;;
     oev)
       HADOOP_CLASSNAME=org.apache.hadoop.hdfs.tools.offlineEditsViewer.OfflineEditsViewer

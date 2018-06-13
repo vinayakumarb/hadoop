@@ -26,7 +26,6 @@ import static org.apache.hadoop.hdfs.client.HdfsClientConfigKeys.DFS_BYTES_PER_C
 import static org.apache.hadoop.hdfs.client.HdfsClientConfigKeys.DFS_CLIENT_SERVER_DEFAULTS_VALIDITY_PERIOD_MS_KEY;
 import static org.apache.hadoop.hdfs.client.HdfsClientConfigKeys.DFS_CLIENT_WRITE_PACKET_SIZE_DEFAULT;
 import static org.apache.hadoop.hdfs.client.HdfsClientConfigKeys.DFS_CLIENT_WRITE_PACKET_SIZE_KEY;
-import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_DATANODE_SYNCONCLOSE_KEY;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_HEARTBEAT_INTERVAL_KEY;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_NAMENODE_HEARTBEAT_RECHECK_INTERVAL_KEY;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_NAMENODE_REPLICATION_MIN_KEY;
@@ -41,11 +40,9 @@ import static org.junit.Assert.fail;
 import static org.junit.Assume.assumeTrue;
 import static org.mockito.Mockito.doReturn;
 
-import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.net.InetSocketAddress;
@@ -69,16 +66,10 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hdfs.client.HdfsClientConfigKeys;
 import org.apache.hadoop.hdfs.client.HdfsDataOutputStream;
-import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
-import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
 import org.apache.hadoop.hdfs.server.blockmanagement.BlockManager;
-import org.apache.hadoop.hdfs.server.datanode.DataNode;
-import org.apache.hadoop.hdfs.server.datanode.DataNodeTestUtils;
-import org.apache.hadoop.hdfs.server.datanode.SimulatedFSDataset;
-import org.apache.hadoop.hdfs.server.datanode.fsdataset.FsDatasetSpi;
 import org.apache.hadoop.hdfs.server.namenode.FSNamesystem;
 import org.apache.hadoop.hdfs.server.namenode.LeaseManager;
 import org.apache.hadoop.hdfs.server.namenode.NameNode;
@@ -123,18 +114,18 @@ public class TestFileCreation {
   };
 
   // creates a file but does not close it
-  public static FSDataOutputStream createFile(FileSystem fileSys, Path name, int repl)
+  public static FSDataOutputStream createFile(FileSystem fileSys, Path name)
     throws IOException {
-    System.out.println("createFile: Created " + name + " with " + repl + " replica.");
+    System.out.println("createFile: Created " + name + " with " + 1 + " replica.");
     FSDataOutputStream stm = fileSys.create(name, true, fileSys.getConf()
         .getInt(CommonConfigurationKeys.IO_FILE_BUFFER_SIZE_KEY, 4096),
-        (short) repl, blockSize);
+        (short) 1, blockSize);
     return stm;
   }
 
   public static HdfsDataOutputStream create(DistributedFileSystem dfs,
       Path name, int repl) throws IOException {
-    return (HdfsDataOutputStream)createFile(dfs, name, repl);
+    return (HdfsDataOutputStream)createFile(dfs, name);
   }
 
   //
@@ -164,7 +155,6 @@ public class TestFileCreation {
     conf.setInt(DFS_REPLICATION_KEY, DFS_REPLICATION_DEFAULT + 1);
     conf.setInt(IO_FILE_BUFFER_SIZE_KEY, IO_FILE_BUFFER_SIZE_DEFAULT);
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
-                     .numDataNodes(DFSConfigKeys.DFS_REPLICATION_DEFAULT + 1)
                      .build();
     cluster.waitActive();
     FileSystem fs = cluster.getFileSystem();
@@ -194,7 +184,6 @@ public class TestFileCreation {
     long originalBlockSize = DFS_BLOCK_SIZE_DEFAULT * 2;
     clusterConf.setLong(DFS_BLOCK_SIZE_KEY, originalBlockSize);
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(clusterConf)
-        .numDataNodes(0)
         .build();
     cluster.waitActive();
     // Set a spy namesystem inside the namenode and return it
@@ -246,7 +235,6 @@ public class TestFileCreation {
     long originalBlockSize = DFS_BLOCK_SIZE_DEFAULT * 2;
     clusterConf.setLong(DFS_BLOCK_SIZE_KEY, originalBlockSize);
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(clusterConf)
-        .numDataNodes(0)
         .build();
     cluster.waitActive();
     // Set a spy namesystem inside the namenode and return it
@@ -322,18 +310,7 @@ public class TestFileCreation {
       conf.set(HdfsClientConfigKeys.DFS_CLIENT_LOCAL_INTERFACES, netIf);
     }
     conf.setBoolean(HdfsClientConfigKeys.DFS_CLIENT_USE_DN_HOSTNAME, useDnHostname);
-    if (useDnHostname) {
-      // Since the mini cluster only listens on the loopback we have to
-      // ensure the hostname used to access DNs maps to the loopback. We
-      // do this by telling the DN to advertise localhost as its hostname
-      // instead of the default hostname.
-      conf.set(DFSConfigKeys.DFS_DATANODE_HOST_NAME_KEY, "localhost");
-    }
-    if (simulatedStorage) {
-      SimulatedFSDataset.setFactory(conf);
-    }
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
-      .checkDataNodeHostConfig(true)
       .build();
     FileSystem fs = cluster.getFileSystem();
     try {
@@ -370,7 +347,7 @@ public class TestFileCreation {
       fs.mkdirs(parent);
       DistributedFileSystem dfs = (DistributedFileSystem)fs;
       dfs.setQuota(file1.getParent(), 100L, blockSize*5);
-      FSDataOutputStream stm = createFile(fs, file1, 1);
+      FSDataOutputStream stm = createFile(fs, file1);
 
       // verify that file exists in FS namespace
       assertTrue(file1 + " should be a file", 
@@ -392,16 +369,6 @@ public class TestFileCreation {
       long diskSpace = dfs.getContentSummary(file1.getParent()).getLength();
       assertEquals(file1 + " should take " + fileSize + " bytes disk space " +
           "but found to take " + diskSpace + " bytes", fileSize, diskSpace);
-      
-      // Check storage usage 
-      // can't check capacities for real storage since the OS file system may be changing under us.
-      if (simulatedStorage) {
-        DataNode dn = cluster.getDataNodes().get(0);
-        FsDatasetSpi<?> dataset = DataNodeTestUtils.getFSDataset(dn);
-        assertEquals(fileSize, dataset.getDfsUsed());
-        assertEquals(SimulatedFSDataset.DEFAULT_CAPACITY-fileSize,
-            dataset.getRemaining());
-      }
     } finally {
       cluster.shutdown();
     }
@@ -413,9 +380,6 @@ public class TestFileCreation {
   @Test
   public void testDeleteOnExit() throws IOException {
     Configuration conf = new HdfsConfiguration();
-    if (simulatedStorage) {
-      SimulatedFSDataset.setFactory(conf);
-    }
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).build();
     FileSystem fs = cluster.getFileSystem();
     FileSystem localfs = FileSystem.getLocal(conf);
@@ -427,9 +391,9 @@ public class TestFileCreation {
       Path file1 = new Path("filestatus.dat");
       Path file2 = new Path("filestatus2.dat");
       Path file3 = new Path("filestatus3.dat");
-      FSDataOutputStream stm1 = createFile(fs, file1, 1);
-      FSDataOutputStream stm2 = createFile(fs, file2, 1);
-      FSDataOutputStream stm3 = createFile(localfs, file3, 1);
+      FSDataOutputStream stm1 = createFile(fs, file1);
+      FSDataOutputStream stm2 = createFile(fs, file2);
+      FSDataOutputStream stm3 = createFile(localfs, file3);
       System.out.println("DeleteOnExit: Created files.");
 
       // write to files and close. Purposely, do not close file2.
@@ -477,7 +441,6 @@ public class TestFileCreation {
   @Test
   public void testOverwriteOpenForWrite() throws Exception {
     Configuration conf = new HdfsConfiguration();
-    SimulatedFSDataset.setFactory(conf);
     conf.setBoolean(DFSConfigKeys.DFS_PERMISSIONS_ENABLED_KEY, false);
 
     final MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).build();
@@ -536,9 +499,6 @@ public class TestFileCreation {
     Configuration conf = new HdfsConfiguration();
     conf.setInt(DFS_NAMENODE_HEARTBEAT_RECHECK_INTERVAL_KEY, 1000);
     conf.setInt(DFS_HEARTBEAT_INTERVAL_KEY, 1);
-    if (simulatedStorage) {
-      SimulatedFSDataset.setFactory(conf);
-    }
     // create cluster
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).build();
     FileSystem fs = cluster.getFileSystem();
@@ -552,32 +512,14 @@ public class TestFileCreation {
       // create a new file.
       //
       Path file1 = new Path("/filestatus.dat");
-      FSDataOutputStream stm = createFile(fs, file1, 1);
+      FSDataOutputStream stm = createFile(fs, file1);
 
       // verify that file exists in FS namespace
       assertTrue(file1 + " should be a file", 
                  fs.getFileStatus(file1).isFile());
       System.out.println("Path : \"" + file1 + "\"");
 
-      // kill the datanode
-      cluster.shutdownDataNodes();
-
-      // wait for the datanode to be declared dead
-      while (true) {
-        DatanodeInfo[] info = client.datanodeReport(
-            HdfsConstants.DatanodeReportType.LIVE);
-        if (info.length == 0) {
-          break;
-        }
-        System.out.println("testFileCreationError1: waiting for datanode " +
-                           " to die.");
-        try {
-          Thread.sleep(1000);
-        } catch (InterruptedException e) {
-        }
-      }
-
-      // write 1 byte to file. 
+      // write 1 byte to file.
       // This should fail because all datanodes are dead.
       byte[] buffer = AppendTestUtil.randomBytes(seed, 1);
       try {
@@ -611,9 +553,6 @@ public class TestFileCreation {
     Configuration conf = new HdfsConfiguration();
     conf.setInt(DFS_NAMENODE_HEARTBEAT_RECHECK_INTERVAL_KEY, 1000);
     conf.setInt(DFS_HEARTBEAT_INTERVAL_KEY, 1);
-    if (simulatedStorage) {
-      SimulatedFSDataset.setFactory(conf);
-    }
     // create cluster
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).build();
     DistributedFileSystem dfs = null;
@@ -625,7 +564,7 @@ public class TestFileCreation {
       // create a new file.
       //
       Path file1 = new Path("/filestatus.dat");
-      createFile(dfs, file1, 1);
+      createFile(dfs, file1);
       System.out.println("testFileCreationError2: "
                          + "Created file filestatus.dat with one replicas.");
 
@@ -675,7 +614,7 @@ public class TestFileCreation {
     System.out.println("testFileCreationError3 start");
     Configuration conf = new HdfsConfiguration();
     // create cluster
-    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).numDataNodes(0).build();
+    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).build();
     DistributedFileSystem dfs = null;
     try {
       cluster.waitActive();
@@ -684,7 +623,7 @@ public class TestFileCreation {
 
       // create a new file.
       final Path f = new Path("/foo.txt");
-      createFile(dfs, f, 3);
+      createFile(dfs, f);
       try {
         cluster.getNameNodeRpc().addBlock(f.toString(), client.clientName,
             null, null, HdfsConstants.GRANDFATHER_INODE_ID, null, null);
@@ -711,9 +650,6 @@ public class TestFileCreation {
     conf.setInt("ipc.client.connection.maxidletime", MAX_IDLE_TIME);
     conf.setInt(DFS_NAMENODE_HEARTBEAT_RECHECK_INTERVAL_KEY, 1000);
     conf.setInt(DFS_HEARTBEAT_INTERVAL_KEY, 1);
-    if (simulatedStorage) {
-      SimulatedFSDataset.setFactory(conf);
-    }
 
     // create cluster
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).build();
@@ -748,7 +684,7 @@ public class TestFileCreation {
       // create another new file.
       //
       Path file2 = new Path("/filestatus2.dat");
-      FSDataOutputStream stm2 = createFile(fs, file2, 1);
+      FSDataOutputStream stm2 = createFile(fs, file2);
       System.out.println("testFileCreationNamenodeRestart: "
                          + "Created file " + file2);
 
@@ -756,11 +692,11 @@ public class TestFileCreation {
       // rename it while open
       //
       Path file3 = new Path("/user/home/fullpath.dat");
-      FSDataOutputStream stm3 = createFile(fs, file3, 1);
+      FSDataOutputStream stm3 = createFile(fs, file3);
       System.out.println("testFileCreationNamenodeRestart: "
                          + "Created file " + file3);
       Path file4 = new Path("/user/home/fullpath4.dat");
-      FSDataOutputStream stm4 = createFile(fs, file4, 1);
+      FSDataOutputStream stm4 = createFile(fs, file4);
       System.out.println("testFileCreationNamenodeRestart: "
                          + "Created file " + file4);
 
@@ -854,9 +790,6 @@ public class TestFileCreation {
   public void testDFSClientDeath() throws IOException, InterruptedException {
     Configuration conf = new HdfsConfiguration();
     System.out.println("Testing adbornal client death.");
-    if (simulatedStorage) {
-      SimulatedFSDataset.setFactory(conf);
-    }
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).build();
     FileSystem fs = cluster.getFileSystem();
     DistributedFileSystem dfs = (DistributedFileSystem) fs;
@@ -866,7 +799,7 @@ public class TestFileCreation {
       // create a new file in home directory. Do not close it.
       //
       Path file1 = new Path("/clienttest.dat");
-      FSDataOutputStream stm = createFile(fs, file1, 1);
+      FSDataOutputStream stm = createFile(fs, file1);
       System.out.println("Created file clienttest.dat");
 
       // write to file
@@ -890,9 +823,6 @@ public class TestFileCreation {
   @Test
   public void testFileCreationNonRecursive() throws IOException {
     Configuration conf = new HdfsConfiguration();
-    if (simulatedStorage) {
-      SimulatedFSDataset.setFactory(conf);
-    }
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).build();
     FileSystem fs = cluster.getFileSystem();
 
@@ -1027,7 +957,6 @@ public class TestFileCreation {
   @Test
   public void testFileCreationSyncOnClose() throws IOException {
     Configuration conf = new HdfsConfiguration();
-    conf.setBoolean(DFS_DATANODE_SYNCONCLOSE_KEY, true);
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).build();
 
     try {
@@ -1064,14 +993,13 @@ public class TestFileCreation {
   public void testLeaseExpireHardLimit() throws Exception {
     System.out.println("testLeaseExpireHardLimit start");
     final long leasePeriod = 1000;
-    final int DATANODE_NUM = 3;
 
     Configuration conf = new HdfsConfiguration();
     conf.setInt(DFS_NAMENODE_HEARTBEAT_RECHECK_INTERVAL_KEY, 1000);
     conf.setInt(DFS_HEARTBEAT_INTERVAL_KEY, 1);
 
     // create cluster
-    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).numDataNodes(DATANODE_NUM).build();
+    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).build();
     DistributedFileSystem dfs = null;
     try {
       cluster.waitActive();
@@ -1080,13 +1008,9 @@ public class TestFileCreation {
       // create a new file.
       final String f = DIR + "foo";
       final Path fpath = new Path(f);
-      HdfsDataOutputStream out = create(dfs, fpath, DATANODE_NUM);
+      HdfsDataOutputStream out = create(dfs, fpath, 0);
       out.write("something".getBytes());
       out.hflush();
-      int actualRepl = out.getCurrentBlockReplication();
-      assertTrue(f + " should be replicated to " + DATANODE_NUM + " datanodes.",
-                 actualRepl == DATANODE_NUM);
-
       // set the soft and hard limit to be 1 second so that the
       // namenode triggers lease recovery
       cluster.setLeasePeriod(leasePeriod, leasePeriod);
@@ -1098,15 +1022,6 @@ public class TestFileCreation {
       assertEquals(1, locations.locatedBlockCount());
       LocatedBlock locatedblock = locations.getLocatedBlocks().get(0);
       int successcount = 0;
-      for(DatanodeInfo datanodeinfo: locatedblock.getLocations()) {
-        DataNode datanode = cluster.getDataNode(datanodeinfo.getIpcPort());
-        ExtendedBlock blk = locatedblock.getBlock();
-        try (BufferedReader in = new BufferedReader(new InputStreamReader(
-            datanode.getFSDataset().getBlockInputStream(blk, 0)))) {
-          assertEquals("something", in.readLine());
-          successcount++;
-        }
-      }
       System.out.println("successcount=" + successcount);
       assertTrue(successcount > 0); 
     } finally {
@@ -1121,12 +1036,10 @@ public class TestFileCreation {
   @Test
   public void testFsClose() throws Exception {
     System.out.println("test file system close start");
-    final int DATANODE_NUM = 3;
-
     Configuration conf = new HdfsConfiguration();
 
     // create cluster
-    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).numDataNodes(DATANODE_NUM).build();
+    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).build();
     DistributedFileSystem dfs = null;
     try {
       cluster.waitActive();
@@ -1135,7 +1048,7 @@ public class TestFileCreation {
       // create a new file.
       final String f = DIR + "foofs";
       final Path fpath = new Path(f);
-      FSDataOutputStream out = TestFileCreation.createFile(dfs, fpath, DATANODE_NUM);
+      FSDataOutputStream out = TestFileCreation.createFile(dfs, fpath);
       out.write("something".getBytes());
 
       // close file system without closing file
@@ -1150,7 +1063,6 @@ public class TestFileCreation {
   @Test
   public void testFsCloseAfterClusterShutdown() throws IOException {
     System.out.println("test testFsCloseAfterClusterShutdown start");
-    final int DATANODE_NUM = 3;
 
     Configuration conf = new HdfsConfiguration();
     conf.setInt(DFS_NAMENODE_REPLICATION_MIN_KEY, 3);
@@ -1158,7 +1070,7 @@ public class TestFileCreation {
     conf.setInt("ipc.ping.interval", 10000); // hdfs timeout is now 10 second
 
     // create cluster
-    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).numDataNodes(DATANODE_NUM).build();
+    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).build();
     DistributedFileSystem dfs = null;
     try {
       cluster.waitActive();
@@ -1167,12 +1079,9 @@ public class TestFileCreation {
       // create a new file.
       final String f = DIR + "testFsCloseAfterClusterShutdown";
       final Path fpath = new Path(f);
-      FSDataOutputStream out = TestFileCreation.createFile(dfs, fpath, DATANODE_NUM);
+      FSDataOutputStream out = TestFileCreation.createFile(dfs, fpath);
       out.write("something_test".getBytes());
       out.hflush();    // ensure that block is allocated
-
-      // shutdown last datanode in pipeline.
-      cluster.stopDataNode(2);
 
       // close file. Since we have set the minReplcatio to 3 but have killed one
       // of the three datanodes, the close call will loop until the hdfsTimeout is
@@ -1234,7 +1143,7 @@ public class TestFileCreation {
   private void doCreateTest(CreationMethod method) throws Exception {
     Configuration conf = new HdfsConfiguration();
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
-        .numDataNodes(1).build();
+        .build();
     try {
       FileSystem fs = cluster.getFileSystem();
       NamenodeProtocols nnrpc = cluster.getNameNodeRpc();
@@ -1291,7 +1200,7 @@ public class TestFileCreation {
   public void testFileIdMismatch() throws IOException {
     Configuration conf = new HdfsConfiguration();
     MiniDFSCluster cluster =
-        new MiniDFSCluster.Builder(conf).numDataNodes(3).build();
+        new MiniDFSCluster.Builder(conf).build();
     DistributedFileSystem dfs = null;
     try {
       cluster.waitActive();
@@ -1299,7 +1208,7 @@ public class TestFileCreation {
       DFSClient client = dfs.dfs;
 
       final Path f = new Path("/testFileIdMismatch.txt");
-      createFile(dfs, f, 3);
+      createFile(dfs, f);
       long someOtherFileId = -1;
       try {
         cluster.getNameNodeRpc()
@@ -1324,7 +1233,7 @@ public class TestFileCreation {
     Configuration conf = new Configuration();
     conf.setInt("dfs.blocksize", blockSize);
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).
-        numDataNodes(3).build();
+        build();
     DistributedFileSystem dfs = cluster.getFileSystem();
     try {
       dfs.mkdirs(new Path("/foo/dir"));

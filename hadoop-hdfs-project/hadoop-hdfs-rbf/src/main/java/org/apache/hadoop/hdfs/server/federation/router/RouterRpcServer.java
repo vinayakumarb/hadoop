@@ -190,8 +190,6 @@ public class RouterRpcServer extends AbstractService
   // Modules implementing groups of RPC calls
   /** Router Quota calls. */
   private final Quota quotaCall;
-  /** Erasure coding calls. */
-  private final ErasureCoding erasureCoding;
   /** NamenodeProtocol calls. */
   private final RouterNamenodeProtocol nnProto;
 
@@ -306,7 +304,6 @@ public class RouterRpcServer extends AbstractService
 
     // Initialize modules
     this.quotaCall = new Quota(this.router, this);
-    this.erasureCoding = new ErasureCoding(this);
     this.nnProto = new RouterNamenodeProtocol(this);
   }
 
@@ -801,23 +798,6 @@ public class RouterRpcServer extends AbstractService
         new Class<?>[] {ExtendedBlock.class, String.class},
         block, clientName);
     return (LocatedBlock) rpcClient.invokeSingle(block, method);
-  }
-
-  /**
-   * Datanode are not verified to be in the same nameservice as the old block.
-   * TODO This may require validation.
-   */
-  @Override // ClientProtocol
-  public void updatePipeline(String clientName, ExtendedBlock oldBlock,
-      ExtendedBlock newBlock, DatanodeID[] newNodes, String[] newStorageIDs)
-          throws IOException {
-    checkOperation(OperationCategory.WRITE);
-
-    RemoteMethod method = new RemoteMethod("updatePipeline",
-        new Class<?>[] {String.class, ExtendedBlock.class, ExtendedBlock.class,
-                        DatanodeID[].class, String[].class},
-        clientName, oldBlock, newBlock, newNodes, newStorageIDs);
-    rpcClient.invokeSingle(oldBlock, method);
   }
 
   @Override // ClientProtocol
@@ -2188,7 +2168,6 @@ public class RouterRpcServer extends AbstractService
    * this child are present then it will return latest modified subdir's time
    * as modified time of the requested child.
    * @param ret contains children and modified times.
-   * @param mountTable.
    * @param path Name of the path to start checking dates from.
    * @param child child of the requested path.
    * @return modified time.

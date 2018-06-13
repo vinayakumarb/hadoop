@@ -56,7 +56,7 @@ public class TestStandbyIsHot {
     conf.setInt(DFSConfigKeys.DFS_HA_TAILEDITS_PERIOD_KEY, 1);
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
       .nnTopology(MiniDFSNNTopology.simpleHATopology())
-      .numDataNodes(3)
+
       .build();
     try {
       cluster.waitActive();
@@ -74,11 +74,6 @@ public class TestStandbyIsHot {
       nn1.getRpcServer().rollEditLog();
       System.err.println("==================================");
 
-      // Trigger immediate heartbeats and block reports so
-      // that the active "trusts" all of the DNs
-      cluster.triggerHeartbeats();
-      cluster.triggerBlockReports();
-
       // Change replication
       LOG.info("Changing replication to 1");
       fs.setReplication(TEST_FILE_PATH, (short)1);
@@ -88,8 +83,6 @@ public class TestStandbyIsHot {
       // Change back to 3
       LOG.info("Changing replication to 3");
       fs.setReplication(TEST_FILE_PATH, (short)3);
-      BlockManagerTestUtil.computeAllPendingWork(
-          nn1.getNamesystem().getBlockManager());
       nn1.getRpcServer().rollEditLog();
       fail("TODO: add assertions");
     } finally {

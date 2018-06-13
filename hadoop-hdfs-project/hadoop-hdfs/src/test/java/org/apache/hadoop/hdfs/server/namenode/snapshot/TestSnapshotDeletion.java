@@ -96,7 +96,7 @@ public class TestSnapshotDeletion {
   @Before
   public void setUp() throws Exception {
     conf = new Configuration();
-    cluster = new MiniDFSCluster.Builder(conf).numDataNodes(REPLICATION)
+    cluster = new MiniDFSCluster.Builder(conf)
         .format(true).build();
     cluster.waitActive();
 
@@ -910,7 +910,7 @@ public class TestSnapshotDeletion {
     cluster.shutdown();
     Configuration newConf = new Configuration(conf);
     newConf.setBoolean(DFSConfigKeys.DFS_PERMISSIONS_ENABLED_KEY, false);
-    cluster = new MiniDFSCluster.Builder(newConf).numDataNodes(0).build();
+    cluster = new MiniDFSCluster.Builder(newConf).build();
     cluster.waitActive();
     hdfs = cluster.getFileSystem();
 
@@ -1087,7 +1087,7 @@ public class TestSnapshotDeletion {
     cluster.shutdown();
     conf = new Configuration();
     cluster = new MiniDFSCluster.Builder(conf)
-        .nnTopology(MiniDFSNNTopology.simpleHATopology()).numDataNodes(1)
+        .nnTopology(MiniDFSNNTopology.simpleHATopology())
         .build();
     cluster.transitionToActive(0);
     // stop the standby namenode

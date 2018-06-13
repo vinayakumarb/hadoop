@@ -36,7 +36,6 @@
     <li><a href="#tab-overview">Overview</a></li>
     <li><a href="#tab-namenode">Subclusters</a></li>
     <li><a href="#tab-router">Routers</a></li>
-    <li><a href="#tab-datanode">Datanodes</a></li>
     <li><a href="#tab-mounttable">Mount table</a></li>
     <li class="dropdown">
       <a href="#" class="dropdown-toggle" data-toggle="dropdown">Utilities <b class="caret"></b></a>
@@ -64,7 +63,6 @@
   <div class="tab-pane" id="tab-overview"></div>
   <div class="tab-pane" id="tab-namenode"></div>
   <div class="tab-pane" id="tab-router"></div>
-  <div class="tab-pane" id="tab-datanode"></div>
   <div class="tab-pane" id="tab-mounttable"></div>
 </div>
 
@@ -111,14 +109,6 @@
   <tr><th>Remaining capacity</th><td>{RemainingCapacity|fmt_bytes}</td></tr>
   <tr><th>Nameservices</th><td>{NumNameservices}</td></tr>
   <tr><th>Namenodes</th><td>{NumNamenodes}</td></tr>
-  <tr>
-    <th>DataNodes usages% (Min/Median/Max/stdDev)</th>
-    <td>{#NodeUsage.nodeUsage}{min} / {median} / {max} / {stdDev}{/NodeUsage.nodeUsage}</td>
-  </tr>
-  <tr><th><a href="#tab-datanode">Live Nodes</a></th><td>{NumLiveNodes} (Decommissioned: {NumDecomLiveNodes})</td></tr>
-  <tr><th><a href="#tab-datanode">Dead Nodes</a></th><td>{NumDeadNodes} (Decommissioned: {NumDecomDeadNodes})</td></tr>
-  <tr><th><a href="#tab-datanode">Decommissioning Nodes</a></th><td>{NumDecommissioningNodes}</td></tr>
-  <tr><th title="Excludes missing blocks.">Number of Under-Replicated Blocks</th><td>{NumOfBlocksUnderReplicated}</td></tr>
   <tr><th>Number of Blocks Pending Deletion</th><td>{NumOfBlocksPendingDeletion}</td></tr>
 </table>
 {/federation}
@@ -141,9 +131,7 @@
   <thead>
     <tr>
       <th colspan="6"></th>
-      <th colspan="3">Blocks</th>
-      <th colspan="2">Nodes</th>
-      <th colspan="3">Decom</th>
+      <th colspan="1">Blocks</th>
     </tr>
     <tr>
       <th></th>
@@ -153,13 +141,6 @@
       <th>Capacity</th>
       <th>Files</th>
       <th>Total</th>
-      <th>Missing</th>
-      <th>Under-Replicated</th>
-      <th>Live</th>
-      <th>Dead</th>
-      <th>Progress</th>
-      <th>Live</th>
-      <th>Dead</th>
     </tr>
   </thead>
   <tbody>
@@ -180,13 +161,6 @@
       </td>
       <td>{numOfFiles}</td>
       <td>{numOfBlocks}</td>
-      <td>{numOfBlocksMissing}</td>
-      <td>{numOfBlocksUnderReplicated}</td>
-      <td>{numOfActiveDatanodes}</td>
-      <td>{numOfDeadDatanodes}</td>
-      <td>{numOfDecommissioningDatanodes}</td>
-      <td>{numOfDecomActiveDatanodes}</td>
-      <td>{numOfDecomDeadDatanodes}</td>
     </tr>
     {/Nameservices}
   </tbody>
@@ -207,9 +181,7 @@
   <thead>
     <tr>
       <th colspan="7"></th>
-      <th colspan="3">Blocks</th>
-      <th colspan="2">Nodes</th>
-      <th colspan="3">Decom</th>
+      <th colspan="1">Blocks</th>
     </tr>
     <tr>
       <th></th>
@@ -219,13 +191,6 @@
       <th>Capacity</th>
       <th>Files</th>
       <th>Total</th>
-      <th>Missing</th>
-      <th>Under-Replicated</th>
-      <th>Live</th>
-      <th>Dead</th>
-      <th>Progress</th>
-      <th>Live</th>
-      <th>Dead</th>
     </tr>
   </thead>
   <tbody>
@@ -247,13 +212,6 @@
       </td>
       <td>{numOfFiles}</td>
       <td>{numOfBlocks}</td>
-      <td>{numOfBlocksMissing}</td>
-      <td>{numOfBlocksUnderReplicated}</td>
-      <td>{numOfActiveDatanodes}</td>
-      <td>{numOfDeadDatanodes}</td>
-      <td>{numOfDecommissioningDatanodes}</td>
-      <td>{numOfDecomActiveDatanodes}</td>
-      <td>{numOfDecomDeadDatanodes}</td>
     </tr>
     {/Namenodes}
   </tbody>
@@ -302,84 +260,6 @@
     {/Routers}
   </tbody>
 </table>
-</script>
-
-<!-- Datanodes -->
-<script type="text/x-dust-template" id="tmpl-datanode">
-<div class="page-header"><h1>Datanode Information</h1></div>
-<div>
-  <ul class="dfshealth-node-legend">
-    <li class="dfshealth-node-icon dfshealth-node-alive">In service</li>
-    <li class="dfshealth-node-icon dfshealth-node-down">Down</li>
-    <li class="dfshealth-node-icon dfshealth-node-decommissioned">Decommissioned</li>
-    <li class="dfshealth-node-icon dfshealth-node-down-decommissioned">Decommissioned &amp; dead</li>
-  </ul>
-</div>
-<div class="page-header"><h1><small>In operation</small></h1></div>
-<small>
-<table class="table" id="table-datanodes">
-  <thead>
-    <tr>
-      <th>Node</th>
-      <th>Last contact</th>
-      <th style="width:180px; text-align:center">Capacity</th>
-      <!--th>Blocks</th-->
-      <th>Block pool used</th>
-      <!--th>Version</th-->
-    </tr>
-  </thead>
-  {#LiveNodes}
-  <tr>
-    <td ng-value="{state}-{name}" class="dfshealth-node-icon dfshealth-node-{state}">{location}/{name} ({xferaddr})</td>
-    <td ng-value="{lastContact}">{#helper_relative_time value="{lastContact}"/}</td>
-    <td ng-value="{usedPercentage}" style="width:210px">
-      <div>
-        <div style="display:inline-block; float: left; padding-right: 10px; width:60px;">{capacity|fmt_bytes}</div>
-        <div class="clearfix progress dfshealth-node-capacity-bar" title="Non DFS: {nonDfsUsedSpace|fmt_bytes}, Used: {used|fmt_bytes}">
-          <div class="progress-bar {#helper_usage_bar value="{usedPercentage}"/}" style="width: {usedPercentage}%">
-          </div>
-        </div>
-      </div>
-    </td>
-    <!--td>{numBlocks}</td-->
-    <td ng-value="{blockPoolUsedPercent}">{blockPoolUsed|fmt_bytes} ({blockPoolUsedPercent|fmt_percentage})</td>
-    <!--td>{version}</td-->
-  </tr>
-  {/LiveNodes}
-  {#DeadNodes}
-  <tr class="danger">
-    <td ng-value="{state}-{name}" class="dfshealth-node-icon dfshealth-node-{state}">{location}/{name} ({xferaddr})</td>
-    <td>{#helper_relative_time value="{lastContact}"/}</td>
-    <td></td>
-    <!--td></td-->
-    <td></td>
-    <!--td></td-->
-  </tr>
-  {/DeadNodes}
-</table>
-</small>
-
-<div class="page-header"><h1><small>Decommissioning</small></h1></div>
-<small>
-<table class="table">
-  <thead>
-    <tr>
-      <th>Node</th>
-      <th>Under replicated blocks</th>
-      <th>Blocks with no live replicas</th>
-      <th>Under Replicated Blocks <br/>In files under construction</th>
-    </tr>
-  </thead>
-  {#DecomNodes}
-  <tr>
-    <td>{location}/{name} ({xferaddr})</td>
-    <td>{underReplicatedBlocks}</td>
-    <td>{decommissionOnlyReplicas}</td>
-    <td>{underReplicateInOpenFiles}</td>
-  </tr>
-  {/DecomNodes}
-</table>
-</small>
 </script>
 
 <!-- Mount table -->

@@ -380,7 +380,7 @@ public class TestWebHdfsUrl {
 
     final short numDatanodes = 1;
     final MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
-            .numDataNodes(numDatanodes)
+
             .build();
     try {
       cluster.waitActive();
@@ -434,7 +434,7 @@ public class TestWebHdfsUrl {
 
     final short numDatanodes = 1;
     final MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
-            .numDataNodes(numDatanodes)
+
             .build();
     try {
       cluster.waitActive();

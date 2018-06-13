@@ -800,14 +800,6 @@ public class NameNodeRpcServer implements NamenodeProtocols {
     throw getUnsupported();
   }
 
-
-  @Override // ClientProtocol
-  public void updatePipeline(String clientName, ExtendedBlock oldBlock,
-      ExtendedBlock newBlock, DatanodeID[] newNodes, String[] newStorageIDs)
-      throws IOException {
-    throw getUnsupported();
-  }
-
   public static UnsupportedActionException getUnsupported() {
     return new UnsupportedActionException(
         "Sorry! This is no more supported in this namenode.");

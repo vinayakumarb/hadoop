@@ -95,7 +95,7 @@ public class TestHASafeMode {
 
     cluster = new MiniDFSCluster.Builder(conf)
       .nnTopology(MiniDFSNNTopology.simpleHATopology())
-      .numDataNodes(3)
+
       .waitSafeMode(false)
       .build();
     cluster.waitActive();
@@ -128,8 +128,6 @@ public class TestHASafeMode {
         DFSConfigKeys.DFS_NAMENODE_SAFEMODE_MIN_DATANODES_KEY, 3);
     NameNodeAdapter.enterSafeMode(nn0, false);
     Whitebox.setInternalState(nn0.getNamesystem(), "manualSafeMode", false);
-    BlockManagerTestUtil.setStartupSafeModeForTest(nn0.getNamesystem()
-        .getBlockManager());
     assertTrue(nn0.getNamesystem().isInStartupSafeMode());
     LOG.info("enter safemode");
     new Thread() {
@@ -339,9 +337,6 @@ public class TestHASafeMode {
     // once it starts up
     banner("Removing the blocks without rolling the edit log");
     fs.delete(new Path("/test"), true);
-    BlockManagerTestUtil.computeAllPendingWork(
-        nn0.getNamesystem().getBlockManager());
-    cluster.triggerHeartbeats();
 
     banner("Restarting standby");
     restartStandby();
@@ -378,12 +373,8 @@ public class TestHASafeMode {
     // ACKed when due to block removals.
     banner("Removing the blocks without rolling the edit log");
     fs.delete(new Path("/test"), true);
-    BlockManagerTestUtil.computeAllPendingWork(
-        nn0.getNamesystem().getBlockManager());
-    
+
     banner("Triggering deletions on DNs and Deletion Reports");
-    cluster.triggerHeartbeats();
-    cluster.triggerDeletionReports();
 
     assertSafeMode(nn1, 10, 10, 3, 0);
 
@@ -441,12 +432,7 @@ public class TestHASafeMode {
     // notice until we roll the edit log.
     banner("Removing the blocks without rolling the edit log");
     fs.delete(new Path("/test"), true);
-    BlockManagerTestUtil.computeAllPendingWork(
-        nn0.getNamesystem().getBlockManager());
-    
     banner("Triggering deletions on DNs and Deletion Reports");
-    cluster.triggerHeartbeats();
-    cluster.triggerDeletionReports();
 
     assertSafeMode(nn1, 4, 4, 3, 0);
 
@@ -581,10 +567,6 @@ public class TestHASafeMode {
 
     
     banner("Triggering sending deletions to DNs and Deletion Reports");
-    BlockManagerTestUtil.computeAllPendingWork(
-        nn0.getNamesystem().getBlockManager());    
-    cluster.triggerHeartbeats();
-    cluster.triggerDeletionReports();
 
     // No change in assertion status here, but some of the consistency checks
     // in safemode will fire here if we accidentally decrement safe block count
@@ -697,7 +679,6 @@ public class TestHASafeMode {
     DFSTestUtil.createFile(fs, new Path("/test2"), 15*BLOCK_SIZE, (short)3, 1L);
     nn0.getRpcServer().rollEditLog();
     
-    cluster.stopDataNode(1);
     cluster.shutdownNameNode(1);
 
     //Configuration sbConf = cluster.getConfiguration(1);
@@ -711,7 +692,6 @@ public class TestHASafeMode {
       }
     }, 100, 10000);
     
-    BlockManagerTestUtil.updateState(nn1.getNamesystem().getBlockManager());
   }
   
   /**
@@ -726,9 +706,6 @@ public class TestHASafeMode {
       throws IOException {
     DFSTestUtil.createFile(fs, new Path("/test"), 15*BLOCK_SIZE, (short)3, 1L);
     
-    // Stop the DN so that when the NN restarts not all blocks wil be reported
-    // and the NN won't leave safe mode.
-    cluster.stopDataNode(1);
     // Restart the namenode but don't wait for it to hear from all DNs (since
     // one DN is deliberately shut down.)
     cluster.restartNameNode(0, false);
@@ -830,7 +807,6 @@ public class TestHASafeMode {
           DFSClientAdapter.getFileId((DFSOutputStream) create
               .getWrappedStream()), null, null);
       cluster.restartNameNode(0, true);
-      cluster.restartDataNode(0);
       cluster.transitionToActive(0);
       // let the block reports be processed.
       Thread.sleep(2000);
@@ -863,7 +839,6 @@ public class TestHASafeMode {
       }
     }, 1000, 10000);
     restartStandby();
-    cluster.triggerBlockReports();
     NameNodeAdapter.abortEditLogs(nn0);
     cluster.shutdownNameNode(0);
     banner(nn1.getNamesystem().getSafemode());

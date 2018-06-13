@@ -189,8 +189,6 @@ import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.Trunca
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.TruncateResponseProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.UpdateBlockForPipelineRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.UpdateBlockForPipelineResponseProto;
-import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.UpdatePipelineRequestProto;
-import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.UpdatePipelineResponseProto;
 import org.apache.hadoop.hdfs.protocol.proto.EncryptionZonesProtos.CreateEncryptionZoneResponseProto;
 import org.apache.hadoop.hdfs.protocol.proto.EncryptionZonesProtos.CreateEncryptionZoneRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.EncryptionZonesProtos.GetEZForPathResponseProto;
@@ -314,10 +312,6 @@ public class ClientNamenodeProtocolServerSideTranslatorPB implements
 
   private static final CreateSymlinkResponseProto VOID_CREATESYMLINK_RESPONSE = 
   CreateSymlinkResponseProto.newBuilder().build();
-
-  private static final UpdatePipelineResponseProto
-    VOID_UPDATEPIPELINE_RESPONSE = 
-  UpdatePipelineResponseProto.newBuilder().build();
 
   private static final CancelDelegationTokenResponseProto 
       VOID_CANCELDELEGATIONTOKEN_RESPONSE = 
@@ -993,23 +987,6 @@ public class ClientNamenodeProtocolServerSideTranslatorPB implements
               req.getClientName()));
       return UpdateBlockForPipelineResponseProto.newBuilder().setBlock(result)
           .build();
-    } catch (IOException e) {
-      throw new ServiceException(e);
-    }
-  }
-
-  @Override
-  public UpdatePipelineResponseProto updatePipeline(RpcController controller,
-      UpdatePipelineRequestProto req) throws ServiceException {
-    try {
-      List<DatanodeIDProto> newNodes = req.getNewNodesList();
-      List<String> newStorageIDs = req.getStorageIDsList();
-      server.updatePipeline(req.getClientName(),
-          PBHelperClient.convert(req.getOldBlock()),
-          PBHelperClient.convert(req.getNewBlock()),
-          PBHelperClient.convert(newNodes.toArray(new DatanodeIDProto[newNodes.size()])),
-          newStorageIDs.toArray(new String[newStorageIDs.size()]));
-      return VOID_UPDATEPIPELINE_RESPONSE;
     } catch (IOException e) {
       throw new ServiceException(e);
     }

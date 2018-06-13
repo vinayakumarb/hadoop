@@ -60,7 +60,7 @@ public class TestDiffListBySkipList {
   @Before
   public void setUp() throws Exception {
     cluster =
-        new MiniDFSCluster.Builder(CONF).numDataNodes(0).format(true).build();
+        new MiniDFSCluster.Builder(CONF).format(true).build();
     cluster.waitActive();
     fsn = cluster.getNamesystem();
     fsdir = fsn.getFSDirectory();

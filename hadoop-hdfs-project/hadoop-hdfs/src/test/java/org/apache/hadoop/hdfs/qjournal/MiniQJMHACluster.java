@@ -55,7 +55,7 @@ public class MiniQJMHACluster {
       this.conf = conf;
       // most QJMHACluster tests don't need DataNodes, so we'll make
       // this the default
-      this.dfsBuilder = new MiniDFSCluster.Builder(conf).numDataNodes(0);
+      this.dfsBuilder = new MiniDFSCluster.Builder(conf);
     }
 
     public MiniDFSCluster.Builder getDfsBuilder() {

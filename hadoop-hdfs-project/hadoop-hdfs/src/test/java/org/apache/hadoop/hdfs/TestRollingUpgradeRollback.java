@@ -94,7 +94,7 @@ public class TestRollingUpgradeRollback {
     final Path foo = new Path("/foo");
     final Path bar = new Path("/bar");
     try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(0).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       cluster.waitActive();
 
       final DistributedFileSystem dfs = cluster.getFileSystem();
@@ -156,7 +156,7 @@ public class TestRollingUpgradeRollback {
       mjc.waitActive();
       conf.set(DFSConfigKeys.DFS_NAMENODE_EDITS_DIR_KEY, mjc
           .getQuorumJournalURI(JOURNAL_ID).toString());
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(0).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       cluster.waitActive();
 
       DistributedFileSystem dfs = cluster.getFileSystem();

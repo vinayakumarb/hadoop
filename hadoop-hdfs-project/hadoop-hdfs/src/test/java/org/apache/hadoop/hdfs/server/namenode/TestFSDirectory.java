@@ -92,7 +92,7 @@ public class TestFSDirectory {
     conf = new Configuration();
     conf.setInt(DFSConfigKeys.DFS_NAMENODE_MAX_XATTRS_PER_INODE_KEY, 2);
     cluster = new MiniDFSCluster.Builder(conf)
-      .numDataNodes(REPLICATION)
+
       .build();
     cluster.waitActive();
     

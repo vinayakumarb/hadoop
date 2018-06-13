@@ -69,8 +69,6 @@ public class TestQuotaByStorageType {
     // each node with 1 SSD and 1 DISK without capacity limitation
     cluster = new MiniDFSCluster
         .Builder(conf)
-        .numDataNodes(REPLICATION)
-        .storageTypes(new StorageType[]{StorageType.SSD, StorageType.DEFAULT})
         .build();
     cluster.waitActive();
     refreshClusterState();

@@ -75,7 +75,7 @@ public class TestWebHdfsWithAuthenticationFilter {
     conf.set(DFSConfigKeys.DFS_WEBHDFS_AUTHENTICATION_FILTER_KEY,
         CustomizedFilter.class.getName());
     conf.set(DFSConfigKeys.DFS_NAMENODE_HTTP_ADDRESS_KEY, "localhost:0");
-    cluster = new MiniDFSCluster.Builder(conf).numDataNodes(1).build();
+    cluster = new MiniDFSCluster.Builder(conf).build();
     InetSocketAddress addr = cluster.getNameNode().getHttpAddress();
     fs = FileSystem.get(
         URI.create("webhdfs://" + NetUtils.getHostPortString(addr)), conf);

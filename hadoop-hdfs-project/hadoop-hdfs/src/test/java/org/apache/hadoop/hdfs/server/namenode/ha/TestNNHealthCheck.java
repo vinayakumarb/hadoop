@@ -60,7 +60,7 @@ public class TestNNHealthCheck {
   @Test
   public void testNNHealthCheck() throws IOException {
     cluster = new MiniDFSCluster.Builder(conf)
-        .numDataNodes(0)
+
         .nnTopology(MiniDFSNNTopology.simpleHATopology())
         .build();
     doNNHealthCheckTest();
@@ -70,7 +70,7 @@ public class TestNNHealthCheck {
   public void testNNHealthCheckWithLifelineAddress() throws IOException {
     conf.set(DFS_NAMENODE_LIFELINE_RPC_ADDRESS_KEY, "0.0.0.0:0");
     cluster = new MiniDFSCluster.Builder(conf)
-          .numDataNodes(0)
+
           .nnTopology(MiniDFSNNTopology.simpleHATopology())
           .build();
     doNNHealthCheckTest();

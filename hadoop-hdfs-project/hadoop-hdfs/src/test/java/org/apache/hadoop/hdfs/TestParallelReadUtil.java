@@ -29,7 +29,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.client.impl.BlockReaderTestUtil;
-import org.apache.hadoop.hdfs.server.datanode.DataNode;
 import org.apache.hadoop.util.Time;
 import org.apache.log4j.Level;
 import org.apache.log4j.LogManager;
@@ -53,13 +52,6 @@ public class TestParallelReadUtil {
   static Random rand = null;
   static final int DEFAULT_REPLICATION_FACTOR = 2;
   protected boolean verifyChecksums = true;
-
-  static {
-    // The client-trace log ends up causing a lot of blocking threads
-    // in this when it's being used as a performance benchmark.
-    LogManager.getLogger(DataNode.class.getName() + ".clienttrace")
-      .setLevel(Level.WARN);
-  }
 
   private class TestFileInfo {
     public DFSInputStream dis;

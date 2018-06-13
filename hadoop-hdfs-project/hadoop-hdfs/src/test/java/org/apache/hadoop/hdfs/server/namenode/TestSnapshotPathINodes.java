@@ -61,7 +61,7 @@ public class TestSnapshotPathINodes {
   public static void setUp() throws Exception {
     Configuration conf = new Configuration();
     cluster = new MiniDFSCluster.Builder(conf)
-      .numDataNodes(REPLICATION)
+
       .build();
     cluster.waitActive();
 

@@ -79,11 +79,6 @@ public class TestJMXGet {
       if (cluster.isClusterUp()) {
         cluster.shutdown();
       }
-      File data_dir = new File(cluster.getDataDirectory());
-      if (data_dir.exists() && !FileUtil.fullyDelete(data_dir)) {
-        throw new IOException(
-            "Could not delete hdfs directory in tearDown '" + data_dir + "'");
-      }
       cluster = null;
     }
   }
@@ -95,7 +90,7 @@ public class TestJMXGet {
   @Test
   public void testNameNode() throws Exception {
     int numDatanodes = 2;
-    cluster = new MiniDFSCluster.Builder(config).numDataNodes(numDatanodes).build();
+    cluster = new MiniDFSCluster.Builder(config).build();
     cluster.waitActive();
 
     DFSTestUtil.createFile(cluster.getFileSystem(), new Path("/test1"),
@@ -153,7 +148,7 @@ public class TestJMXGet {
   @Test
   public void testDataNode() throws Exception {
     int numDatanodes = 2;
-    cluster = new MiniDFSCluster.Builder(config).numDataNodes(numDatanodes).build();
+    cluster = new MiniDFSCluster.Builder(config).build();
     cluster.waitActive();
 
     DFSTestUtil.createFile(cluster.getFileSystem(), new Path("/test"),

@@ -174,13 +174,6 @@ public class TestRouter {
       assertExceptionContains("Cannot find locations for /test.txt", e);
     }
 
-    try {
-      dfsClient.datanodeReport(DatanodeReportType.LIVE);
-      fail("Get datanode reports with no subclusters should fail");
-    } catch (IOException e) {
-      assertExceptionContains("No remote locations available", e);
-    }
-
     dfsClient.close();
     router.stop();
     router.close();

@@ -66,7 +66,7 @@ public class TestMetadataVersionOutput {
     initConfig();
     dfsCluster = new MiniDFSCluster.Builder(conf).
         manageNameDfsDirs(false).
-        numDataNodes(1).
+
         checkExitOnShutdown(false).
         build();
     dfsCluster.waitClusterUp();

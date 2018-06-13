@@ -720,9 +720,7 @@ public class MiniRouterDFSCluster {
       }
 
       cluster = new MiniDFSCluster.Builder(nnConf)
-          .numDataNodes(numDNs)
           .nnTopology(topology)
-          .dataNodeConfOverlays(dnConfs)
           .build();
       cluster.waitActive();
 

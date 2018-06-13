@@ -55,7 +55,7 @@ public class TestFcHdfsPermission extends FileContextPermissionBase {
   public static void clusterSetupAtBegining()
                                     throws IOException, LoginException, URISyntaxException  {
     Configuration conf = new HdfsConfiguration();
-    cluster = new MiniDFSCluster.Builder(conf).numDataNodes(2).build();
+    cluster = new MiniDFSCluster.Builder(conf).build();
     fc = FileContext.getFileContext(cluster.getURI(0), conf);
     defaultWorkingDirectory = fc.makeQualified( new Path("/user/" + 
         UserGroupInformation.getCurrentUser().getShortUserName()));

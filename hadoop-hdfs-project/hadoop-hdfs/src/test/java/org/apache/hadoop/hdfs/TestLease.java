@@ -75,7 +75,7 @@ public class TestLease {
   @Test
   public void testLeaseAbort() throws Exception {
     MiniDFSCluster cluster =
-        new MiniDFSCluster.Builder(conf).numDataNodes(2).build();
+        new MiniDFSCluster.Builder(conf).build();
     try {
       cluster.waitActive();
       NamenodeProtocols preSpyNN = cluster.getNameNodeRpc();
@@ -163,7 +163,7 @@ public class TestLease {
 
   @Test
   public void testLeaseAfterRename() throws Exception {
-    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).numDataNodes(2).build();
+    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).build();
     try {
       Path p = new Path("/test-file");
       Path d = new Path("/test-d");
@@ -260,7 +260,7 @@ public class TestLease {
    */
   @Test
   public void testLeaseAfterRenameAndRecreate() throws Exception {
-    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).numDataNodes(2).build();
+    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).build();
     try {
       final Path path1 = new Path("/test-file");
       final String contents1 = "contents1";
@@ -298,7 +298,7 @@ public class TestLease {
 
   @Test
   public void testLease() throws Exception {
-    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).numDataNodes(2).build();
+    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).build();
     try {
       FileSystem fs = cluster.getFileSystem();
       Assert.assertTrue(fs.mkdirs(dir));

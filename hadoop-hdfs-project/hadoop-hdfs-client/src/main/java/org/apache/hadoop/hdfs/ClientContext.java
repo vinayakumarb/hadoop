@@ -33,7 +33,6 @@ import org.apache.hadoop.hdfs.client.impl.DfsClientConf;
 import org.apache.hadoop.hdfs.client.impl.DfsClientConf.ShortCircuitConf;
 import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.hdfs.shortcircuit.DomainSocketFactory;
-import org.apache.hadoop.hdfs.shortcircuit.ShortCircuitCache;
 import org.apache.hadoop.hdfs.util.ByteArrayManager;
 import org.apache.hadoop.net.DNSToSwitchMapping;
 import org.apache.hadoop.net.NetUtils;
@@ -72,11 +71,6 @@ public class ClientContext {
    * String representation of the configuration.
    */
   private final String confString;
-
-  /**
-   * Caches short-circuit file descriptors, mmap regions.
-   */
-  private final ShortCircuitCache shortCircuitCache;
 
   /**
    * Caches TCP and UNIX domain sockets for reuse.
@@ -124,7 +118,6 @@ public class ClientContext {
 
     this.name = name;
     this.confString = scConf.confAsString();
-    this.shortCircuitCache = ShortCircuitCache.fromConf(scConf);
     this.peerCache = new PeerCache(scConf.getSocketCacheCapacity(),
         scConf.getSocketCacheExpiry());
     this.keyProviderCache = new KeyProviderCache(
@@ -205,10 +198,6 @@ public class ClientContext {
 
   public String getConfString() {
     return confString;
-  }
-
-  public ShortCircuitCache getShortCircuitCache() {
-    return shortCircuitCache;
   }
 
   public PeerCache getPeerCache() {

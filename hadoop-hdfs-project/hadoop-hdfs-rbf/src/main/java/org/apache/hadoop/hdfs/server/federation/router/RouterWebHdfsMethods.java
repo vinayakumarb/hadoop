@@ -550,12 +550,7 @@ public class RouterWebHdfsMethods extends NamenodeWebHdfsMethods {
         new PrivilegedAction<DatanodeInfo[]>() {
           @Override
           public DatanodeInfo[] run() {
-            try {
-              return rpcServer.getDatanodeReport(DatanodeReportType.LIVE);
-            } catch (IOException e) {
-              LOG.error("Cannot get the datanodes from the RPC server", e);
-              return null;
-            }
+              return DatanodeInfo.EMPTY_ARRAY;
           }
         });
 
@@ -593,7 +588,7 @@ public class RouterWebHdfsMethods extends NamenodeWebHdfsMethods {
         final int count = locations.locatedBlockCount();
         if (count > 0) {
           LocatedBlock location0 = locations.get(0);
-          return bestNode(location0.getLocations(), excludes);
+          return bestNode(DatanodeInfo.EMPTY_ARRAY, excludes);
         }
       }
     }

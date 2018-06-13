@@ -98,7 +98,7 @@ public class TestSnapshotDiffReport {
         DFSConfigKeys.DFS_NAMENODE_SNAPSHOT_DIFF_ALLOW_SNAP_ROOT_DESCENDANT,
         true);
     conf.setInt(DFSConfigKeys.DFS_NAMENODE_SNAPSHOT_DIFF_LISTING_LIMIT, 3);
-    cluster = new MiniDFSCluster.Builder(conf).numDataNodes(REPLICATION)
+    cluster = new MiniDFSCluster.Builder(conf)
         .format(true).build();
     cluster.waitActive();
     hdfs = cluster.getFileSystem();
@@ -1019,7 +1019,6 @@ public class TestSnapshotDiffReport {
   }
 
   private void restartNameNode() throws Exception {
-    cluster.triggerBlockReports();
     NameNode nameNode = cluster.getNameNode();
     NameNodeAdapter.enterSafeMode(nameNode, false);
     NameNodeAdapter.saveNamespace(nameNode);

@@ -77,7 +77,7 @@ public class TestWebHDFSForHA {
     FileSystem fs = null;
     try {
       cluster = new MiniDFSCluster.Builder(conf).nnTopology(topo)
-          .numDataNodes(0).build();
+          .build();
 
       HATestUtil.setFailoverConfigurations(cluster, conf, LOGICAL_NAME);
 
@@ -112,7 +112,7 @@ public class TestWebHDFSForHA {
     WebHdfsFileSystem fs = null;
     try {
       cluster = new MiniDFSCluster.Builder(conf).nnTopology(topo)
-          .numDataNodes(0).build();
+          .build();
 
       HATestUtil.setFailoverConfigurations(cluster, conf, LOGICAL_NAME);
       cluster.waitActive();
@@ -147,8 +147,7 @@ public class TestWebHDFSForHA {
     MiniDFSCluster cluster = null;
     WebHdfsFileSystem fs = null;
     try {
-      cluster = new MiniDFSCluster.Builder(conf).nnTopology(topo).numDataNodes(
-          0).build();
+      cluster = new MiniDFSCluster.Builder(conf).nnTopology(topo).build();
 
       HATestUtil.setFailoverConfigurations(cluster, conf, LOGICAL_NAME);
       cluster.waitActive();
@@ -218,7 +217,7 @@ public class TestWebHDFSForHA {
 
     try {
       cluster = new MiniDFSCluster.Builder(conf).nnTopology(topo)
-              .numDataNodes(1).build();
+              .build();
 
       HATestUtil.setFailoverConfigurations(cluster, conf, LOGICAL_NAME);
 
@@ -253,7 +252,7 @@ public class TestWebHDFSForHA {
 
     try {
       cluster = new MiniDFSCluster.Builder(conf).nnTopology(topo)
-              .numDataNodes(1).build();
+              .build();
 
       HATestUtil.setFailoverConfigurations(cluster, conf, LOGICAL_NAME);
 
@@ -283,7 +282,7 @@ public class TestWebHDFSForHA {
 
     try {
       cluster = new MiniDFSCluster.Builder(conf).nnTopology(topo)
-          .numDataNodes(0).build();
+          .build();
       HATestUtil.setFailoverConfigurations(cluster, conf, LOGICAL_NAME);
       cluster.waitActive();
       cluster.transitionToActive(0);

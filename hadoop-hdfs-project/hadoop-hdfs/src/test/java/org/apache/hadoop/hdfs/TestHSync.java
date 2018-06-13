@@ -179,7 +179,7 @@ public class TestHSync {
   @Test
   public void testHSyncWithReplication() throws Exception {
     Configuration conf = new HdfsConfiguration();
-    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).numDataNodes(3).build();
+    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).build();
     final FileSystem fs = cluster.getFileSystem();
 
     final Path p = new Path("/testHSyncWithReplication/foo");

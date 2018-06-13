@@ -75,7 +75,7 @@ public class TestListOpenFiles {
     conf.setLong(
         DFSConfigKeys.DFS_NAMENODE_LIST_OPENFILES_NUM_RESPONSES, BATCH_SIZE);
     cluster = new MiniDFSCluster.Builder(conf).
-        numDataNodes(NUM_DATA_NODES).build();
+        build();
     cluster.waitActive();
     fs = cluster.getFileSystem();
     nnRpc = cluster.getNameNodeRpc();
@@ -188,7 +188,7 @@ public class TestListOpenFiles {
     MiniDFSCluster haCluster =
         new MiniDFSCluster.Builder(haConf)
         .nnTopology(MiniDFSNNTopology.simpleHATopology())
-        .numDataNodes(0)
+
         .build();
     try {
       HATestUtil.setFailoverConfigurations(haCluster, haConf);

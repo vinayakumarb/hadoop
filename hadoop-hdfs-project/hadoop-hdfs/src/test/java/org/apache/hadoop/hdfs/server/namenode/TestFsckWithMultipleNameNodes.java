@@ -94,7 +94,7 @@ public class TestFsckWithMultipleNameNodes {
     final MiniDFSCluster cluster = new MiniDFSCluster
         .Builder(conf)
         .nnTopology(MiniDFSNNTopology.simpleFederatedTopology(nNameNodes))
-        .numDataNodes(nDataNodes)
+
         .build();
     LOG.info("RUN_TEST 0");
     DFSTestUtil.setFederatedConfiguration(cluster, conf);

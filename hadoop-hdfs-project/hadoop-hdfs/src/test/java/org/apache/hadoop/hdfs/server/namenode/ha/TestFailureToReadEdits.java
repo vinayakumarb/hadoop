@@ -133,7 +133,7 @@ public class TestFailureToReadEdits {
               MiniQJMHACluster.createDefaultTopology(basePort);
           cluster = new MiniDFSCluster.Builder(conf)
           .nnTopology(topology)
-          .numDataNodes(0)
+
           .checkExitOnShutdown(false)
           .build();
           break;
@@ -149,7 +149,7 @@ public class TestFailureToReadEdits {
       }
     } else {
       Builder builder = new MiniQJMHACluster.Builder(conf);
-      builder.getDfsBuilder().numDataNodes(0).checkExitOnShutdown(false);
+      builder.getDfsBuilder().checkExitOnShutdown(false);
       miniQjmHaCluster = builder.build();
       cluster = miniQjmHaCluster.getDfsCluster();
     }

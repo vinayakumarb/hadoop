@@ -612,7 +612,7 @@ public class TestSaveNamespace {
   @Test (timeout=30000)
   public void testSaveNamespaceWithRenamedLease() throws Exception {
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(new Configuration())
-        .numDataNodes(1).build();
+        .build();
     cluster.waitActive();
     DistributedFileSystem fs = cluster.getFileSystem();
     OutputStream out = null;
@@ -633,7 +633,7 @@ public class TestSaveNamespace {
   @Test (timeout=30000)
   public void testSaveNamespaceWithDanglingLease() throws Exception {
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(new Configuration())
-        .numDataNodes(1).build();
+        .build();
     cluster.waitActive();
     DistributedFileSystem fs = cluster.getFileSystem();
     try {
@@ -651,7 +651,7 @@ public class TestSaveNamespace {
   @Test
   public void testSkipSnapshotSection() throws Exception {
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(new Configuration())
-        .numDataNodes(1).build();
+        .build();
     cluster.waitActive();
     DistributedFileSystem fs = cluster.getFileSystem();
     OutputStream out = null;
@@ -693,7 +693,7 @@ public class TestSaveNamespace {
   public void testSaveNamespaceBeforeShutdown() throws Exception {
     Configuration conf = new HdfsConfiguration();
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
-        .numDataNodes(0).build();
+        .build();
     cluster.waitActive();
     DistributedFileSystem fs = cluster.getFileSystem();
 

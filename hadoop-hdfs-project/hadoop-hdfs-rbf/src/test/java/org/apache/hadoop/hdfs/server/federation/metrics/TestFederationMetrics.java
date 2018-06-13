@@ -133,16 +133,6 @@ public class TestFederationMetrics extends TestMetricsBase {
 
       assertEquals(json.getString("state"), mockEntry.getState().toString());
       MembershipStats stats = mockEntry.getStats();
-      assertEquals(json.getLong("numOfActiveDatanodes"),
-          stats.getNumOfActiveDatanodes());
-      assertEquals(json.getLong("numOfDeadDatanodes"),
-          stats.getNumOfDeadDatanodes());
-      assertEquals(json.getLong("numOfDecommissioningDatanodes"),
-          stats.getNumOfDecommissioningDatanodes());
-      assertEquals(json.getLong("numOfDecomActiveDatanodes"),
-          stats.getNumOfDecomActiveDatanodes());
-      assertEquals(json.getLong("numOfDecomDeadDatanodes"),
-          stats.getNumOfDecomDeadDatanodes());
       assertEquals(json.getLong("numOfBlocks"), stats.getNumOfBlocks());
       assertEquals(json.getString("rpcAddress"), mockEntry.getRpcAddress());
       assertEquals(json.getString("webAddress"), mockEntry.getWebAddress());
@@ -181,20 +171,6 @@ public class TestFederationMetrics extends TestMetricsBase {
       assertEquals(stats.getTotalSpace(), json.getLong("totalSpace"));
       assertEquals(stats.getAvailableSpace(),
           json.getLong("availableSpace"));
-      assertEquals(stats.getNumOfBlocksMissing(),
-          json.getLong("numOfBlocksMissing"));
-      assertEquals(stats.getNumOfActiveDatanodes(),
-          json.getLong("numOfActiveDatanodes"));
-      assertEquals(stats.getNumOfDeadDatanodes(),
-          json.getLong("numOfDeadDatanodes"));
-      assertEquals(stats.getNumOfDecommissioningDatanodes(),
-          json.getLong("numOfDecommissioningDatanodes"));
-      assertEquals(stats.getNumOfDecomActiveDatanodes(),
-          json.getLong("numOfDecomActiveDatanodes"));
-      assertEquals(stats.getNumOfDecomDeadDatanodes(),
-          json.getLong("numOfDecomDeadDatanodes"));
-      assertEquals(stats.getProvidedSpace(),
-          json.getLong("providedSpace"));
       nameservicesFound++;
     }
     assertEquals(getNameservices().size(), nameservicesFound);
@@ -258,28 +234,13 @@ public class TestFederationMetrics extends TestMetricsBase {
 
     // Determine aggregates
     long numBlocks = 0;
-    long numLive = 0;
-    long numDead = 0;
-    long numDecom = 0;
-    long numDecomLive = 0;
-    long numDecomDead = 0;
     long numFiles = 0;
     for (MembershipState mock : getActiveMemberships()) {
       MembershipStats stats = mock.getStats();
       numBlocks += stats.getNumOfBlocks();
-      numLive += stats.getNumOfActiveDatanodes();
-      numDead += stats.getNumOfDeadDatanodes();
-      numDecom += stats.getNumOfDecommissioningDatanodes();
-      numDecomLive += stats.getNumOfDecomActiveDatanodes();
-      numDecomDead += stats.getNumOfDecomDeadDatanodes();
     }
 
     assertEquals(numBlocks, bean.getNumBlocks());
-    assertEquals(numLive, bean.getNumLiveNodes());
-    assertEquals(numDead, bean.getNumDeadNodes());
-    assertEquals(numDecom, bean.getNumDecommissioningNodes());
-    assertEquals(numDecomLive, bean.getNumDecomLiveNodes());
-    assertEquals(numDecomDead, bean.getNumDecomDeadNodes());
     assertEquals(numFiles, bean.getNumFiles());
     assertEquals(getActiveMemberships().size() + getStandbyMemberships().size(),
         bean.getNumNamenodes());

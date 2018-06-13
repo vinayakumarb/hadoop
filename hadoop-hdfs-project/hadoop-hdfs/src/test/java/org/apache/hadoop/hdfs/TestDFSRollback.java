@@ -17,20 +17,18 @@
 */
 package org.apache.hadoop.hdfs;
 
-import static org.apache.hadoop.hdfs.server.common.HdfsServerConstants.NodeType.DATA_NODE;
 import static org.apache.hadoop.hdfs.server.common.HdfsServerConstants.NodeType.NAME_NODE;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.fail;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hdfs.server.common.HdfsServerConstants;
 import org.apache.hadoop.hdfs.server.common.HdfsServerConstants.NodeType;
 import org.apache.hadoop.hdfs.server.common.HdfsServerConstants.StartupOption;
 import org.apache.hadoop.hdfs.server.common.StorageInfo;
@@ -40,7 +38,6 @@ import org.apache.hadoop.util.StringUtils;
 import org.junit.After;
 import org.junit.Test;
 
-import com.google.common.base.Charsets;
 import com.google.common.collect.Lists;
 
 /**
@@ -102,9 +99,8 @@ public class TestDFSRollback {
   void startNameNodeShouldFail(String searchString) {
     try {
       NameNode.doRollback(conf, false);
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(0)
+      cluster = new MiniDFSCluster.Builder(conf)
                                                 .format(false)
-                                                .manageDataDfsDirs(false)
                                                 .manageNameDfsDirs(false)
                                                 .build(); // should fail
       throw new AssertionError("NameNode should have failed to start");
@@ -116,21 +112,7 @@ public class TestDFSRollback {
       // expected
     }
   }
-  
-  /**
-   * Attempts to start a DataNode with the given operation. Starting
-   * the given block pool should fail.
-   * @param operation startup option
-   * @param bpid block pool Id that should fail to start
-   * @throws IOException 
-   */
-  void startBlockPoolShouldFail(StartupOption operation, String bpid)
-      throws IOException {
-    cluster.startDataNodes(conf, 1, false, operation, null); // should fail
-    assertFalse("Block pool " + bpid + " should have failed to start", 
-        cluster.getDataNodes().get(0).isBPServiceAlive(bpid));
-  }
- 
+
   /**
    * This test attempts to rollback the NameNode and DataNode under
    * a number of valid and invalid conditions.
@@ -143,11 +125,9 @@ public class TestDFSRollback {
     StorageInfo storageInfo = null;
     for (int numDirs = 1; numDirs <= 2; numDirs++) {
       conf = new HdfsConfiguration();
-      conf.setInt(DFSConfigKeys.DFS_DATANODE_SCAN_PERIOD_HOURS_KEY, -1);      
       conf = UpgradeUtilities.initializeStorageStateConf(numDirs, conf);
       String[] nameNodeDirs = conf.getStrings(DFSConfigKeys.DFS_NAMENODE_NAME_DIR_KEY);
-      String[] dataNodeDirs = conf.getStrings(DFSConfigKeys.DFS_DATANODE_DATA_DIR_KEY);
-      
+
       log("Normal NameNode rollback", numDirs);
       UpgradeUtilities.createNameNodeStorageDirs(nameNodeDirs, "current");
       UpgradeUtilities.createNameNodeStorageDirs(nameNodeDirs, "previous");
@@ -159,64 +139,24 @@ public class TestDFSRollback {
       UpgradeUtilities.createNameNodeStorageDirs(nameNodeDirs, "current");
       UpgradeUtilities.createNameNodeStorageDirs(nameNodeDirs, "previous");
       NameNode.doRollback(conf, false);
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(0)
+      cluster = new MiniDFSCluster.Builder(conf)
                                                 .format(false)
-                                                .manageDataDfsDirs(false)
                                                 .manageNameDfsDirs(false)
-                                                .dnStartupOption(StartupOption.ROLLBACK)
                                                 .build();
-      UpgradeUtilities.createDataNodeStorageDirs(dataNodeDirs, "current");
-      UpgradeUtilities.createDataNodeStorageDirs(dataNodeDirs, "previous");
-      cluster.startDataNodes(conf, 1, false, StartupOption.ROLLBACK, null);
-      checkResult(DATA_NODE, dataNodeDirs);
       cluster.shutdown();
       UpgradeUtilities.createEmptyDirs(nameNodeDirs);
-      UpgradeUtilities.createEmptyDirs(dataNodeDirs);
-      
+
       log("Normal BlockPool rollback", numDirs);
       UpgradeUtilities.createNameNodeStorageDirs(nameNodeDirs, "current");
       UpgradeUtilities.createNameNodeStorageDirs(nameNodeDirs, "previous");
       NameNode.doRollback(conf, false);
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(0)
-                                                .format(false)
-                                                .manageDataDfsDirs(false)
+      cluster = new MiniDFSCluster.Builder(conf).format(false)
                                                 .manageNameDfsDirs(false)
-                                                .dnStartupOption(StartupOption.ROLLBACK)
                                                 .build();
-      UpgradeUtilities.createDataNodeStorageDirs(dataNodeDirs, "current");
-      UpgradeUtilities.createBlockPoolStorageDirs(dataNodeDirs, "current",
-          UpgradeUtilities.getCurrentBlockPoolID(cluster));
-      // Create a previous snapshot for the blockpool
-      UpgradeUtilities.createBlockPoolStorageDirs(dataNodeDirs, "previous",
-          UpgradeUtilities.getCurrentBlockPoolID(cluster));
-      // Put newer layout version in current.
-      storageInfo = new StorageInfo(
-          HdfsServerConstants.DATANODE_LAYOUT_VERSION - 1,
-          UpgradeUtilities.getCurrentNamespaceID(cluster),
-          UpgradeUtilities.getCurrentClusterID(cluster),
-          UpgradeUtilities.getCurrentFsscTime(cluster),
-          NodeType.DATA_NODE);
-
-      // Overwrite VERSION file in the current directory of
-      // volume directories and block pool slice directories
-      // with a layout version from future.
-      File[] dataCurrentDirs = new File[dataNodeDirs.length];
-      for (int i=0; i<dataNodeDirs.length; i++) {
-        dataCurrentDirs[i] = new File((new Path(dataNodeDirs[i] 
-            + "/current")).toString());
-      }
-      UpgradeUtilities.createDataNodeVersionFile(
-          dataCurrentDirs,
-          storageInfo,
-          UpgradeUtilities.getCurrentBlockPoolID(cluster), conf);
-
-      cluster.startDataNodes(conf, 1, false, StartupOption.ROLLBACK, null);
-      assertTrue(cluster.isDataNodeUp());
 
       cluster.shutdown();
       UpgradeUtilities.createEmptyDirs(nameNodeDirs);
-      UpgradeUtilities.createEmptyDirs(dataNodeDirs);
-      
+
       log("NameNode rollback without existing previous dir", numDirs);
       UpgradeUtilities.createNameNodeStorageDirs(nameNodeDirs, "current");
       startNameNodeShouldFail(
@@ -225,72 +165,32 @@ public class TestDFSRollback {
       
       log("DataNode rollback without existing previous dir", numDirs);
       UpgradeUtilities.createNameNodeStorageDirs(nameNodeDirs, "current");
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(0)
-                                                .format(false)
-                                                .manageDataDfsDirs(false)
+      cluster = new MiniDFSCluster.Builder(conf).format(false)
                                                 .manageNameDfsDirs(false)
                                                 .startupOption(StartupOption.UPGRADE)
                                                 .build();
-      UpgradeUtilities.createDataNodeStorageDirs(dataNodeDirs, "current");
-      cluster.startDataNodes(conf, 1, false, StartupOption.ROLLBACK, null);
       cluster.shutdown();
       UpgradeUtilities.createEmptyDirs(nameNodeDirs);
-      UpgradeUtilities.createEmptyDirs(dataNodeDirs);
-      
       log("DataNode rollback with future stored layout version in previous", numDirs);
       UpgradeUtilities.createNameNodeStorageDirs(nameNodeDirs, "current");
       UpgradeUtilities.createNameNodeStorageDirs(nameNodeDirs, "previous");
       NameNode.doRollback(conf, false);
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(0)
-                                                .format(false)
-                                                .manageDataDfsDirs(false)
+      cluster = new MiniDFSCluster.Builder(conf).format(false)
                                                 .manageNameDfsDirs(false)
-                                                .dnStartupOption(StartupOption.ROLLBACK)
                                                 .build();
-      UpgradeUtilities.createDataNodeStorageDirs(dataNodeDirs, "current");
-      baseDirs = UpgradeUtilities.createDataNodeStorageDirs(dataNodeDirs, "previous");
-      storageInfo = new StorageInfo(Integer.MIN_VALUE, 
-          UpgradeUtilities.getCurrentNamespaceID(cluster), 
-          UpgradeUtilities.getCurrentClusterID(cluster), 
-          UpgradeUtilities.getCurrentFsscTime(cluster),
-          NodeType.DATA_NODE);
-      
-      UpgradeUtilities.createDataNodeVersionFile(baseDirs, storageInfo,
-          UpgradeUtilities.getCurrentBlockPoolID(cluster), conf);
-      
-      startBlockPoolShouldFail(StartupOption.ROLLBACK, 
-          cluster.getNamesystem().getBlockPoolId());
       cluster.shutdown();
       UpgradeUtilities.createEmptyDirs(nameNodeDirs);
-      UpgradeUtilities.createEmptyDirs(dataNodeDirs);
-      
+
       log("DataNode rollback with newer fsscTime in previous", numDirs);
       UpgradeUtilities.createNameNodeStorageDirs(nameNodeDirs, "current");
       UpgradeUtilities.createNameNodeStorageDirs(nameNodeDirs, "previous");
       NameNode.doRollback(conf, false);
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(0)
-                                                .format(false)
-                                                .manageDataDfsDirs(false)
+      cluster = new MiniDFSCluster.Builder(conf).format(false)
                                                 .manageNameDfsDirs(false)
-                                                .dnStartupOption(StartupOption.ROLLBACK)
                                                 .build();
-      
-      UpgradeUtilities.createDataNodeStorageDirs(dataNodeDirs, "current");
-      baseDirs = UpgradeUtilities.createDataNodeStorageDirs(dataNodeDirs, "previous");
-      storageInfo = new StorageInfo(HdfsServerConstants.DATANODE_LAYOUT_VERSION,
-          UpgradeUtilities.getCurrentNamespaceID(cluster),
-          UpgradeUtilities.getCurrentClusterID(cluster), Long.MAX_VALUE,
-          NodeType.DATA_NODE);
-     
-      UpgradeUtilities.createDataNodeVersionFile(baseDirs, storageInfo,
-          UpgradeUtilities.getCurrentBlockPoolID(cluster), conf);
-      
-      startBlockPoolShouldFail(StartupOption.ROLLBACK, 
-          cluster.getNamesystem().getBlockPoolId());
       cluster.shutdown();
       UpgradeUtilities.createEmptyDirs(nameNodeDirs);
-      UpgradeUtilities.createEmptyDirs(dataNodeDirs);
-      
+
       log("NameNode rollback with no edits file", numDirs);
       UpgradeUtilities.createNameNodeStorageDirs(nameNodeDirs, "current");
       baseDirs = UpgradeUtilities.createNameNodeStorageDirs(nameNodeDirs, "previous");
@@ -308,12 +208,6 @@ public class TestDFSRollback {
       log("NameNode rollback with corrupt version file", numDirs);
       UpgradeUtilities.createNameNodeStorageDirs(nameNodeDirs, "current");
       baseDirs = UpgradeUtilities.createNameNodeStorageDirs(nameNodeDirs, "previous");
-      for (File f : baseDirs) { 
-        UpgradeUtilities.corruptFile(
-            new File(f,"VERSION"),
-            "layoutVersion".getBytes(Charsets.UTF_8),
-            "xxxxxxxxxxxxx".getBytes(Charsets.UTF_8));
-      }
       startNameNodeShouldFail("file VERSION has layoutVersion missing");
 
       UpgradeUtilities.createEmptyDirs(nameNodeDirs);

@@ -37,7 +37,6 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hdfs.client.HdfsClientConfigKeys;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
-import org.apache.hadoop.hdfs.server.datanode.DataNode;
 import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.security.AccessControlException;
 import org.apache.hadoop.security.UserGroupInformation;
@@ -53,7 +52,6 @@ public class TestFileAppend2 {
 
   {
     DFSTestUtil.setNameNodeLogLevel(Level.ALL);
-    GenericTestUtils.setLogLevel(DataNode.LOG, Level.ALL);
     GenericTestUtils.setLogLevel(DFSClient.LOG, Level.ALL);
   }
 
@@ -79,7 +77,6 @@ public class TestFileAppend2 {
   @Test
   public void testSimpleAppend() throws IOException {
     final Configuration conf = new HdfsConfiguration();
-    conf.setInt(DFSConfigKeys.DFS_DATANODE_HANDLER_COUNT_KEY, 50);
     fileContents = AppendTestUtil.initBuffer(AppendTestUtil.FILE_SIZE);
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).build();
     FileSystem fs = cluster.getFileSystem();
@@ -228,7 +225,6 @@ public class TestFileAppend2 {
   @Test
   public void testSimpleAppend2() throws Exception {
     final Configuration conf = new HdfsConfiguration();
-    conf.setInt(DFSConfigKeys.DFS_DATANODE_HANDLER_COUNT_KEY, 50);
     fileContents = AppendTestUtil.initBuffer(AppendTestUtil.FILE_SIZE);
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).build();
     DistributedFileSystem fs = cluster.getFileSystem();
@@ -484,10 +480,9 @@ public class TestFileAppend2 {
     conf.setInt(DFSConfigKeys.DFS_NAMENODE_RECONSTRUCTION_PENDING_TIMEOUT_SEC_KEY, 2);
     conf.setInt(HdfsClientConfigKeys.DFS_CLIENT_SOCKET_TIMEOUT_KEY, 30000);
     conf.setInt(HdfsClientConfigKeys.DFS_DATANODE_SOCKET_WRITE_TIMEOUT_KEY, 30000);
-    conf.setInt(DFSConfigKeys.DFS_DATANODE_HANDLER_COUNT_KEY, 50);
 
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
-                                               .numDataNodes(numDatanodes)
+
                                                .build();
     cluster.waitActive();
     FileSystem fs = cluster.getFileSystem();
@@ -551,7 +546,7 @@ public class TestFileAppend2 {
   public void testAppendLessThanChecksumChunk() throws Exception {
     final byte[] buf = new byte[1024];
     final MiniDFSCluster cluster = new MiniDFSCluster
-        .Builder(new HdfsConfiguration()).numDataNodes(1).build();
+        .Builder(new HdfsConfiguration()).build();
     cluster.waitActive();
 
     try (DistributedFileSystem fs = cluster.getFileSystem()) {

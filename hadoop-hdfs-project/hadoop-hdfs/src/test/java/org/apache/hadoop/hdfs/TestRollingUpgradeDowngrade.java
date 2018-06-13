@@ -97,7 +97,7 @@ public class TestRollingUpgradeDowngrade {
     final Configuration conf = new Configuration();
     MiniDFSCluster cluster = null;
     try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(0).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       cluster.waitActive();
       DistributedFileSystem fs = cluster.getFileSystem();
       fs.setSafeMode(SafeModeAction.SAFEMODE_ENTER);

@@ -311,7 +311,7 @@ public class TestINodeFile {
     MiniDFSCluster cluster = null;
     try {
       cluster =
-          new MiniDFSCluster.Builder(conf).numDataNodes(replication).build();
+          new MiniDFSCluster.Builder(conf).build();
       cluster.waitActive();
       FSNamesystem fsn = cluster.getNamesystem();
       FSDirectory fsdir = fsn.getFSDirectory();
@@ -475,7 +475,7 @@ public class TestINodeFile {
         DFSConfigKeys.DFS_BYTES_PER_CHECKSUM_DEFAULT);
     MiniDFSCluster cluster = null;
     try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(1).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       cluster.waitActive();
 
       FSNamesystem fsn = cluster.getNamesystem();
@@ -585,7 +585,7 @@ public class TestINodeFile {
   @Test(timeout=120000)
   public void testWriteToDeletedFile() throws IOException {
     Configuration conf = new Configuration();
-    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).numDataNodes(1)
+    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
         .build();
     cluster.waitActive();
     FileSystem fs = cluster.getFileSystem();
@@ -640,7 +640,7 @@ public class TestINodeFile {
     conf.setBoolean(DFSConfigKeys.DFS_NAMENODE_ACLS_ENABLED_KEY, true);
     MiniDFSCluster cluster = null;
     try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(1).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       cluster.waitActive();
       DistributedFileSystem fs = cluster.getFileSystem();
       NamenodeProtocols nnRpc = cluster.getNameNodeRpc();
@@ -816,7 +816,7 @@ public class TestINodeFile {
     MiniDFSCluster cluster = null;
     try {
       // First start a cluster with reserved file names check turned off
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(1).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       cluster.waitActive();
       FileSystem fs = cluster.getFileSystem();
       
@@ -1003,7 +1003,7 @@ public class TestINodeFile {
     final Configuration conf = new Configuration();
     MiniDFSCluster cluster = null;
     try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(1).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       cluster.waitActive();
       final DistributedFileSystem hdfs = cluster.getFileSystem();
       final FSDirectory fsdir = cluster.getNamesystem().getFSDirectory();
@@ -1040,7 +1040,7 @@ public class TestINodeFile {
     MiniDFSCluster cluster = null;
     DFSClient client = null;
     try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(1).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       cluster.waitActive();
       final DistributedFileSystem hdfs = cluster.getFileSystem();
       final FSDirectory fsdir = cluster.getNamesystem().getFSDirectory();
@@ -1073,7 +1073,7 @@ public class TestINodeFile {
     conf.setInt(DFSConfigKeys.DFS_LIST_LIMIT, 9); // 3 blocks * 3 replicas
     MiniDFSCluster cluster = null;
     try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(3).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       cluster.waitActive();
       final DistributedFileSystem hdfs = cluster.getFileSystem();
       ArrayList<String> source = new ArrayList<String>();
@@ -1142,7 +1142,7 @@ public class TestINodeFile {
     final Configuration conf = new Configuration();
     MiniDFSCluster cluster = null;
     try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(1).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       cluster.waitActive();
       final DistributedFileSystem hdfs = cluster.getFileSystem();
       final FSDirectory fsdir = cluster.getNamesystem().getFSDirectory();

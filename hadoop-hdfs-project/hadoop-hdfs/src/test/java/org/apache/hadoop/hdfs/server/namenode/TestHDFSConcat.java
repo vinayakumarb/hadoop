@@ -71,7 +71,7 @@ public class TestHDFSConcat {
   
   @Before
   public void startUpCluster() throws IOException {
-    cluster = new MiniDFSCluster.Builder(conf).numDataNodes(REPL_FACTOR).build();
+    cluster = new MiniDFSCluster.Builder(conf).build();
     assertNotNull("Failed Cluster Creation", cluster);
     cluster.waitClusterUp();
     dfs = cluster.getFileSystem();
@@ -87,7 +87,6 @@ public class TestHDFSConcat {
       dfs = null;
     }
     if(cluster != null) {
-      cluster.shutdownDataNodes();
       cluster.shutdown();
       cluster = null;
     }

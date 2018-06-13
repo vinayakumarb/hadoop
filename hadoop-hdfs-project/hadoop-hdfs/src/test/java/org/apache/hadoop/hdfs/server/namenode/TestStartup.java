@@ -129,7 +129,7 @@ public class TestStartup {
     
     try {
       cluster = new MiniDFSCluster.Builder(config)
-                                  .manageDataDfsDirs(false)
+
                                   .manageNameDfsDirs(false).build();
       cluster.waitActive();
 
@@ -241,7 +241,7 @@ public class TestStartup {
     try {
       cluster = new MiniDFSCluster.Builder(config)
                                   .format(false)
-                                  .manageDataDfsDirs(false)
+
                                   .manageNameDfsDirs(false)
                                   .startupOption(IMPORT).build();
       cluster.waitActive();
@@ -357,7 +357,7 @@ public class TestStartup {
     SecondaryNameNode sn = null;
     NameNode nn = null;
     try {
-      cluster = new MiniDFSCluster.Builder(config).manageDataDfsDirs(false)
+      cluster = new MiniDFSCluster.Builder(config)
                                                   .manageNameDfsDirs(false)
                                                   .build();
       cluster.waitActive();
@@ -491,7 +491,7 @@ public class TestStartup {
                  "Starting empty cluster");
         
         cluster = new MiniDFSCluster.Builder(config)
-          .numDataNodes(0)
+
           .format(true)
           .build();
         cluster.waitActive();
@@ -516,7 +516,7 @@ public class TestStartup {
         "Starting same cluster after simulated crash");
         try {
           cluster = new MiniDFSCluster.Builder(config)
-            .numDataNodes(0)
+
             .format(false)
             .build();
           fail("Should not have successfully started with corrupt image");
@@ -544,7 +544,7 @@ public class TestStartup {
     // Should still be able to start
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(config)
         .format(false)
-        .manageDataDfsDirs(false)
+
         .manageNameDfsDirs(false)
         .build();
     try {
@@ -563,25 +563,16 @@ public class TestStartup {
   public void testNNRestart() throws IOException, InterruptedException {
     MiniDFSCluster cluster = null;
     int HEARTBEAT_INTERVAL = 1; // heartbeat interval in seconds
-
-    HostsFileWriter hostsFileWriter = new HostsFileWriter();
-    hostsFileWriter.initialize(config, "work-dir/restartnn");
-
     byte b[] = {127, 0, 0, 1};
     InetAddress inetAddress = InetAddress.getByAddress(b);
-    hostsFileWriter.initIncludeHosts(new String[] {inetAddress.getHostName()});
-
-    int numDatanodes = 1;
-    
     try {
       cluster = new MiniDFSCluster.Builder(config)
-      .numDataNodes(numDatanodes).setupHostsFile(true).build();
+      .build();
       cluster.waitActive();
   
       cluster.restartNameNode();
       NamenodeProtocols nn = cluster.getNameNodeRpc();
       assertNotNull(nn);
-      assertTrue(cluster.isDataNodeUp());
     } catch (IOException e) {
       fail(StringUtils.stringifyException(e));
       throw e;
@@ -589,7 +580,6 @@ public class TestStartup {
       if (cluster != null) {
         cluster.shutdown();
       }
-      hostsFileWriter.cleanup();
     }
   }
 
@@ -601,7 +591,7 @@ public class TestStartup {
     try {
       conf.setInt(DFSConfigKeys.DFS_NAMENODE_MAX_XATTR_SIZE_KEY, -1);
       cluster =
-          new MiniDFSCluster.Builder(conf).numDataNodes(0).format(true).build();
+          new MiniDFSCluster.Builder(conf).format(true).build();
       fail("Expected exception with negative xattr size");
     } catch (IllegalArgumentException e) {
       GenericTestUtils.assertExceptionContains(
@@ -617,7 +607,7 @@ public class TestStartup {
     try {
       conf.setInt(DFSConfigKeys.DFS_NAMENODE_MAX_XATTRS_PER_INODE_KEY, -1);
       cluster =
-          new MiniDFSCluster.Builder(conf).numDataNodes(0).format(true).build();
+          new MiniDFSCluster.Builder(conf).format(true).build();
       fail("Expected exception with negative # xattrs per inode");
     } catch (IllegalArgumentException e) {
       GenericTestUtils.assertExceptionContains(
@@ -640,7 +630,7 @@ public class TestStartup {
     config.set(DFSConfigKeys.DFS_NAMENODE_NAME_DIR_KEY, nnDirStr);
 
     try(MiniDFSCluster cluster = new MiniDFSCluster.Builder(config)
-        .numDataNodes(1)
+
         .manageNameDfsDirs(false)
         .build()) {
       cluster.waitActive();

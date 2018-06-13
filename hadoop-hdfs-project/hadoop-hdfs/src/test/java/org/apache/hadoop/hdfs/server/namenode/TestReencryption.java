@@ -125,7 +125,7 @@ public class TestReencryption {
     conf.setInt(DFSConfigKeys.DFS_LIST_LIMIT, 3);
     // Adjust configs for re-encrypt test cases
     conf.setInt(DFSConfigKeys.DFS_NAMENODE_REENCRYPT_BATCH_SIZE_KEY, 5);
-    cluster = new MiniDFSCluster.Builder(conf).numDataNodes(1).build();
+    cluster = new MiniDFSCluster.Builder(conf).build();
     cluster.waitActive();
     cluster.waitClusterUp();
     fs = cluster.getFileSystem();

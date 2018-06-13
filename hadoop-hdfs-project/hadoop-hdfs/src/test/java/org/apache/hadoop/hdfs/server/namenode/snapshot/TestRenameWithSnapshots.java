@@ -95,7 +95,7 @@ public class TestRenameWithSnapshots {
   @Before
   public void setUp() throws Exception {
     conf.setLong(DFSConfigKeys.DFS_BLOCK_SIZE_KEY, BLOCKSIZE);
-    cluster = new MiniDFSCluster.Builder(conf).numDataNodes(REPL).format(true)
+    cluster = new MiniDFSCluster.Builder(conf).format(true)
         .build();
     cluster.waitActive();
 
@@ -510,7 +510,7 @@ public class TestRenameWithSnapshots {
 
     cluster.shutdown(false, false);
     cluster = new MiniDFSCluster.Builder(conf).format(false)
-        .numDataNodes(REPL).build();
+        .build();
     cluster.waitActive();
     fsn = cluster.getNamesystem();
     fsdir = fsn.getFSDirectory();
@@ -524,7 +524,7 @@ public class TestRenameWithSnapshots {
     hdfs.setSafeMode(SafeModeAction.SAFEMODE_LEAVE);
     cluster.shutdown();
     cluster = new MiniDFSCluster.Builder(conf).format(false)
-        .numDataNodes(REPL).build();
+        .build();
     cluster.waitActive();
     fsn = cluster.getNamesystem();
     fsdir = fsn.getFSDirectory();
@@ -1735,7 +1735,7 @@ public class TestRenameWithSnapshots {
     hdfs.setSafeMode(SafeModeAction.SAFEMODE_LEAVE);
     cluster.shutdown();
     cluster = new MiniDFSCluster.Builder(conf).format(false)
-        .numDataNodes(REPL).build();
+        .build();
     cluster.waitActive();
     restartClusterAndCheckImage(true);
   }

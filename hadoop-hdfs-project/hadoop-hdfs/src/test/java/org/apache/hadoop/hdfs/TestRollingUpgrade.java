@@ -39,14 +39,12 @@ import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hdfs.MiniDFSCluster.DataNodeProperties;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants.RollingUpgradeAction;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants.SafeModeAction;
 import org.apache.hadoop.hdfs.protocol.RollingUpgradeInfo;
 import org.apache.hadoop.hdfs.qjournal.MiniJournalCluster;
 import org.apache.hadoop.hdfs.qjournal.MiniQJMHACluster;
 import org.apache.hadoop.hdfs.server.common.HdfsServerConstants.StartupOption;
-import org.apache.hadoop.hdfs.server.datanode.DataNode;
 import org.apache.hadoop.hdfs.server.namenode.CheckpointFaultInjector;
 import org.apache.hadoop.hdfs.server.namenode.FSImage;
 import org.apache.hadoop.hdfs.server.namenode.NNStorage;
@@ -86,7 +84,7 @@ public class TestRollingUpgrade {
     final Configuration conf = new HdfsConfiguration();
     MiniDFSCluster cluster = null;
     try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(0).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       cluster.waitActive();
 
       final Path foo = new Path("/foo");
@@ -177,7 +175,6 @@ public class TestRollingUpgrade {
     {
       // Start the cluster once to generate the dfs dirs
       final MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
-        .numDataNodes(0)
         .manageNameDfsDirs(false)
         .checkExitOnShutdown(false)
         .build();
@@ -197,7 +194,6 @@ public class TestRollingUpgrade {
 
       // Start the cluster again
       final MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
-        .numDataNodes(0)
         .format(false)
         .manageNameDfsDirs(false)
         .checkExitOnShutdown(false)
@@ -228,7 +224,6 @@ public class TestRollingUpgrade {
       // cluster2 takes over QJM
       final Configuration conf2 = setConf(new Configuration(), nn2Dir, mjc);
       cluster2 = new MiniDFSCluster.Builder(conf2)
-        .numDataNodes(0)
         .format(false)
         .manageNameDfsDirs(false)
         .build();
@@ -309,7 +304,7 @@ public class TestRollingUpgrade {
     final Configuration conf = new HdfsConfiguration();
     MiniDFSCluster cluster = null;
     try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(1).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       cluster.waitActive();
 
       final Path foo = new Path("/foo");
@@ -379,46 +374,12 @@ public class TestRollingUpgrade {
   private static void rollbackRollingUpgrade(Path foo, Path bar,
       Path file, byte[] data,
       MiniDFSCluster cluster) throws IOException {
-    final DataNodeProperties dnprop = cluster.stopDataNode(0);
     cluster.restartNameNode("-rollingUpgrade", "rollback");
-    cluster.restartDataNode(dnprop, true);
 
     final DistributedFileSystem dfs = cluster.getFileSystem();
     Assert.assertTrue(dfs.exists(foo));
     Assert.assertFalse(dfs.exists(bar));
     AppendTestUtil.checkFullFile(dfs, file, data.length, data);
-  }
-
-  @Test
-  public void testDFSAdminDatanodeUpgradeControlCommands() throws Exception {
-    // start a cluster
-    final Configuration conf = new HdfsConfiguration();
-    MiniDFSCluster cluster = null;
-    try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(1).build();
-      cluster.waitActive();
-      final DFSAdmin dfsadmin = new DFSAdmin(conf);
-      DataNode dn = cluster.getDataNodes().get(0);
-
-      // check the datanode
-      final String dnAddr = dn.getDatanodeId().getIpcAddr(false);
-      final String[] args1 = {"-getDatanodeInfo", dnAddr};
-      runCmd(dfsadmin, true, args1);
-
-      // issue shutdown to the datanode.
-      final String[] args2 = {"-shutdownDatanode", dnAddr, "upgrade" };
-      runCmd(dfsadmin, true, args2);
-
-      // the datanode should be down.
-      GenericTestUtils.waitForThreadTermination(
-          "Async datanode shutdown thread", 100, 10000);
-      Assert.assertFalse("DataNode should exit", dn.isDatanodeUp());
-
-      // ping should fail.
-      assertEquals(-1, dfsadmin.run(args1));
-    } finally {
-      if (cluster != null) cluster.shutdown();
-    }
   }
 
   @Test(timeout = 300000)
@@ -539,7 +500,7 @@ public class TestRollingUpgrade {
     final Configuration conf = new Configuration();
     MiniDFSCluster cluster = null;
     try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(0).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       cluster.waitActive();
       DistributedFileSystem dfs = cluster.getFileSystem();
 

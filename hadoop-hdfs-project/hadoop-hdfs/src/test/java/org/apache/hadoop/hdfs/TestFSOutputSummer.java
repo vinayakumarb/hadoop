@@ -129,7 +129,7 @@ public class TestFSOutputSummer {
     conf.setInt(DFSConfigKeys.DFS_BYTES_PER_CHECKSUM_KEY, BYTES_PER_CHECKSUM);
     conf.set(DFSConfigKeys.DFS_CHECKSUM_TYPE_KEY, checksumType);
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
-                                               .numDataNodes(NUM_OF_DATANODES)
+
                                                .build();
     fileSys = cluster.getFileSystem();
     try {
@@ -152,7 +152,7 @@ public class TestFSOutputSummer {
     conf.setInt(DFSConfigKeys.DFS_BYTES_PER_CHECKSUM_KEY, BYTES_PER_CHECKSUM);
     conf.set(DFSConfigKeys.DFS_CHECKSUM_TYPE_KEY, "NULL");
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
-                                               .numDataNodes(NUM_OF_DATANODES)
+
                                                .build();
     fileSys = cluster.getFileSystem();
     try {

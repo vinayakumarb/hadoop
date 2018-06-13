@@ -156,7 +156,6 @@ import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.SetTim
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.TruncateRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.UnsetStoragePolicyRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.UpdateBlockForPipelineRequestProto;
-import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.UpdatePipelineRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.UpgradeStatusRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.UpgradeStatusResponseProto;
 import org.apache.hadoop.hdfs.protocol.proto.*;
@@ -926,24 +925,6 @@ public class ClientNamenodeProtocolTranslatorPB implements
     try {
       return PBHelperClient.convertLocatedBlockProto(
           rpcProxy.updateBlockForPipeline(null, req).getBlock());
-    } catch (ServiceException e) {
-      throw ProtobufHelper.getRemoteException(e);
-    }
-  }
-
-  @Override
-  public void updatePipeline(String clientName, ExtendedBlock oldBlock,
-      ExtendedBlock newBlock, DatanodeID[] newNodes, String[] storageIDs)
-      throws IOException {
-    UpdatePipelineRequestProto req = UpdatePipelineRequestProto.newBuilder()
-        .setClientName(clientName)
-        .setOldBlock(PBHelperClient.convert(oldBlock))
-        .setNewBlock(PBHelperClient.convert(newBlock))
-        .addAllNewNodes(Arrays.asList(PBHelperClient.convert(newNodes)))
-        .addAllStorageIDs(storageIDs == null ? null : Arrays.asList(storageIDs))
-        .build();
-    try {
-      rpcProxy.updatePipeline(null, req);
     } catch (ServiceException e) {
       throw ProtobufHelper.getRemoteException(e);
     }

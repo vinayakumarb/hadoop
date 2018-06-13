@@ -86,9 +86,6 @@ public class TestNameNodeMetrics {
   private static final String NN_METRICS = "NameNodeActivity";
   private static final String NS_METRICS = "FSNamesystem";
   private static final int BLOCK_SIZE = 1024 * 1024;
-  private static final ErasureCodingPolicy EC_POLICY =
-      SystemErasureCodingPolicies.getByID(
-          SystemErasureCodingPolicies.XOR_2_1_POLICY_ID);
 
   public static final Log LOG = LogFactory.getLog(TestNameNodeMetrics.class);
   
@@ -104,11 +101,6 @@ public class TestNameNodeMetrics {
     CONF.setInt(DFSConfigKeys.DFS_BYTES_PER_CHECKSUM_KEY, 1);
     CONF.setLong(DFSConfigKeys.DFS_HEARTBEAT_INTERVAL_KEY,
         DFS_REDUNDANCY_INTERVAL);
-    // Set it long enough to essentially disable unless we manually call it
-    // Used for decommissioning DataNode metrics
-    CONF.setTimeDuration(
-        MiniDFSCluster.DFS_NAMENODE_DECOMMISSION_INTERVAL_TESTING_KEY, 999,
-        TimeUnit.DAYS);
     // Next two configs used for checking failed volume metrics
     CONF.set(DFSConfigKeys.DFS_METRICS_PERCENTILES_INTERVALS_KEY,
         "" + PERCENTILES_INTERVAL);
@@ -120,7 +112,6 @@ public class TestNameNodeMetrics {
   private DistributedFileSystem fs;
   private final Random rand = new Random();
   private FSNamesystem namesystem;
-  private HostsFileWriter hostsFileWriter;
   private BlockManager bm;
 
   private static Path getTestPath(String fileName) {
@@ -129,9 +120,7 @@ public class TestNameNodeMetrics {
 
   @Before
   public void setUp() throws Exception {
-    hostsFileWriter = new HostsFileWriter();
-    hostsFileWriter.initialize(CONF, "temp/decommission");
-    cluster = new MiniDFSCluster.Builder(CONF).numDataNodes(DATANODE_COUNT)
+    cluster = new MiniDFSCluster.Builder(CONF)
         .build();
     cluster.waitActive();
     namesystem = cluster.getNamesystem();
@@ -146,10 +135,6 @@ public class TestNameNodeMetrics {
       // Run only once since the UGI metrics is cleaned up during teardown
       MetricsRecordBuilder rb = getMetrics(source);
       assertQuantileGauges("GetGroups1s", rb);
-    }
-    if (hostsFileWriter != null) {
-      hostsFileWriter.cleanup();
-      hostsFileWriter = null;
     }
     if (cluster != null) {
       cluster.shutdown();
@@ -339,7 +324,7 @@ public class TestNameNodeMetrics {
         // Poll and follow ANN txns very often, for purpose of testing.
         conf2.setInt(DFSConfigKeys.DFS_HA_TAILEDITS_PERIOD_KEY, 1);
         MiniDFSCluster cluster2 = new MiniDFSCluster.Builder(conf2)
-            .nnTopology(topology).numDataNodes(1).build();
+            .nnTopology(topology).build();
         cluster2.waitActive();
         DistributedFileSystem fs2 = cluster2.getFileSystem(0);
         NameNode nn0 = cluster2.getNameNode(0);
@@ -426,27 +411,6 @@ public class TestNameNodeMetrics {
     assertGauge("TransactionsSinceLastLogRoll", 1L, getMetrics(NS_METRICS));
   }
   
-  /**
-   * Tests that the sync and block report metrics get updated on cluster
-   * startup.
-   */
-  @Test
-  public void testSyncAndBlockReportMetric() throws Exception {
-    MetricsRecordBuilder rb = getMetrics(NN_METRICS);
-    // We have one sync when the cluster starts up, just opening the journal
-    assertCounter("SyncsNumOps", 4L, rb);
-    // Each datanode reports in when the cluster comes up
-    assertCounter("StorageBlockReportNumOps",
-                  (long) DATANODE_COUNT * cluster.getStoragesPerDatanode(), rb);
-    
-    // Sleep for an interval+slop to let the percentiles rollover
-    Thread.sleep((PERCENTILES_INTERVAL+1)*1000);
-    
-    // Check that the percentiles were updated
-    assertQuantileGauges("Syncs1s", rb);
-    assertQuantileGauges("StorageBlockReport1s", rb);
-  }
-
   /**
    * Test NN ReadOps Count and WriteOps Count
    */
@@ -541,7 +505,7 @@ public class TestNameNodeMetrics {
         GenericTestUtils.getMethodName());
 
     try (MiniDFSCluster clusterEDEK = new MiniDFSCluster.Builder(conf, basedir)
-        .numDataNodes(1).build()) {
+        .build()) {
 
       DistributedFileSystem fsEDEK =
           clusterEDEK.getFileSystem();
@@ -579,7 +543,7 @@ public class TestNameNodeMetrics {
     File basedir = new File(MiniDFSCluster.getBaseDirectory(),
         GenericTestUtils.getMethodName());
     MiniDFSCluster tmpCluster = new MiniDFSCluster.Builder(conf, basedir)
-        .numDataNodes(0)
+
         .nnTopology(MiniDFSNNTopology.simpleHATopology())
         .build();
     try {

@@ -70,7 +70,7 @@ public class TestExtendedAcls {
     conf = new Configuration();
     conf.setBoolean(DFS_NAMENODE_ACLS_ENABLED_KEY, true);
     cluster = new MiniDFSCluster.Builder(conf)
-        .numDataNodes(REPLICATION)
+
         .build();
     cluster.waitActive();
     hdfs = cluster.getFileSystem();

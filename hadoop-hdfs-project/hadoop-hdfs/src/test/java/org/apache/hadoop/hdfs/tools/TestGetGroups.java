@@ -37,7 +37,7 @@ public class TestGetGroups extends GetGroupsTestBase {
   @Before
   public void setUpNameNode() throws IOException {
     conf = new HdfsConfiguration();
-    cluster = new MiniDFSCluster.Builder(conf).numDataNodes(0).build();
+    cluster = new MiniDFSCluster.Builder(conf).build();
   }
   
   @After

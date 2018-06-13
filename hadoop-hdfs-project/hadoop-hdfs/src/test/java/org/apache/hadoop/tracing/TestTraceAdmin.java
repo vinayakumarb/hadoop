@@ -22,7 +22,6 @@ import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.apache.hadoop.hdfs.protocol.datatransfer.sasl.SaslDataTransferTestCase;
-import org.apache.hadoop.hdfs.server.datanode.DataNode;
 import org.apache.hadoop.net.unix.TemporarySocketDirectory;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.htrace.core.Tracer;
@@ -71,12 +70,6 @@ public class TestTraceAdmin extends SaslDataTransferTestCase {
     return "127.0.0.1:" + cluster.getNameNodePort();
   }
 
-  private String getHostPortForDN(MiniDFSCluster cluster, int index) {
-    ArrayList<DataNode> dns = cluster.getDataNodes();
-    assertTrue(index >= 0 && index < dns.size());
-    return "127.0.0.1:" + dns.get(index).getIpcPort();
-  }
-
   @Test
   public void testNoOperator() throws Exception {
     TraceAdmin trace = new TraceAdmin();
@@ -92,7 +85,7 @@ public class TestTraceAdmin extends SaslDataTransferTestCase {
     conf.set(TraceUtils.DEFAULT_HADOOP_TRACE_PREFIX +
         Tracer.SPAN_RECEIVER_CLASSES_KEY, "");
     MiniDFSCluster cluster =
-        new MiniDFSCluster.Builder(conf).numDataNodes(3).build();
+        new MiniDFSCluster.Builder(conf).build();
     cluster.waitActive();
     TemporarySocketDirectory tempDir = new TemporarySocketDirectory();
     String tracePath =
@@ -143,11 +136,10 @@ public class TestTraceAdmin extends SaslDataTransferTestCase {
         "authentication,privacy");
     try {
       cluster = new MiniDFSCluster.Builder(conf)
-          .numDataNodes(ONE_DATANODE)
+
           .build();
       cluster.waitActive();
       final String nnHost = getHostPortForNN(cluster);
-      final String dnHost = getHostPortForDN(cluster, 0);
       // login using keytab and run commands
       UserGroupInformation
           .loginUserFromKeytabAndReturnUGI(getHdfsPrincipal(), getHdfsKeytab())
@@ -161,12 +153,6 @@ public class TestTraceAdmin extends SaslDataTransferTestCase {
                   "-list", "-host", nnHost, "-principal",
                   conf.get(DFSConfigKeys.DFS_NAMENODE_KERBEROS_PRINCIPAL_KEY)};
               int ret = trace.run(nnTraceCmd);
-              assertEquals(0, ret);
-              // send trace command to DN
-              final String[] dnTraceCmd = new String[] {
-                  "-list", "-host", dnHost, "-principal",
-                  conf.get(DFSConfigKeys.DFS_DATANODE_KERBEROS_PRINCIPAL_KEY)};
-              ret = trace.run(dnTraceCmd);
               assertEquals(0, ret);
               return null;
             }

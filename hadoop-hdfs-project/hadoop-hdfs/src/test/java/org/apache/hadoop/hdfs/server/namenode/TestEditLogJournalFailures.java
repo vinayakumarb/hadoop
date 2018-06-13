@@ -87,7 +87,7 @@ public class TestEditLogJournalFailures {
 
   public void setUpMiniCluster(Configuration conf, boolean manageNameDfsDirs)
       throws IOException {
-    cluster = new MiniDFSCluster.Builder(conf).numDataNodes(0)
+    cluster = new MiniDFSCluster.Builder(conf)
         .manageNameDfsDirs(manageNameDfsDirs).checkExitOnShutdown(false).build();
     cluster.waitActive();
     fs = cluster.getFileSystem();

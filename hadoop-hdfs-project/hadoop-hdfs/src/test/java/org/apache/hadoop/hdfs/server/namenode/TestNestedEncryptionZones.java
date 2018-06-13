@@ -102,7 +102,7 @@ public class TestNestedEncryptionZones {
         2);
     // enable trash for testing
     conf.setLong(DFSConfigKeys.FS_TRASH_INTERVAL_KEY, 1);
-    cluster = new MiniDFSCluster.Builder(conf).numDataNodes(1).build();
+    cluster = new MiniDFSCluster.Builder(conf).build();
     Logger.getLogger(EncryptionZoneManager.class).setLevel(Level.TRACE);
     fs = cluster.getFileSystem();
     setProvider();

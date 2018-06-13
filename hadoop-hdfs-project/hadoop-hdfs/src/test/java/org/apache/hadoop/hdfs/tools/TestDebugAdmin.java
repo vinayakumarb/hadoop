@@ -50,7 +50,7 @@ public class TestDebugAdmin {
     testRoot.delete();
     testRoot.mkdirs();
     Configuration conf = new Configuration();
-    cluster = new MiniDFSCluster.Builder(conf).numDataNodes(1).build();
+    cluster = new MiniDFSCluster.Builder(conf).build();
     cluster.waitActive();
     fs = cluster.getFileSystem();
     admin = new DebugAdmin(conf);

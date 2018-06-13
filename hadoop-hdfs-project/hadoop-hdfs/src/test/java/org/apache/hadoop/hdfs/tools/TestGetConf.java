@@ -529,34 +529,6 @@ public class TestGetConf {
       }
     }
   }
-  @Test
-  public void TestGetConfExcludeCommand() throws Exception{
-  	HdfsConfiguration conf = new HdfsConfiguration();
-    // Set up the hosts/exclude files.
-    HostsFileWriter hostsFileWriter = new HostsFileWriter();
-    hostsFileWriter.initialize(conf, "GetConf");
-    Path excludeFile = hostsFileWriter.getExcludeFile();
-
-    String[] args = {"-excludeFile"};
-    String ret = runTool(conf, args, true);
-    assertEquals(excludeFile.toUri().getPath(),ret.trim());
-    hostsFileWriter.cleanup();
-  }
-  
-  @Test
-  public void TestGetConfIncludeCommand() throws Exception{
-  	HdfsConfiguration conf = new HdfsConfiguration();
-    // Set up the hosts/exclude files.
-    HostsFileWriter hostsFileWriter = new HostsFileWriter();
-    hostsFileWriter.initialize(conf, "GetConf");
-    Path hostsFile = hostsFileWriter.getIncludeFile();
-
-    // Setup conf
-    String[] args = {"-includeFile"};
-    String ret = runTool(conf, args, true);
-    assertEquals(hostsFile.toUri().getPath(),ret.trim());
-    hostsFileWriter.cleanup();
-  }
 
   @Test
   public void testIncludeInternalNameServices() throws Exception {

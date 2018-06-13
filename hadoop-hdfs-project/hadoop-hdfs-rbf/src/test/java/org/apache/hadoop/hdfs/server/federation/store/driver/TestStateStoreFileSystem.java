@@ -44,7 +44,6 @@ public class TestStateStoreFileSystem extends TestStateStoreDriverBase {
 
     // Create HDFS cluster to back the state tore
     MiniDFSCluster.Builder builder = new MiniDFSCluster.Builder(conf);
-    builder.numDataNodes(1);
     dfsCluster = builder.build();
     dfsCluster.waitClusterUp();
     getStateStore(conf);

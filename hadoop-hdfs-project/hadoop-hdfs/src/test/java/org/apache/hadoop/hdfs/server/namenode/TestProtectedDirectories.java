@@ -75,7 +75,7 @@ public class TestProtectedDirectories {
 
     // Start the cluster.
     MiniDFSCluster cluster =
-        new MiniDFSCluster.Builder(conf).numDataNodes(0).build();
+        new MiniDFSCluster.Builder(conf).build();
 
     // Create all the directories.
     try {

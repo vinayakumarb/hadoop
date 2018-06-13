@@ -68,7 +68,7 @@ public class TestEditLogsDuringFailover {
     HAUtil.setAllowStandbyReads(conf, true);
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
       .nnTopology(MiniDFSNNTopology.simpleHATopology())
-      .numDataNodes(0)
+
       .build();
     try {
       // During HA startup, both nodes should be in
@@ -138,7 +138,7 @@ public class TestEditLogsDuringFailover {
     Configuration conf = new Configuration();
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
       .nnTopology(MiniDFSNNTopology.simpleHATopology())
-      .numDataNodes(0)
+
       .build();
     try {
       // Create a fake in-progress edit-log in the shared directory

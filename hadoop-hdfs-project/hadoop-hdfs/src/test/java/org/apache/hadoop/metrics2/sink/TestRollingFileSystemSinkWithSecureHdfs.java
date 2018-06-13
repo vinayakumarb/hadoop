@@ -28,11 +28,7 @@ import org.apache.hadoop.fs.CommonConfigurationKeysPublic;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.permission.FsPermission;
-import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_BLOCK_ACCESS_TOKEN_ENABLE_KEY;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_CLIENT_HTTPS_KEYSTORE_RESOURCE_KEY;
-import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_DATANODE_HTTPS_ADDRESS_KEY;
-import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_DATANODE_KERBEROS_PRINCIPAL_KEY;
-import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_DATANODE_KEYTAB_FILE_KEY;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_HTTP_POLICY_KEY;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_NAMENODE_HTTPS_ADDRESS_KEY;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_NAMENODE_KERBEROS_PRINCIPAL_KEY;
@@ -108,7 +104,7 @@ public class TestRollingFileSystemSinkWithSecureHdfs
     RollingFileSystemSink.hasFlushed = false;
     RollingFileSystemSink.suppliedConf = conf;
 
-    cluster = new MiniDFSCluster.Builder(conf).numDataNodes(NUM_DATANODES)
+    cluster = new MiniDFSCluster.Builder(conf)
         .build();
     cluster.waitActive();
     createDirectoriesSecurely();
@@ -237,16 +233,12 @@ public class TestRollingFileSystemSinkWithSecureHdfs
         UserGroupInformation.AuthenticationMethod.KERBEROS, conf);
     conf.set(DFS_NAMENODE_KERBEROS_PRINCIPAL_KEY, hdfsPrincipal);
     conf.set(DFS_NAMENODE_KEYTAB_FILE_KEY, hdfsKeytab);
-    conf.set(DFS_DATANODE_KERBEROS_PRINCIPAL_KEY, hdfsPrincipal);
-    conf.set(DFS_DATANODE_KEYTAB_FILE_KEY, hdfsKeytab);
     conf.set(SINK_PRINCIPAL_KEY, sinkPrincipal);
     conf.set(SINK_KEYTAB_FILE_KEY, sinkKeytab);
     conf.set(DFS_WEB_AUTHENTICATION_KERBEROS_PRINCIPAL_KEY, spnegoPrincipal);
-    conf.setBoolean(DFS_BLOCK_ACCESS_TOKEN_ENABLE_KEY, true);
     conf.set(DFS_DATA_TRANSFER_PROTECTION_KEY, dataTransferProtection);
     conf.set(DFS_HTTP_POLICY_KEY, HttpConfig.Policy.HTTPS_ONLY.name());
     conf.set(DFS_NAMENODE_HTTPS_ADDRESS_KEY, "localhost:0");
-    conf.set(DFS_DATANODE_HTTPS_ADDRESS_KEY, "localhost:0");
     conf.setInt(IPC_CLIENT_CONNECT_MAX_RETRIES_ON_SASL_KEY, 10);
     conf.set(CommonConfigurationKeysPublic.HADOOP_SECURITY_GROUP_MAPPING,
         NullGroupsMapping.class.getName());

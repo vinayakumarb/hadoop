@@ -75,12 +75,6 @@ public class TestRetryCacheWithHA {
   private static final Log LOG = LogFactory.getLog(TestRetryCacheWithHA.class);
   
   private static final int BlockSize = 1024;
-  private static ErasureCodingPolicy defaultEcPolicy =
-      SystemErasureCodingPolicies.getByID(
-          SystemErasureCodingPolicies.RS_6_3_POLICY_ID);
-  private static final short DataNodes = (short)(
-      defaultEcPolicy.getNumDataUnits() +
-      defaultEcPolicy.getNumParityUnits() + 1);
   private static final int CHECKTIMES = 10;
   private static final int ResponseSize = 3;
   
@@ -123,7 +117,7 @@ public class TestRetryCacheWithHA {
     conf.setBoolean(DFSConfigKeys.DFS_NAMENODE_XATTRS_ENABLED_KEY, true);
     cluster = new MiniDFSCluster.Builder(conf)
         .nnTopology(MiniDFSNNTopology.simpleHATopology())
-        .numDataNodes(DataNodes).build();
+        .build();
     cluster.waitActive();
     cluster.transitionToActive(0);
     // setup the configuration
@@ -390,7 +384,7 @@ public class TestRetryCacheWithHA {
       EnumSet<CreateFlag> createFlag = EnumSet.of(CreateFlag.CREATE);
       this.status = client.getNamenode().create(fileName,
           FsPermission.getFileDefault(), client.getClientName(),
-          new EnumSetWritable<CreateFlag>(createFlag), false, DataNodes,
+          new EnumSetWritable<CreateFlag>(createFlag), false, (short)1,
           BlockSize,
           new CryptoProtocolVersion[] {CryptoProtocolVersion.ENCRYPTION_ZONES},
           null);
@@ -427,7 +421,7 @@ public class TestRetryCacheWithHA {
     void prepare() throws Exception {
       final Path filePath = new Path(fileName);
       if (!dfs.exists(filePath)) {
-        DFSTestUtil.createFile(dfs, filePath, BlockSize / 2, DataNodes, 0);
+        DFSTestUtil.createFile(dfs, filePath, BlockSize / 2, (short)1, 0);
       }
     }
 
@@ -474,7 +468,7 @@ public class TestRetryCacheWithHA {
     void prepare() throws Exception {
       final Path filePath = new Path(oldName);
       if (!dfs.exists(filePath)) {
-        DFSTestUtil.createFile(dfs, filePath, BlockSize, DataNodes, 0);
+        DFSTestUtil.createFile(dfs, filePath, BlockSize, (short)1, 0);
       }
     }
     
@@ -516,7 +510,7 @@ public class TestRetryCacheWithHA {
     void prepare() throws Exception {
       final Path filePath = new Path(oldName);
       if (!dfs.exists(filePath)) {
-        DFSTestUtil.createFile(dfs, filePath, BlockSize, DataNodes, 0);
+        DFSTestUtil.createFile(dfs, filePath, BlockSize, (short)1, 0);
       }
     }
 
@@ -563,9 +557,9 @@ public class TestRetryCacheWithHA {
     @Override
     void prepare() throws Exception {
       final Path targetPath = new Path(target);
-      DFSTestUtil.createFile(dfs, targetPath, BlockSize, DataNodes, 0);
+      DFSTestUtil.createFile(dfs, targetPath, BlockSize, (short)1, 0);
       for (int i = 0; i < srcPaths.length; i++) {
-        DFSTestUtil.createFile(dfs, srcPaths[i], BlockSize, DataNodes, 0);
+        DFSTestUtil.createFile(dfs, srcPaths[i], BlockSize, (short)1, 0);
       }
       assertEquals(BlockSize, dfs.getFileStatus(targetPath).getLen());
     }
@@ -609,7 +603,7 @@ public class TestRetryCacheWithHA {
       Path p = new Path(target);
       if (!dfs.exists(p)) {
         expectedUpdateCount++;
-        DFSTestUtil.createFile(dfs, p, BlockSize, DataNodes, 0);
+        DFSTestUtil.createFile(dfs, p, BlockSize, (short)1, 0);
       }
     }
 
@@ -652,7 +646,7 @@ public class TestRetryCacheWithHA {
       Path p = new Path(target);
       if (!dfs.exists(p)) {
         expectedUpdateCount++;
-        DFSTestUtil.createFile(dfs, p, BlockSize, DataNodes, 0);
+        DFSTestUtil.createFile(dfs, p, BlockSize, (short)1, 0);
       }
     }
 
@@ -697,7 +691,7 @@ public class TestRetryCacheWithHA {
       Path p = new Path(src);
       if (!dfs.exists(p)) {
         expectedUpdateCount++;
-        DFSTestUtil.createFile(dfs, p, BlockSize, DataNodes, 0);
+        DFSTestUtil.createFile(dfs, p, BlockSize, (short)1, 0);
       }
     }
 
@@ -741,7 +735,7 @@ public class TestRetryCacheWithHA {
       Path p = new Path(src);
       if (!dfs.exists(p)) {
         expectedUpdateCount++;
-        DFSTestUtil.createFile(dfs, p, BlockSize, DataNodes, 0);
+        DFSTestUtil.createFile(dfs, p, BlockSize, (short)1, 0);
         expectedUpdateCount++;
         client.setXAttr(src, "user.key", "value".getBytes(),
           EnumSet.of(XAttrSetFlag.CREATE));

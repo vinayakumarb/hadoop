@@ -55,7 +55,7 @@ public class TestStandbyBlockManagement {
     conf.setInt(DFSConfigKeys.DFS_HA_TAILEDITS_PERIOD_KEY, 1);
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
         .nnTopology(MiniDFSNNTopology.simpleHATopology())
-        .numDataNodes(3)
+
         .build();
     try {
       cluster.waitActive();
@@ -75,18 +75,11 @@ public class TestStandbyBlockManagement {
 
       // delete the file
       fs.delete(TEST_FILE_PATH, false);
-      BlockManagerTestUtil.computeAllPendingWork(
-          nn1.getNamesystem().getBlockManager());
-
       nn1.getRpcServer().rollEditLog();
 
       // standby nn doesn't need to invalidate blocks.
       assertEquals(0,
           nn2.getNamesystem().getBlockManager().getPendingDeletionBlocksCount());
-
-      cluster.triggerHeartbeats();
-      cluster.triggerBlockReports();
-
       // standby nn doesn't need to invalidate blocks.
       assertEquals(0,
           nn2.getNamesystem().getBlockManager().getPendingDeletionBlocksCount());

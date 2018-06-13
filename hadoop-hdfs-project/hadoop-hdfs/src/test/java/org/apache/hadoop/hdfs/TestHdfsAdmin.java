@@ -66,7 +66,7 @@ public class TestHdfsAdmin {
     conf.setLong(
         DFSConfigKeys.DFS_NAMENODE_LIST_OPENFILES_NUM_RESPONSES,
         OPEN_FILES_BATCH_SIZE);
-    cluster = new MiniDFSCluster.Builder(conf).numDataNodes(2).build();
+    cluster = new MiniDFSCluster.Builder(conf).build();
     cluster.waitActive();
   }
   
@@ -210,7 +210,7 @@ public class TestHdfsAdmin {
     conf.set(CommonConfigurationKeysPublic.HADOOP_SECURITY_KEY_PROVIDER_PATH,
         getKeyProviderURI());
 
-    cluster = new MiniDFSCluster.Builder(conf).numDataNodes(2).build();
+    cluster = new MiniDFSCluster.Builder(conf).build();
     cluster.waitActive();
     hdfsAdmin = new HdfsAdmin(FileSystem.getDefaultUri(conf), conf);
 

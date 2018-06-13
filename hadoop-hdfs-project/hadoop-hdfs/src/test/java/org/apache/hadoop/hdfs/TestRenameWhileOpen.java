@@ -75,7 +75,7 @@ public class TestRenameWhileOpen {
       // create file1.
       Path dir1 = new Path("/user/a+b/dir1");
       Path file1 = new Path(dir1, "file1");
-      FSDataOutputStream stm1 = TestFileCreation.createFile(fs, file1, 1);
+      FSDataOutputStream stm1 = TestFileCreation.createFile(fs, file1);
       System.out.println("testFileCreationDeleteParent: "
           + "Created file " + file1);
       TestFileCreation.writeFile(stm1);
@@ -84,7 +84,7 @@ public class TestRenameWhileOpen {
       // create file2.
       Path dir2 = new Path("/user/dir2");
       Path file2 = new Path(dir2, "file2");
-      FSDataOutputStream stm2 = TestFileCreation.createFile(fs, file2, 1);
+      FSDataOutputStream stm2 = TestFileCreation.createFile(fs, file2);
       System.out.println("testFileCreationDeleteParent: "
           + "Created file " + file2);
       TestFileCreation.writeFile(stm2);
@@ -159,7 +159,7 @@ public class TestRenameWhileOpen {
       // create file1.
       Path dir1 = new Path("/user/dir1");
       Path file1 = new Path(dir1, "file1");
-      FSDataOutputStream stm1 = TestFileCreation.createFile(fs, file1, 1);
+      FSDataOutputStream stm1 = TestFileCreation.createFile(fs, file1);
       System.out.println("testFileCreationDeleteParent: "
           + "Created file " + file1);
       TestFileCreation.writeFile(stm1);
@@ -168,7 +168,7 @@ public class TestRenameWhileOpen {
       // create file2.
       Path dir2 = new Path("/user/dir2");
       Path file2 = new Path(dir2, "file2");
-      FSDataOutputStream stm2 = TestFileCreation.createFile(fs, file2, 1);
+      FSDataOutputStream stm2 = TestFileCreation.createFile(fs, file2);
       System.out.println("testFileCreationDeleteParent: "
           + "Created file " + file2);
       TestFileCreation.writeFile(stm2);
@@ -229,7 +229,7 @@ public class TestRenameWhileOpen {
       // create file1.
       Path dir1 = new Path("/user/dir1");
       Path file1 = new Path(dir1, "file1");
-      FSDataOutputStream stm1 = TestFileCreation.createFile(fs, file1, 1);
+      FSDataOutputStream stm1 = TestFileCreation.createFile(fs, file1);
       System.out.println("testFileCreationDeleteParent: " +
                          "Created file " + file1);
       TestFileCreation.writeFile(stm1);
@@ -289,7 +289,7 @@ public class TestRenameWhileOpen {
       // create file1.
       Path dir1 = new Path("/user/dir1");
       Path file1 = new Path(dir1, "file1");
-      FSDataOutputStream stm1 = TestFileCreation.createFile(fs, file1, 1);
+      FSDataOutputStream stm1 = TestFileCreation.createFile(fs, file1);
       System.out.println("testFileCreationDeleteParent: "
           + "Created file " + file1);
       TestFileCreation.writeFile(stm1);

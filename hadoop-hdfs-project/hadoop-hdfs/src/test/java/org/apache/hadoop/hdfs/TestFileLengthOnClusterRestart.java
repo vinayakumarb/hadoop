@@ -40,7 +40,7 @@ public class TestFileLengthOnClusterRestart {
     conf.setInt(DFSConfigKeys.DFS_BLOCK_SIZE_KEY, 512);
 
     final MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
-        .numDataNodes(2).build();
+        .build();
     HdfsDataInputStream in = null;
     try {
       Path path = new Path("/tmp/TestFileLengthOnClusterRestart", "test");
@@ -56,7 +56,6 @@ public class TestFileLengthOnClusterRestart {
       // Verify the length when we just restart NN. DNs will register
       // immediately.
       Assert.assertEquals(fileLength, in.getVisibleLength());
-      cluster.shutdownDataNodes();
       cluster.restartNameNode(false);
       // This is just for ensuring NN started.
       verifyNNIsInSafeMode(dfs);

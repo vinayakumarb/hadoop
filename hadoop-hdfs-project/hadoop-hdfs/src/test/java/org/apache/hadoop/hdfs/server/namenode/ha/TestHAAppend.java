@@ -63,7 +63,7 @@ public class TestHAAppend {
 
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
         .nnTopology(MiniDFSNNTopology.simpleHATopology())
-        .numDataNodes(3).build();
+        .build();
     FileSystem fs = null;
     try {
       cluster.transitionToActive(0);
@@ -101,11 +101,6 @@ public class TestHAAppend {
         out.close();
       }
       boolean isTruncateReady = fs.truncate(fileToTruncate, truncatePos[0]);
-
-      // Ensure that blocks have been reported to the SBN ahead of the edits
-      // arriving.
-      cluster.triggerBlockReports();
-
       // Failover the current standby to active.
       cluster.shutdownNameNode(0);
       cluster.transitionToActive(1);

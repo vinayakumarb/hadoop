@@ -155,7 +155,7 @@ public class TestDFSUpgradeWithHA {
     try {
       cluster = new MiniDFSCluster.Builder(conf)
           .nnTopology(MiniDFSNNTopology.simpleHATopology())
-          .numDataNodes(0)
+
           .build();
 
       File sharedDir = new File(cluster.getSharedEditsDir(0, 1));
@@ -237,7 +237,7 @@ public class TestDFSUpgradeWithHA {
     try {
       cluster = new MiniDFSCluster.Builder(conf)
           .nnTopology(MiniDFSNNTopology.simpleHATopology())
-          .numDataNodes(0)
+
           .build();
       
       File sharedDir = new File(cluster.getSharedEditsDir(0, 1));
@@ -319,7 +319,7 @@ public class TestDFSUpgradeWithHA {
     try {
       Builder builder = new MiniQJMHACluster.Builder(conf);
       builder.getDfsBuilder()
-          .numDataNodes(0);
+          ;
       qjCluster = builder.build();
 
       MiniDFSCluster cluster = qjCluster.getDfsCluster();
@@ -394,7 +394,7 @@ public class TestDFSUpgradeWithHA {
     try {
       Builder builder = new MiniQJMHACluster.Builder(conf);
       builder.getDfsBuilder()
-          .numDataNodes(0);
+          ;
       qjCluster = builder.build();
 
       MiniDFSCluster cluster = qjCluster.getDfsCluster();
@@ -463,7 +463,7 @@ public class TestDFSUpgradeWithHA {
     try {
       Builder builder = new MiniQJMHACluster.Builder(conf);
       builder.getDfsBuilder()
-          .numDataNodes(0);
+          ;
       qjCluster = builder.build();
 
       MiniDFSCluster cluster = qjCluster.getDfsCluster();
@@ -525,7 +525,7 @@ public class TestDFSUpgradeWithHA {
     try {
       cluster = new MiniDFSCluster.Builder(conf)
           .nnTopology(MiniDFSNNTopology.simpleHATopology())
-          .numDataNodes(0)
+
           .build();
 
       // Simulate an upgrade having started.
@@ -555,7 +555,7 @@ public class TestDFSUpgradeWithHA {
     try {
       cluster = new MiniDFSCluster.Builder(conf)
           .nnTopology(MiniDFSNNTopology.simpleHATopology())
-          .numDataNodes(0)
+
           .build();
 
       File sharedDir = new File(cluster.getSharedEditsDir(0, 1));
@@ -627,7 +627,7 @@ public class TestDFSUpgradeWithHA {
     try {
       Builder builder = new MiniQJMHACluster.Builder(conf);
       builder.getDfsBuilder()
-          .numDataNodes(0);
+          ;
       qjCluster = builder.build();
 
       MiniDFSCluster cluster = qjCluster.getDfsCluster();
@@ -713,7 +713,7 @@ public class TestDFSUpgradeWithHA {
     try {
       cluster = new MiniDFSCluster.Builder(conf)
       .nnTopology(MiniDFSNNTopology.simpleHATopology())
-      .numDataNodes(0)
+
       .build();
   
       File sharedDir = new File(cluster.getSharedEditsDir(0, 1));

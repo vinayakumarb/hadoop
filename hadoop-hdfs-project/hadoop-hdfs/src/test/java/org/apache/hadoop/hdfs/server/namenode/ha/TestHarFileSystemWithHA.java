@@ -44,7 +44,7 @@ public class TestHarFileSystemWithHA {
     MiniDFSCluster cluster = null;
     try {
       cluster = new MiniDFSCluster.Builder(conf)
-          .numDataNodes(1)
+
           .nnTopology(MiniDFSNNTopology.simpleHATopology())
           .build();
       cluster.transitionToActive(0);

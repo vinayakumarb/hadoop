@@ -53,7 +53,7 @@ public class TestDFSMkdirs {
    */
   @Test
   public void testDFSMkdirs() throws IOException {
-    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).numDataNodes(1).build();
+    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).build();
     FileSystem fileSys = cluster.getFileSystem();
     try {
       // First create a new directory with mkdirs
@@ -91,7 +91,7 @@ public class TestDFSMkdirs {
   @Test
   public void testMkdir() throws IOException {
     Configuration conf = new HdfsConfiguration();
-    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).numDataNodes(2).build();
+    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).build();
     DistributedFileSystem dfs = cluster.getFileSystem();
     try {
       // Create a dir in root dir, should succeed
@@ -135,7 +135,7 @@ public class TestDFSMkdirs {
    */
   @Test
   public void testMkdirRpcNonCanonicalPath() throws IOException {
-    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).numDataNodes(0).build();
+    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).build();
     try {
       NamenodeProtocols nnrpc = cluster.getNameNodeRpc();
       

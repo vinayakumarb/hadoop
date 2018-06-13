@@ -62,8 +62,7 @@ public class TestNamenodeCapacityReport {
       remaining = namesystem.getCapacityRemaining();
       percentUsed = namesystem.getPercentUsed();
       percentRemaining = namesystem.getPercentRemaining();
-      LOG.info("Data node directory " + cluster.getDataDirectory());
-           
+
       LOG.info("Name node diskCapacity " + diskCapacity + " configCapacity "
           + configCapacity + " used " + used
           + " remaining " + remaining

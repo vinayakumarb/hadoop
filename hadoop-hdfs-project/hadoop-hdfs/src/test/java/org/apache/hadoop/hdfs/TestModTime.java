@@ -57,14 +57,6 @@ public class TestModTime {
     assertTrue(!fileSys.exists(name));
   }
 
-  private void printDatanodeReport(DatanodeInfo[] info) {
-    System.out.println("-------------------------------------------------");
-    for (int i = 0; i < info.length; i++) {
-      System.out.println(info[i].getDatanodeReport());
-      System.out.println();
-    }
-  }
-
   /**
    * Tests modification time in DFS.
    */
@@ -73,13 +65,11 @@ public class TestModTime {
     Configuration conf = new HdfsConfiguration();
 
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
-                                               .numDataNodes(numDatanodes).build();
+                                               .build();
     cluster.waitActive();
     InetSocketAddress addr = new InetSocketAddress("localhost", 
                                                    cluster.getNameNodePort());
     DFSClient client = new DFSClient(addr, conf);
-    DatanodeInfo[] info = client.datanodeReport(DatanodeReportType.LIVE);
-    assertEquals("Number of Datanodes ", numDatanodes, info.length);
     FileSystem fileSys = cluster.getFileSystem();
     int replicas = numDatanodes - 1;
     assertTrue(fileSys instanceof DistributedFileSystem);
@@ -170,8 +160,6 @@ public class TestModTime {
      cleanupFile(fileSys, dir1);
      cleanupFile(fileSys, dir2);
     } catch (IOException e) {
-      info = client.datanodeReport(DatanodeReportType.ALL);
-      printDatanodeReport(info);
       throw e;
     } finally {
       fileSys.close();

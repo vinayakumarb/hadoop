@@ -71,7 +71,7 @@ public class TestWebHdfsWithMultipleNameNodes {
 
     cluster = new MiniDFSCluster.Builder(conf)
         .nnTopology(MiniDFSNNTopology.simpleFederatedTopology(nNameNodes))
-        .numDataNodes(nDataNodes)
+
         .build();
     cluster.waitActive();
     

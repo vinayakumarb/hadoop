@@ -120,7 +120,7 @@ public class TestDFSInputStream {
   public void testSeekToNewSource() throws IOException {
     Configuration conf = new Configuration();
     MiniDFSCluster cluster =
-        new MiniDFSCluster.Builder(conf).numDataNodes(3).build();
+        new MiniDFSCluster.Builder(conf).build();
     DistributedFileSystem fs = cluster.getFileSystem();
     Path path = new Path("/testfile");
     DFSTestUtil.createFile(fs, path, 1024, (short) 3, 0);

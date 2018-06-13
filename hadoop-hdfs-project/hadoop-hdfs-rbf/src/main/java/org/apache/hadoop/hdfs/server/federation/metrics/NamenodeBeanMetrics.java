@@ -216,11 +216,6 @@ public class NamenodeBeanMetrics
   }
 
   @Override
-  public long getProvidedCapacity() {
-    return getFederationMetrics().getProvidedSpace();
-  }
-
-  @Override
   public String getSafemode() {
     // We assume that the global federated view is never in safe mode
     return "";
@@ -238,11 +233,6 @@ public class NamenodeBeanMetrics
   }
 
   @Override
-  public long getNonDfsUsedSpace() {
-    return 0;
-  }
-
-  @Override
   public float getPercentUsed() {
     return DFSUtilClient.getPercentUsed(getCapacityUsed(), getCapacityTotal());
   }
@@ -254,70 +244,13 @@ public class NamenodeBeanMetrics
   }
 
   @Override
-  public long getCacheUsed() {
-    return 0;
-  }
-
-  @Override
-  public long getCacheCapacity() {
-    return 0;
-  }
-
-  @Override
-  public long getBlockPoolUsedSpace() {
-    return 0;
-  }
-
-  @Override
-  public float getPercentBlockPoolUsed() {
-    return 0;
-  }
-
-  @Override
   public long getTotalBlocks() {
     return getFederationMetrics().getNumBlocks();
   }
 
   @Override
-  public long getNumberOfMissingBlocks() {
-    return getFederationMetrics().getNumOfMissingBlocks();
-  }
-
-  @Override
-  @Deprecated
-  public long getPendingReplicationBlocks() {
-    return getFederationMetrics().getNumOfBlocksPendingReplication();
-  }
-
-  @Override
-  public long getPendingReconstructionBlocks() {
-    return getFederationMetrics().getNumOfBlocksPendingReplication();
-  }
-
-  @Override
-  @Deprecated
-  public long getUnderReplicatedBlocks() {
-    return getFederationMetrics().getNumOfBlocksUnderReplicated();
-  }
-
-  @Override
-  public long getLowRedundancyBlocks() {
-    return getFederationMetrics().getNumOfBlocksUnderReplicated();
-  }
-
-  @Override
   public long getPendingDeletionBlocks() {
     return getFederationMetrics().getNumOfBlocksPendingDeletion();
-  }
-
-  @Override
-  public long getScheduledReplicationBlocks() {
-    return -1;
-  }
-
-  @Override
-  public long getNumberOfMissingBlocksWithReplicationFactorOne() {
-    return 0;
   }
 
   @Override
@@ -328,21 +261,6 @@ public class NamenodeBeanMetrics
   @Override
   public int getThreads() {
     return ManagementFactory.getThreadMXBean().getThreadCount();
-  }
-
-  @Override
-  public String getLiveNodes() {
-    return this.getNodes(DatanodeReportType.LIVE);
-  }
-
-  @Override
-  public String getDeadNodes() {
-    return this.getNodes(DatanodeReportType.DEAD);
-  }
-
-  @Override
-  public String getDecomNodes() {
-    return this.getNodes(DatanodeReportType.DECOMMISSIONING);
   }
 
   /**
@@ -454,11 +372,6 @@ public class NamenodeBeanMetrics
   }
 
   @Override
-  public String getNodeUsage() {
-    return "N/A";
-  }
-
-  @Override
   public String getNameJournalStatus() {
     return "N/A";
   }
@@ -477,16 +390,6 @@ public class NamenodeBeanMetrics
   public String getCompileInfo() {
     return VersionInfo.getDate() + " by " + VersionInfo.getUser() +
         " from " + VersionInfo.getBranch();
-  }
-
-  @Override
-  public int getDistinctVersionCount() {
-    return 0;
-  }
-
-  @Override
-  public Map<String, Integer> getDistinctVersions() {
-    return null;
   }
 
   /////////////////////////////////////////////////////////
@@ -520,11 +423,6 @@ public class NamenodeBeanMetrics
   }
 
   @Override
-  public long getProvidedCapacityTotal() {
-    return getProvidedCapacity();
-  }
-
-  @Override
   public long getFilesTotal() {
     return getFederationMetrics().getNumFiles();
   }
@@ -532,61 +430,6 @@ public class NamenodeBeanMetrics
   @Override
   public int getTotalLoad() {
     return -1;
-  }
-
-  @Override
-  public int getNumLiveDataNodes() {
-    return this.router.getMetrics().getNumLiveNodes();
-  }
-
-  @Override
-  public int getNumDeadDataNodes() {
-    return this.router.getMetrics().getNumDeadNodes();
-  }
-
-  @Override
-  public int getNumStaleDataNodes() {
-    return -1;
-  }
-
-  @Override
-  public int getNumDecomLiveDataNodes() {
-    return this.router.getMetrics().getNumDecomLiveNodes();
-  }
-
-  @Override
-  public int getNumDecomDeadDataNodes() {
-    return this.router.getMetrics().getNumDecomDeadNodes();
-  }
-
-  @Override
-  public int getNumDecommissioningDataNodes() {
-    return this.router.getMetrics().getNumDecommissioningNodes();
-  }
-
-  @Override
-  public int getNumInMaintenanceLiveDataNodes() {
-    return 0;
-  }
-
-  @Override
-  public int getNumInMaintenanceDeadDataNodes() {
-    return 0;
-  }
-
-  @Override
-  public int getNumEnteringMaintenanceDataNodes() {
-    return 0;
-  }
-
-  @Override
-  public int getVolumeFailuresTotal() {
-    return 0;
-  }
-
-  @Override
-  public long getEstimatedCapacityLostTotal() {
-    return 0;
   }
 
   @Override
@@ -601,11 +444,6 @@ public class NamenodeBeanMetrics
 
   @Override
   public long getBlockDeletionStartTime() {
-    return -1;
-  }
-
-  @Override
-  public int getNumStaleStorages() {
     return -1;
   }
 
@@ -663,28 +501,8 @@ public class NamenodeBeanMetrics
   }
 
   @Override
-  public long getBytesWithFutureGenerationStamps() {
-    return 0;
-  }
-
-  @Override
-  public String getSlowPeersReport() {
-    return "N/A";
-  }
-
-  @Override
-  public String getSlowDisksReport() {
-    return "N/A";
-  }
-
-  @Override
   public long getNumberOfSnapshottableDirs() {
     return 0;
-  }
-
-  @Override
-  public String getEnteringMaintenanceNodes() {
-    return "N/A";
   }
 
   @Override

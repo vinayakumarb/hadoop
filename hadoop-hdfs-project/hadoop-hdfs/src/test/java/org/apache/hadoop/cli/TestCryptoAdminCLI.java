@@ -70,7 +70,7 @@ public class TestCryptoAdminCLI extends CLITestHelperDFS {
     conf.set(CommonConfigurationKeysPublic.HADOOP_SECURITY_KEY_PROVIDER_PATH,
         JavaKeyStoreProvider.SCHEME_NAME + "://file" + jksPath.toUri());
 
-    dfsCluster = new MiniDFSCluster.Builder(conf).numDataNodes(1).build();
+    dfsCluster = new MiniDFSCluster.Builder(conf).build();
     dfsCluster.waitClusterUp();
     createAKey("mykey", conf);
     namenode = conf.get(DFSConfigKeys.FS_DEFAULT_NAME_KEY, "file:///");

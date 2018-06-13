@@ -154,7 +154,6 @@ public class TestTracing {
       "testReadTraceHooks",
       "ClientProtocol#getBlockLocations",
       "ClientNamenodeProtocol#getBlockLocations",
-      "OpReadBlockProto"
     };
     SetSpanReceiver.assertSpanNamesFound(expectedSpanNames);
 
@@ -213,7 +212,7 @@ public class TestTracing {
   @Before
   public void startCluster() throws IOException {
     cluster = new MiniDFSCluster.Builder(NO_TRACING_CONF)
-        .numDataNodes(3)
+
         .build();
     cluster.waitActive();
     dfs = cluster.getFileSystem();

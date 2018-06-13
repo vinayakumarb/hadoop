@@ -262,11 +262,6 @@ public final class FederationStateStoreTestUtils {
         "routerId", nameserviceId, namenodeId, "clusterId", "test",
         "0.0.0.0:0", "0.0.0.0:0", "0.0.0.0:0", "0.0.0.0:0", state, false);
     MembershipStats stats = MembershipStats.newInstance();
-    stats.setNumOfActiveDatanodes(100);
-    stats.setNumOfDeadDatanodes(10);
-    stats.setNumOfDecommissioningDatanodes(20);
-    stats.setNumOfDecomActiveDatanodes(15);
-    stats.setNumOfDecomDeadDatanodes(5);
     stats.setNumOfBlocks(10);
     entry.setStats(stats);
     return entry;

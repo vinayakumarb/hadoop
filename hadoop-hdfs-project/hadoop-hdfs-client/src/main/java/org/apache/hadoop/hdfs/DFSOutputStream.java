@@ -23,12 +23,10 @@ import java.io.InterruptedIOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.util.EnumSet;
-import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.hadoop.HadoopIllegalArgumentException;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.crypto.CryptoProtocolVersion;
-import org.apache.hadoop.fs.CanSetDropBehind;
 import org.apache.hadoop.fs.CreateFlag;
 import org.apache.hadoop.fs.FSOutputSummer;
 import org.apache.hadoop.fs.FileAlreadyExistsException;
@@ -52,7 +50,6 @@ import org.apache.hadoop.hdfs.protocol.SnapshotAccessControlException;
 import org.apache.hadoop.hdfs.protocol.UnresolvedPathException;
 import org.apache.hadoop.hdfs.protocol.datatransfer.PacketHeader;
 import org.apache.hadoop.hdfs.protocol.datatransfer.PacketReceiver;
-import org.apache.hadoop.hdfs.server.datanode.CachingStrategy;
 import org.apache.hadoop.hdfs.server.namenode.NotReplicatedYetException;
 import org.apache.hadoop.hdfs.server.namenode.RetryStartFileException;
 import org.apache.hadoop.hdfs.server.namenode.SafeModeException;
@@ -90,7 +87,7 @@ import com.google.common.base.Preconditions;
  ****************************************************************/
 @InterfaceAudience.Private
 public class DFSOutputStream extends FSOutputSummer
-    implements Syncable, CanSetDropBehind, StreamCapabilities {
+    implements Syncable, StreamCapabilities {
   static final Logger LOG = LoggerFactory.getLogger(DFSOutputStream.class);
   /**
    * Number of times to retry creating a file when there are transient
@@ -121,7 +118,6 @@ public class DFSOutputStream extends FSOutputSummer
   private final short blockReplication; // replication factor of file
   protected boolean shouldSyncBlock = false; // force blocks to disk upon close
   private final EnumSet<AddBlockFlag> addBlockFlags;
-  protected final AtomicReference<CachingStrategy> cachingStrategy;
   private FileEncryptionInfo fileEncryptionInfo;
   private int writePacketSize;
 
@@ -176,8 +172,6 @@ public class DFSOutputStream extends FSOutputSummer
     this.blockSize = stat.getBlockSize();
     this.blockReplication = stat.getReplication();
     this.fileEncryptionInfo = stat.getFileEncryptionInfo();
-    this.cachingStrategy = new AtomicReference<>(
-        dfsClient.getDefaultWriteCachingStrategy());
     this.addBlockFlags = EnumSet.noneOf(AddBlockFlag.class);
     if (flag.contains(CreateFlag.NO_LOCAL_WRITE)) {
       this.addBlockFlags.add(AddBlockFlag.NO_LOCAL_WRITE);
@@ -230,7 +224,7 @@ public class DFSOutputStream extends FSOutputSummer
 
     if (createStreamer) {
       streamer = new DataStreamer(stat, null, dfsClient, src, progress,
-          checksum, cachingStrategy, byteArrayManager, favoredNodes,
+          checksum, byteArrayManager, favoredNodes,
           addBlockFlags);
     }
   }
@@ -308,7 +302,7 @@ public class DFSOutputStream extends FSOutputSummer
     if (!toNewBlock && lastBlock != null) {
       // indicate that we are appending to an existing block
       streamer = new DataStreamer(lastBlock, stat, dfsClient, src, progress,
-          checksum, cachingStrategy, byteArrayManager);
+          checksum, byteArrayManager);
       getStreamer().setBytesCurBlock(lastBlock.getBlockSize());
       adjustPacketChunkSize(stat);
     } else {
@@ -316,7 +310,7 @@ public class DFSOutputStream extends FSOutputSummer
           bytesPerChecksum);
       streamer = new DataStreamer(stat,
           lastBlock != null ? lastBlock.getBlock() : null, dfsClient, src,
-          progress, checksum, cachingStrategy, byteArrayManager, favoredNodes,
+          progress, checksum, byteArrayManager, favoredNodes,
           addBlockFlags);
     }
   }
@@ -979,18 +973,6 @@ public class DFSOutputStream extends FSOutputSummer
       toWaitFor = getStreamer().getLastQueuedSeqno();
     }
     return toWaitFor;
-  }
-
-  @Override
-  public void setDropBehind(Boolean dropBehind) throws IOException {
-    CachingStrategy prevStrategy, nextStrategy;
-    // CachingStrategy is immutable.  So build a new CachingStrategy with the
-    // modifications we want, and compare-and-swap it in.
-    do {
-      prevStrategy = this.cachingStrategy.get();
-      nextStrategy = new CachingStrategy.Builder(prevStrategy).
-          setDropBehind(dropBehind).build();
-    } while (!this.cachingStrategy.compareAndSet(prevStrategy, nextStrategy));
   }
 
   @VisibleForTesting

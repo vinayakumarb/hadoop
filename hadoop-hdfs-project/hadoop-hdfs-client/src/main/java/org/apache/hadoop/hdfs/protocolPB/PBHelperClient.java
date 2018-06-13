@@ -31,7 +31,6 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.collect.Lists;
-import com.google.common.primitives.Shorts;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.CodedInputStream;
 
@@ -39,12 +38,10 @@ import org.apache.hadoop.crypto.CipherOption;
 import org.apache.hadoop.crypto.CipherSuite;
 import org.apache.hadoop.crypto.CryptoProtocolVersion;
 import org.apache.hadoop.hdfs.AddBlockFlag;
-import org.apache.hadoop.fs.CacheFlag;
 import org.apache.hadoop.fs.ContentSummary;
 import org.apache.hadoop.fs.CreateFlag;
 import org.apache.hadoop.fs.FileEncryptionInfo;
 import org.apache.hadoop.fs.FsServerDefaults;
-import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.QuotaUsage;
 import org.apache.hadoop.fs.StorageType;
 import org.apache.hadoop.fs.XAttr;
@@ -60,8 +57,6 @@ import org.apache.hadoop.hdfs.inotify.Event;
 import org.apache.hadoop.hdfs.inotify.EventBatch;
 import org.apache.hadoop.hdfs.inotify.EventBatchList;
 import org.apache.hadoop.hdfs.protocol.Block;
-import org.apache.hadoop.hdfs.protocol.BlockChecksumOptions;
-import org.apache.hadoop.hdfs.protocol.BlockChecksumType;
 import org.apache.hadoop.hdfs.protocol.BlockStoragePolicy;
 import org.apache.hadoop.hdfs.protocol.ClientProtocol;
 import org.apache.hadoop.hdfs.protocol.CorruptFileBlocks;
@@ -109,8 +104,6 @@ import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.OpenFi
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.RollingUpgradeActionProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.RollingUpgradeInfoProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.SafeModeActionProto;
-import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.ShortCircuitShmIdProto;
-import org.apache.hadoop.hdfs.protocol.proto.DataTransferProtos.ShortCircuitShmSlotProto;
 import org.apache.hadoop.hdfs.protocol.proto.EncryptionZonesProtos.EncryptionZoneProto;
 import org.apache.hadoop.hdfs.protocol.proto.EncryptionZonesProtos.ReencryptActionProto;
 import org.apache.hadoop.hdfs.protocol.proto.EncryptionZonesProtos.ReencryptionStateProto;
@@ -128,7 +121,6 @@ import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.DatanodeIDProto;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.DatanodeInfoProto;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.DatanodeInfoProto.AdminState;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.DatanodeLocalInfoProto;
-import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.DatanodeStorageProto;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.DatanodeStorageProto.StorageState;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.DirectoryListingProto;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.ExtendedBlockProto;
@@ -147,7 +139,6 @@ import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.SnapshotDiffReportEntryP
 import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.SnapshotDiffReportProto;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.SnapshottableDirectoryListingProto;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.SnapshottableDirectoryStatusProto;
-import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.StorageReportProto;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.StorageTypeProto;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.StorageTypesProto;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.ZoneEncryptionInfoProto;
@@ -160,16 +151,9 @@ import org.apache.hadoop.hdfs.protocol.proto.XAttrProtos.XAttrSetFlagProto;
 import org.apache.hadoop.hdfs.security.token.block.BlockTokenIdentifier;
 import org.apache.hadoop.hdfs.security.token.block.DataEncryptionKey;
 import org.apache.hadoop.hdfs.security.token.delegation.DelegationTokenIdentifier;
-import org.apache.hadoop.hdfs.server.protocol.DatanodeStorage;
 import org.apache.hadoop.hdfs.server.protocol.DatanodeStorage.State;
-import org.apache.hadoop.hdfs.server.protocol.DatanodeStorageReport;
-import org.apache.hadoop.hdfs.server.protocol.StorageReport;
-import org.apache.hadoop.hdfs.protocol.proto.ErasureCodingProtos.CodecProto;
-import org.apache.hadoop.hdfs.shortcircuit.ShortCircuitShm.ShmId;
-import org.apache.hadoop.hdfs.shortcircuit.ShortCircuitShm.SlotId;
 import org.apache.hadoop.io.EnumSetWritable;
 import org.apache.hadoop.io.Text;
-import org.apache.hadoop.io.erasurecode.ECSchema;
 import org.apache.hadoop.security.proto.SecurityProtos.TokenProto;
 import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.security.token.TokenIdentifier;
@@ -249,58 +233,12 @@ public class PBHelperClient {
     return (bytes.length == 0) ? ByteString.EMPTY : ByteString.copyFrom(bytes);
   }
 
-  public static ShmId convert(ShortCircuitShmIdProto shmId) {
-    return new ShmId(shmId.getHi(), shmId.getLo());
-  }
-
   public static DataChecksum.Type convert(HdfsProtos.ChecksumTypeProto type) {
     return DataChecksum.Type.valueOf(type.getNumber());
   }
 
   public static HdfsProtos.ChecksumTypeProto convert(DataChecksum.Type type) {
     return HdfsProtos.ChecksumTypeProto.valueOf(type.id);
-  }
-
-  public static HdfsProtos.BlockChecksumTypeProto convert(
-      BlockChecksumType type) {
-    switch(type) {
-    case MD5CRC:
-      return HdfsProtos.BlockChecksumTypeProto.MD5CRC;
-    case COMPOSITE_CRC:
-      return HdfsProtos.BlockChecksumTypeProto.COMPOSITE_CRC;
-    default:
-      throw new IllegalStateException(
-          "BUG: BlockChecksumType not found, type=" + type);
-    }
-  }
-
-  public static BlockChecksumType convert(
-      HdfsProtos.BlockChecksumTypeProto blockChecksumTypeProto) {
-    switch(blockChecksumTypeProto) {
-    case MD5CRC:
-      return BlockChecksumType.MD5CRC;
-    case COMPOSITE_CRC:
-      return BlockChecksumType.COMPOSITE_CRC;
-    default:
-      throw new IllegalStateException(
-          "BUG: BlockChecksumTypeProto not found, type="
-          + blockChecksumTypeProto);
-    }
-  }
-
-  public static HdfsProtos.BlockChecksumOptionsProto convert(
-      BlockChecksumOptions options) {
-    return HdfsProtos.BlockChecksumOptionsProto.newBuilder()
-        .setBlockChecksumType(convert(options.getBlockChecksumType()))
-        .setStripeLength(options.getStripeLength())
-        .build();
-  }
-
-  public static BlockChecksumOptions convert(
-      HdfsProtos.BlockChecksumOptionsProto options) {
-    return new BlockChecksumOptions(
-        convert(options.getBlockChecksumType()),
-        options.getStripeLength());
   }
 
   public static ExtendedBlockProto convert(final ExtendedBlock b) {
@@ -319,21 +257,6 @@ public class PBHelperClient {
         setPassword(getByteString(tok.getPassword())).
         setKindBytes(getFixedByteString(tok.getKind())).
         setServiceBytes(getFixedByteString(tok.getService())).build();
-  }
-
-  public static ShortCircuitShmIdProto convert(ShmId shmId) {
-    return ShortCircuitShmIdProto.newBuilder().
-        setHi(shmId.getHi()).
-        setLo(shmId.getLo()).
-        build();
-
-  }
-
-  public static ShortCircuitShmSlotProto convert(SlotId slotId) {
-    return ShortCircuitShmSlotProto.newBuilder().
-        setShmId(convert(slotId.getShmId())).
-        setSlotIdx(slotId.getSlotIdx()).
-        build();
   }
 
   public static DatanodeIDProto convert(DatanodeID dn) {
@@ -2311,11 +2234,6 @@ public class PBHelperClient {
         .setCryptoProtocolVersion(convert(zone.getVersion()))
         .setKeyName(zone.getKeyName())
         .build();
-  }
-
-  public static SlotId convert(ShortCircuitShmSlotProto slotId) {
-    return new SlotId(convert(slotId.getShmId()),
-        slotId.getSlotIdx());
   }
 
   public static GetEditsFromTxidResponseProto convertEditsResponse(

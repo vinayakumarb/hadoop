@@ -47,7 +47,7 @@ public class TestViewFSStoragePolicyCommands extends TestStoragePolicyCommands {
     cluster =
         new MiniDFSCluster.Builder(conf).nnTopology(
             MiniDFSNNTopology.simpleFederatedTopology(2))
-            .numDataNodes(2)
+
             .build();
     cluster.waitActive();
     DistributedFileSystem hdfs1 = cluster.getFileSystem(0);

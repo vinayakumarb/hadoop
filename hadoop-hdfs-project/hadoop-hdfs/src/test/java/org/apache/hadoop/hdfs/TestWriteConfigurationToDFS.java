@@ -36,7 +36,7 @@ public class TestWriteConfigurationToDFS {
     Configuration conf = new HdfsConfiguration();
     conf.setInt(DFSConfigKeys.DFS_BLOCK_SIZE_KEY, 4096);
     System.out.println("Setting conf in: " + System.identityHashCode(conf));
-    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).numDataNodes(1).build();
+    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).build();
     FileSystem fs = null;
     OutputStream os = null;
     try {

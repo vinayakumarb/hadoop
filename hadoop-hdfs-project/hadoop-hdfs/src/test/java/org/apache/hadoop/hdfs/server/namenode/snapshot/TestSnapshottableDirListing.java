@@ -54,7 +54,7 @@ public class TestSnapshottableDirListing {
   @Before
   public void setUp() throws Exception {
     conf = new Configuration();
-    cluster = new MiniDFSCluster.Builder(conf).numDataNodes(REPLICATION)
+    cluster = new MiniDFSCluster.Builder(conf)
         .build();
     cluster.waitActive();
     fsn = cluster.getNamesystem();

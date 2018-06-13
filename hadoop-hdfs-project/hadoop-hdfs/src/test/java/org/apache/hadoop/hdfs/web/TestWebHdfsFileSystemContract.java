@@ -65,7 +65,7 @@ public class TestWebHdfsFileSystemContract extends FileSystemContractBaseTest {
 
   static {
     try {
-      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(2).build();
+      cluster = new MiniDFSCluster.Builder(conf).build();
       cluster.waitActive();
 
       //change root permission to 777

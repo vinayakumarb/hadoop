@@ -64,7 +64,7 @@ public class TestQuotasWithHA {
     
     cluster = new MiniDFSCluster.Builder(conf)
       .nnTopology(MiniDFSNNTopology.simpleHATopology())
-      .numDataNodes(1)
+
       .waitSafeMode(false)
       .build();
     cluster.waitActive();

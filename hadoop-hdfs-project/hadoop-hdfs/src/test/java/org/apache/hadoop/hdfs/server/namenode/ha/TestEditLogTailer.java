@@ -106,7 +106,7 @@ public class TestEditLogTailer {
     
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
       .nnTopology(MiniDFSNNTopology.simpleHATopology())
-      .numDataNodes(0)
+
       .build();
     cluster.waitActive();
     
@@ -190,7 +190,7 @@ public class TestEditLogTailer {
 
         cluster = new MiniDFSCluster.Builder(conf)
           .nnTopology(topology)
-          .numDataNodes(0)
+
           .build();
         break;
       } catch (BindException e) {
@@ -234,7 +234,7 @@ public class TestEditLogTailer {
 
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
         .nnTopology(topology)
-        .numDataNodes(0)
+
         .build();
     try {
       cluster.transitionToStandby(0);
@@ -287,7 +287,7 @@ public class TestEditLogTailer {
 
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
         .nnTopology(MiniDFSNNTopology.simpleHATopology())
-        .numDataNodes(0)
+
         .build();
     cluster.waitActive();
 

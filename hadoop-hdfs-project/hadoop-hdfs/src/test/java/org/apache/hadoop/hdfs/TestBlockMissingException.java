@@ -55,7 +55,7 @@ public class TestBlockMissingException {
     // Set short retry timeouts so this test runs faster
     conf.setInt(HdfsClientConfigKeys.Retry.WINDOW_BASE_KEY, 10);
     try {
-      dfs = new MiniDFSCluster.Builder(conf).numDataNodes(NUM_DATANODES).build();
+      dfs = new MiniDFSCluster.Builder(conf).build();
       dfs.waitActive();
       fileSys = dfs.getFileSystem();
       Path file1 = new Path("/user/dhruba/raidtest/file1");
@@ -67,9 +67,6 @@ public class TestBlockMissingException {
           0, numBlocks * blockSize);
       // remove block of file
       LOG.info("Remove first block of file");
-      dfs.corruptBlockOnDataNodesByDeletingBlockFile(
-          locations.get(0).getBlock());
-
       // validate that the system throws BlockMissingException
       validateFile(fileSys, file1);
     } finally {

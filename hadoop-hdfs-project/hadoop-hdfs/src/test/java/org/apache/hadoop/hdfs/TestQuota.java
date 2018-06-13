@@ -117,7 +117,7 @@ public class TestQuota {
     if (cluster != null) {
       cluster.shutdown();
     }
-    cluster = new MiniDFSCluster.Builder(conf).numDataNodes(3).build();
+    cluster = new MiniDFSCluster.Builder(conf).build();
     cluster.waitActive();
   }
 
@@ -1085,7 +1085,7 @@ public class TestQuota {
     // be identical.
     dfsConf.setInt(DFSConfigKeys.DFS_CONTENT_SUMMARY_LIMIT_KEY, 2);
     MiniDFSCluster dfsCluster =
-      new MiniDFSCluster.Builder(dfsConf).numDataNodes(3).build();
+      new MiniDFSCluster.Builder(dfsConf).build();
     dfsCluster.waitActive();
     FileSystem fs = dfsCluster.getFileSystem();
     DFSAdmin admin = new DFSAdmin(dfsConf);

@@ -52,7 +52,7 @@ public class TestExternalBlockReader {
     conf.setLong(HdfsClientConfigKeys.DFS_BLOCK_SIZE_KEY, 1024);
     conf.setLong(DFSConfigKeys.DFS_NAMENODE_MIN_BLOCK_SIZE_KEY, 0);
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
-        .numDataNodes(1)
+
         .build();
     final int TEST_LENGTH = 2048;
     DistributedFileSystem dfs = cluster.getFileSystem();
@@ -277,7 +277,6 @@ public class TestExternalBlockReader {
     String uuid = UUID.randomUUID().toString();
     conf.set(SYNTHETIC_BLOCK_READER_TEST_UUID_KEY, uuid);
     MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
-        .hosts(new String[] {NetUtils.getLocalHostname()})
         .build();
     final int TEST_LENGTH = 2047;
     DistributedFileSystem dfs = cluster.getFileSystem();

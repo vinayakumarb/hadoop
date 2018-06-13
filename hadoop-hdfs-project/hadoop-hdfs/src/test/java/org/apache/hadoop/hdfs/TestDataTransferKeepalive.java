@@ -20,9 +20,7 @@ package org.apache.hadoop.hdfs;
 import static org.apache.hadoop.hdfs.client.HdfsClientConfigKeys.DFS_CLIENT_CONTEXT;
 import static org.apache.hadoop.hdfs.client.HdfsClientConfigKeys.DFS_CLIENT_MAX_BLOCK_ACQUIRE_FAILURES_KEY;
 import static org.apache.hadoop.hdfs.client.HdfsClientConfigKeys.DFS_CLIENT_SOCKET_CACHE_EXPIRY_MSEC_KEY;
-import static org.apache.hadoop.hdfs.client.HdfsClientConfigKeys.DFS_DATANODE_SOCKET_WRITE_TIMEOUT_KEY;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.InputStream;
@@ -31,7 +29,6 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hdfs.MiniDFSCluster.DataNodeProperties;
 import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.test.GenericTestUtils;
 import org.apache.hadoop.util.ReflectionUtils;
@@ -55,7 +52,7 @@ public class TestDataTransferKeepalive {
         0);
     
     cluster = new MiniDFSCluster.Builder(conf)
-      .numDataNodes(1).build();
+      .build();
   }
   
   @After
@@ -123,15 +120,6 @@ public class TestDataTransferKeepalive {
     DistributedFileSystem fs =
         (DistributedFileSystem)FileSystem.get(cluster.getURI(),
             clientConf);
-    // Restart the DN with a shorter write timeout.
-    DataNodeProperties props = cluster.stopDataNode(0);
-    props.conf.setInt(DFS_DATANODE_SOCKET_WRITE_TIMEOUT_KEY,
-        WRITE_TIMEOUT);
-    assertTrue(cluster.restartDataNode(props, true));
-    // Wait for heartbeats to avoid a startup race where we
-    // try to write the block while the DN is still starting.
-    cluster.triggerHeartbeats();
-    
     DFSTestUtil.createFile(fs, TEST_FILE, 1024*1024*8L, (short)1, 0L);
     FSDataInputStream stm = fs.open(TEST_FILE);
     stm.read();

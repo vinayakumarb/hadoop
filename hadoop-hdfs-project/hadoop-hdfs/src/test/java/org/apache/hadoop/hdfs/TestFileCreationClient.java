@@ -24,10 +24,8 @@ import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hdfs.server.datanode.DataNode;
 import org.apache.hadoop.hdfs.server.namenode.FSNamesystem;
 import org.apache.hadoop.hdfs.server.namenode.LeaseManager;
-import org.apache.hadoop.hdfs.server.protocol.InterDatanodeProtocol;
 import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.test.GenericTestUtils;
 import org.junit.Test;
@@ -40,10 +38,8 @@ public class TestFileCreationClient {
   static final String DIR = "/" + TestFileCreationClient.class.getSimpleName() + "/";
 
   {
-    GenericTestUtils.setLogLevel(DataNode.LOG, Level.TRACE);
     GenericTestUtils.setLogLevel(LeaseManager.LOG, Level.TRACE);
     GenericTestUtils.setLogLevel(FSNamesystem.LOG, Level.TRACE);
-    GenericTestUtils.setLogLevel(InterDatanodeProtocol.LOG, Level.TRACE);
   }
 
   /** Test lease recovery Triggered by DFSClient. */
@@ -51,9 +47,8 @@ public class TestFileCreationClient {
   public void testClientTriggeredLeaseRecovery() throws Exception {
     final int REPLICATION = 3;
     Configuration conf = new HdfsConfiguration();
-    conf.setInt(DFSConfigKeys.DFS_DATANODE_HANDLER_COUNT_KEY, 1);
     conf.setInt(DFSConfigKeys.DFS_REPLICATION_KEY, REPLICATION);
-    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).numDataNodes(REPLICATION).build();
+    MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf).build();
 
     try {
       final FileSystem fs = cluster.getFileSystem();
@@ -71,9 +66,6 @@ public class TestFileCreationClient {
 
         Thread.sleep(1000);                       // let writers get started
 
-        //stop a datanode, it should have least recover.
-        cluster.stopDataNode(AppendTestUtil.nextInt(REPLICATION));
-        
         //let the slow writer writes a few more seconds
         System.out.println("Wait a few seconds");
         Thread.sleep(5000);

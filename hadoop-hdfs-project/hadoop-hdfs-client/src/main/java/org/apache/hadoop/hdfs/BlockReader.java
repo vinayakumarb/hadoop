@@ -19,12 +19,9 @@ package org.apache.hadoop.hdfs;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.EnumSet;
 
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.fs.ByteBufferReadable;
-import org.apache.hadoop.fs.ReadOption;
-import org.apache.hadoop.hdfs.shortcircuit.ClientMmap;
 import org.apache.hadoop.util.DataChecksum;
 
 /**
@@ -82,21 +79,6 @@ public interface BlockReader extends ByteBufferReadable, Closeable {
    * filled or the next call will return EOF.
    */
   int readAll(byte[] buf, int offset, int len) throws IOException;
-
-  /**
-   * @return              true only if this is a short-circuit read.
-   *                      All short-circuit reads are also local.
-   */
-  boolean isShortCircuit();
-
-  /**
-   * Get a ClientMmap object for this BlockReader.
-   *
-   * @param opts          The read options to use.
-   * @return              The ClientMmap object, or null if mmap is not
-   *                      supported.
-   */
-  ClientMmap getClientMmap(EnumSet<ReadOption> opts);
 
   /**
    * @return              The DataChecksum used by the read block

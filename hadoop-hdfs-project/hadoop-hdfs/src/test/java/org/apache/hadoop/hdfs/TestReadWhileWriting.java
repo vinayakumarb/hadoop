@@ -59,7 +59,7 @@ public class TestReadWhileWriting {
 
     // create cluster
     final MiniDFSCluster cluster = new MiniDFSCluster.Builder(conf)
-        .numDataNodes(4).build();
+        .build();
     try {
       //change the lease limits.
       cluster.setLeasePeriod(SOFT_LEASE_LIMIT, HARD_LEASE_LIMIT);

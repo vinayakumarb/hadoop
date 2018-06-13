@@ -38,7 +38,7 @@ public class TestGetGroupsWithHA extends GetGroupsTestBase {
     conf = new HdfsConfiguration();
     cluster = new MiniDFSCluster.Builder(conf)
         .nnTopology(MiniDFSNNTopology.simpleHATopology())
-        .numDataNodes(0).build();
+        .build();
     HATestUtil.setFailoverConfigurations(cluster, conf);
   }
   

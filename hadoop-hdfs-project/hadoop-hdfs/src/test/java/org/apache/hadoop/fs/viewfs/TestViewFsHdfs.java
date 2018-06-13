@@ -53,7 +53,7 @@ public class TestViewFsHdfs extends ViewFsBaseTest {
     CONF.setBoolean(
         DFSConfigKeys.DFS_NAMENODE_DELEGATION_TOKEN_ALWAYS_USE_KEY, true);
 
-    cluster = new MiniDFSCluster.Builder(CONF).numDataNodes(2).build();
+    cluster = new MiniDFSCluster.Builder(CONF).build();
     cluster.waitClusterUp();
     fc = FileContext.getFileContext(cluster.getURI(0), CONF);
     Path defaultWorkingDirectory = fc.makeQualified( new Path("/user/" + 

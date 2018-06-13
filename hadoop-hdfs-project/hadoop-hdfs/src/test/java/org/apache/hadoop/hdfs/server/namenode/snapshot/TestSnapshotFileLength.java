@@ -64,7 +64,7 @@ public class TestSnapshotFileLength {
   public void setUp() throws Exception {
     conf.setLong(DFSConfigKeys.DFS_NAMENODE_MIN_BLOCK_SIZE_KEY, BLOCKSIZE);
     conf.setInt(DFSConfigKeys.DFS_BYTES_PER_CHECKSUM_KEY, BLOCKSIZE);
-    cluster = new MiniDFSCluster.Builder(conf).numDataNodes(REPLICATION)
+    cluster = new MiniDFSCluster.Builder(conf)
                                               .build();
     cluster.waitActive();
     hdfs = cluster.getFileSystem();

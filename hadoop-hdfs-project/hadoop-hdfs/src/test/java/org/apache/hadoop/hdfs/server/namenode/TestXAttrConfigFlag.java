@@ -125,7 +125,7 @@ public class TestXAttrConfigFlag {
     Configuration conf = new Configuration();
     // not explicitly setting to false, should be false by default
     conf.setBoolean(DFSConfigKeys.DFS_NAMENODE_XATTRS_ENABLED_KEY, xattrsEnabled);
-    cluster = new MiniDFSCluster.Builder(conf).numDataNodes(1).format(format)
+    cluster = new MiniDFSCluster.Builder(conf).format(format)
       .build();
     cluster.waitActive();
     fs = cluster.getFileSystem();

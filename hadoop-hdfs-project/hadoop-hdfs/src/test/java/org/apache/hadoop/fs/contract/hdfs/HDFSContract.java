@@ -55,7 +55,7 @@ public class HDFSContract extends AbstractFSContract {
     conf.setInt(DFSConfigKeys.DFS_BLOCK_SIZE_KEY, BLOCK_SIZE);
 
     cluster =
-      new MiniDFSCluster.Builder(conf).numDataNodes(2).build();
+      new MiniDFSCluster.Builder(conf).build();
     cluster.waitClusterUp();
   }
 

@@ -43,7 +43,7 @@ public class TestAclCLI extends CLITestHelperDFS {
   public void setUp() throws Exception {
     super.setUp();
     initConf();
-    cluster = new MiniDFSCluster.Builder(conf).numDataNodes(1).build();
+    cluster = new MiniDFSCluster.Builder(conf).build();
     fs = cluster.getFileSystem();
     namenode = conf.get(DFSConfigKeys.FS_DEFAULT_NAME_KEY, "file:///");
     username = System.getProperty("user.name");

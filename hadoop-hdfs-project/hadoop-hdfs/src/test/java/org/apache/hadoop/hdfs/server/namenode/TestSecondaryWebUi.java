@@ -44,7 +44,7 @@ public class TestSecondaryWebUi {
     conf.set(DFSConfigKeys.DFS_NAMENODE_SECONDARY_HTTP_ADDRESS_KEY,
         "0.0.0.0:0");
     conf.setLong(DFS_NAMENODE_CHECKPOINT_TXNS_KEY, 500);
-    cluster = new MiniDFSCluster.Builder(conf).numDataNodes(0)
+    cluster = new MiniDFSCluster.Builder(conf)
         .build();
     cluster.waitActive();
     

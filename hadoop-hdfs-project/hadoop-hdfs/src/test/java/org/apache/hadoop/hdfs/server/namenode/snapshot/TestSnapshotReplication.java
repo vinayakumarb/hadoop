@@ -64,7 +64,7 @@ public class TestSnapshotReplication {
   @Before
   public void setUp() throws Exception {
     conf = new Configuration();
-    cluster = new MiniDFSCluster.Builder(conf).numDataNodes(NUMDATANODE)
+    cluster = new MiniDFSCluster.Builder(conf)
         .build();
     cluster.waitActive();
     fsn = cluster.getNamesystem();

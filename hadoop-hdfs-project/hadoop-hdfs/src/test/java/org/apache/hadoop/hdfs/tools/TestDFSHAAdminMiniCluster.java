@@ -70,7 +70,7 @@ public class TestDFSHAAdminMiniCluster {
   public void setup() throws IOException {
     conf = new Configuration();
     cluster = new MiniDFSCluster.Builder(conf)
-        .nnTopology(MiniDFSNNTopology.simpleHATopology()).numDataNodes(0)
+        .nnTopology(MiniDFSNNTopology.simpleHATopology())
         .build();
     tool = new DFSHAAdmin();  
     tool.setConf(conf);
