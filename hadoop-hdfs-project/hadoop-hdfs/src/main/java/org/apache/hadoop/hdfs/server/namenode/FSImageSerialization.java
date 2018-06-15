@@ -35,17 +35,12 @@ import org.apache.hadoop.hdfs.server.blockmanagement.BlockInfo;
 import org.apache.hadoop.hdfs.server.common.HdfsServerConstants.BlockUCState;
 import org.apache.hadoop.hdfs.server.namenode.snapshot.SnapshotFSImageFormat;
 import org.apache.hadoop.hdfs.server.namenode.snapshot.SnapshotFSImageFormat.ReferenceMap;
-import org.apache.hadoop.hdfs.util.XMLUtils;
-import org.apache.hadoop.hdfs.util.XMLUtils.InvalidXmlException;
-import org.apache.hadoop.hdfs.util.XMLUtils.Stanza;
 import org.apache.hadoop.io.BooleanWritable;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.ShortWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.WritableUtils;
-import org.xml.sax.ContentHandler;
-import org.xml.sax.SAXException;
 
 import com.google.common.base.Preconditions;
 
@@ -481,10 +476,11 @@ public class FSImageSerialization {
     WritableUtils.writeVInt(out, blocks.length);
     Block prev = null;
     for (Block b : blocks) {
-      writeBytes(b.getBlockId(), out);
       long szDelta = b.getNumBytes() -
           (prev != null ? prev.getNumBytes() : 0);
+      out.write(b.getBlockId());
       WritableUtils.writeVLong(out, szDelta);
+      WritableUtils.writeVLong(out, 0);//bw-compat
       prev = b;
     }
   }
@@ -498,10 +494,12 @@ public class FSImageSerialization {
     Block prev = null;
     Block[] ret = new Block[num];
     for (int i = 0; i < num; i++) {
-      byte[] id = readBytes(in);
+      byte[] id = new byte[Block.BLOCK_ID_LENGTH];
+      in.readFully(id);
       long sz = WritableUtils.readVLong(in) +
           ((prev != null) ? prev.getNumBytes() : 0);
-      ret[i] = new Block(id, sz, 0);
+      WritableUtils.readVLong(in);//bw-compat
+      ret[i] = new Block(id, sz);
       prev = ret[i];
     }
     return ret;

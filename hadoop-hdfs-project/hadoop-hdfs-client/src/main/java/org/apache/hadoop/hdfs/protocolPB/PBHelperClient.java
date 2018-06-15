@@ -1704,8 +1704,7 @@ public class PBHelperClient {
   }
 
   public static Block convert(BlockProto b) {
-    return new Block(b.getBlockId().toByteArray(), b.getNumBytes(),
-        b.getGenStamp());
+    return new Block(b.getBlockId().toByteArray(), b.getNumBytes());
   }
 
   static public DatanodeInfo[] convert(DatanodeInfoProto di[]) {

@@ -21,7 +21,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 import org.apache.hadoop.hdfs.protocol.Block;
-import org.apache.hadoop.hdfs.server.common.GenerationStamp;
 import org.apache.hadoop.hdfs.server.common.HdfsServerConstants.BlockUCState;
 import org.junit.Test;
 
@@ -32,7 +31,7 @@ public class TestBlockUnderConstructionFeature {
   @Test
   public void testInitializeBlockRecovery() throws Exception {
     BlockInfo blockInfo = new BlockInfo(
-        new Block(Block.EMPTY_BLOCK_ID, 0, GenerationStamp.LAST_RESERVED_STAMP),
+        new Block(Block.EMPTY_BLOCK_ID, 0),
         (short) 3);
     blockInfo.convertToBlockUnderConstruction(BlockUCState.UNDER_CONSTRUCTION);
 

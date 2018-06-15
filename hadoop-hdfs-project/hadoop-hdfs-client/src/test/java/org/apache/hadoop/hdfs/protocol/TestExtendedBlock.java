@@ -26,12 +26,9 @@ import org.junit.Test;
 public class TestExtendedBlock {
   static final String POOL_A = "blockpool-a";
   static final String POOL_B = "blockpool-b";
-  static final Block BLOCK_1_GS1 = new Block(Block.generateBlockId(1L), 100L,
-      1L);
-  static final Block BLOCK_1_GS2 = new Block(Block.generateBlockId(1L), 100L,
-      2L);
-  static final Block BLOCK_2_GS1 = new Block(Block.generateBlockId(2L), 100L,
-      1L);
+  static final Block BLOCK_1_GS1 = new Block(Block.generateBlockId(1L), 100L);
+  static final Block BLOCK_1_GS2 = new Block(Block.generateBlockId(1L), 100L);
+  static final Block BLOCK_2_GS1 = new Block(Block.generateBlockId(2L), 100L);
   
   @Test
   public void testEquals() {

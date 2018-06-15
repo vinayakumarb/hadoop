@@ -49,7 +49,7 @@ public class ExtendedBlock {
 
   public ExtendedBlock(final String poolId, final byte[] blkid, final long len) {
     this.poolId = poolId != null ? poolId.intern() : null;
-    block = new Block(blkid, len, 0);
+    block = new Block(blkid, len);
   }
 
   public String getBlockPoolId() {

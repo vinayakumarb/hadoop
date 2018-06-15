@@ -60,7 +60,6 @@ import org.apache.hadoop.hdfs.server.common.StorageInfo;
 import org.apache.hadoop.hdfs.server.namenode.CheckpointSignature;
 import org.apache.hadoop.hdfs.server.protocol.BlocksWithLocations;
 import org.apache.hadoop.hdfs.server.protocol.BlocksWithLocations.BlockWithLocations;
-import org.apache.hadoop.hdfs.server.protocol.BlocksWithLocations.StripedBlockWithLocations;
 import org.apache.hadoop.hdfs.server.protocol.NamenodeRegistration;
 import org.apache.hadoop.hdfs.server.protocol.NamespaceInfo;
 import org.apache.hadoop.hdfs.server.protocol.RemoteEditLog;
@@ -134,7 +133,7 @@ public class TestPBHelper {
 
   @Test
   public void testConvertBlock() {
-    Block b = new Block(Block.generateBlockId(1), 100, 3);
+    Block b = new Block(Block.generateBlockId(1), 100);
     BlockProto bProto = PBHelperClient.convert(b);
     Block b2 = PBHelperClient.convert(bProto);
     assertEquals(b, b2);
@@ -149,7 +148,7 @@ public class TestPBHelper {
     final byte[] indices = {0, 1, 2};
     final short dataBlkNum = 6;
     BlockWithLocations blkLocs = new BlockWithLocations(
-        new Block(Block.generateBlockId(bid), 0, 1), datanodeUuids, storageIDs,
+        new Block(Block.generateBlockId(bid), 0), datanodeUuids, storageIDs,
         storageTypes);
     return blkLocs;
   }

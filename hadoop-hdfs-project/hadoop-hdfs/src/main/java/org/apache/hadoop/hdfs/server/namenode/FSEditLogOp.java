@@ -4568,7 +4568,7 @@ public abstract class FSEditLogOp {
       throws InvalidXmlException {
     byte[] blockId = StringUtils.hexStringToByte(st.getValue("BLOCK_ID"));
     long numBytes = Long.parseLong(st.getValue("NUM_BYTES"));
-    return new Block(blockId, numBytes, 0);
+    return new Block(blockId, numBytes);
   }
 
   public static void delegationTokenToXml(ContentHandler contentHandler,

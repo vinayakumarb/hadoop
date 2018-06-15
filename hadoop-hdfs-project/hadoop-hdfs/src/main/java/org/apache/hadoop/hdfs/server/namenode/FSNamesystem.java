@@ -2602,7 +2602,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
    */
   Block createNewBlock() throws IOException {
     assert hasWriteLock();
-    Block b = new Block(nextBlockId(), 0, 0);
+    Block b = new Block(nextBlockId(), 0);
     return b;
   }
 

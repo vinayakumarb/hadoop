@@ -69,7 +69,7 @@ public class CreateEditsLog {
     BlockInfo[] blocks = new BlockInfo[blocksPerFile];
     for (int iB = 0; iB < blocksPerFile; ++iB) {
       blocks[iB] = new BlockInfo(
-          new Block(Block.EMPTY_BLOCK_ID, blockSize, BLOCK_GENERATION_STAMP),
+          new Block(Block.EMPTY_BLOCK_ID, blockSize),
           replication);
     }
     

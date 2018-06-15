@@ -228,7 +228,7 @@ final class FSDirTruncateOp {
     if (newBlock == null) {
       newBlock = (shouldCopyOnTruncate) ?
           fsn.createNewBlock()
-          : new Block(oldBlock.getBlockId(), oldBlock.getNumBytes(), 0L);
+          : new Block(oldBlock.getBlockId(), oldBlock.getNumBytes());
     }
 
     final BlockInfo truncatedBlockUC;

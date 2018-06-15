@@ -76,21 +76,21 @@ public class Block implements Writable, Comparable<Block> {
   private byte[] blockId;
   private long numBytes;
 
-  public Block() {this(EMPTY_BLOCK_ID, 0, 0);}
+  public Block() {this(EMPTY_BLOCK_ID, 0);}
 
-  public Block(final byte[] blkid, final long len, final long generationStamp) {
-    set(blkid, len, generationStamp);
+  public Block(final byte[] blkid, final long len) {
+    set(blkid, len);
   }
 
   public Block(final byte[] blkid) {
-    this(blkid, 0, HdfsConstants.GRANDFATHER_GENERATION_STAMP);
+    this(blkid, 0);
   }
 
   public Block(Block blk) {
-    this(blk.blockId, blk.numBytes, 0L);
+    this(blk.blockId, blk.numBytes);
   }
 
-  public void set(byte[] blkid, long len, long genStamp) {
+  public void set(byte[] blkid, long len) {
     this.blockId = blkid;
     this.numBytes = len;
   }
@@ -120,12 +120,6 @@ public class Block implements Writable, Comparable<Block> {
   public void setNumBytes(long len) {
     this.numBytes = len;
   }
-
-  public long getGenerationStamp() {
-    return 0L;
-  }
-
-  public void setGenerationStamp(long stamp) {}
 
   /**
    * A helper method to output the string representation of the Block portion of
