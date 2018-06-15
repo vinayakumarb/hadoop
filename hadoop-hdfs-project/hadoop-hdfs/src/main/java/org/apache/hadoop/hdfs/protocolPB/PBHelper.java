@@ -22,9 +22,6 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.apache.hadoop.ha.HAServiceProtocol.HAServiceState;
-import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.StorageTypeProto;
-import org.apache.hadoop.hdfs.protocol.proto.HdfsServerProtos.BlockWithLocationsProto;
-import org.apache.hadoop.hdfs.protocol.proto.HdfsServerProtos.BlocksWithLocationsProto;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsServerProtos.CheckpointCommandProto;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsServerProtos.CheckpointSignatureProto;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsServerProtos.NNHAStatusHeartbeatProto;
@@ -42,9 +39,6 @@ import org.apache.hadoop.hdfs.server.common.HdfsServerConstants.NodeType;
 import org.apache.hadoop.hdfs.server.common.HdfsServerConstants.ReplicaState;
 import org.apache.hadoop.hdfs.server.common.StorageInfo;
 import org.apache.hadoop.hdfs.server.namenode.CheckpointSignature;
-import org.apache.hadoop.hdfs.server.protocol.BlocksWithLocations;
-import org.apache.hadoop.hdfs.server.protocol.BlocksWithLocations.BlockWithLocations;
-import org.apache.hadoop.hdfs.server.protocol.BlocksWithLocations.StripedBlockWithLocations;
 import org.apache.hadoop.hdfs.server.protocol.CheckpointCommand;
 import org.apache.hadoop.hdfs.server.protocol.JournalInfo;
 import org.apache.hadoop.hdfs.server.protocol.NNHAStatusHeartbeat;
@@ -108,56 +102,6 @@ public class PBHelper {
     StorageInfo si = convert(reg.getStorageInfo(), NodeType.NAME_NODE);
     return new NamenodeRegistration(reg.getRpcAddress(), reg.getHttpAddress(),
         si, convert(reg.getRole()));
-  }
-
-  public static BlockWithLocationsProto convert(BlockWithLocations blk) {
-    BlockWithLocationsProto.Builder builder = BlockWithLocationsProto
-        .newBuilder().setBlock(PBHelperClient.convert(blk.getBlock()))
-        .addAllDatanodeUuids(Arrays.asList(blk.getDatanodeUuids()))
-        .addAllStorageUuids(Arrays.asList(blk.getStorageIDs()))
-        .addAllStorageTypes(PBHelperClient.convertStorageTypes(blk.getStorageTypes()));
-    if (blk instanceof StripedBlockWithLocations) {
-      StripedBlockWithLocations sblk = (StripedBlockWithLocations) blk;
-      builder.setIndices(PBHelperClient.getByteString(sblk.getIndices()));
-      builder.setDataBlockNum(sblk.getDataBlockNum());
-      builder.setCellSize(sblk.getCellSize());
-    }
-    return builder.build();
-  }
-
-  public static BlockWithLocations convert(BlockWithLocationsProto b) {
-    final List<String> datanodeUuids = b.getDatanodeUuidsList();
-    final List<String> storageUuids = b.getStorageUuidsList();
-    final List<StorageTypeProto> storageTypes = b.getStorageTypesList();
-    BlockWithLocations blk = new BlockWithLocations(PBHelperClient.
-        convert(b.getBlock()),
-        datanodeUuids.toArray(new String[datanodeUuids.size()]),
-        storageUuids.toArray(new String[storageUuids.size()]),
-        PBHelperClient.convertStorageTypes(storageTypes, storageUuids.size()));
-    if (b.hasIndices()) {
-      blk = new StripedBlockWithLocations(blk, b.getIndices().toByteArray(),
-          (short) b.getDataBlockNum(), b.getCellSize());
-    }
-    return blk;
-  }
-
-  public static BlocksWithLocationsProto convert(BlocksWithLocations blks) {
-    BlocksWithLocationsProto.Builder builder = BlocksWithLocationsProto
-        .newBuilder();
-    for (BlockWithLocations b : blks.getBlocks()) {
-      builder.addBlocks(convert(b));
-    }
-    return builder.build();
-  }
-
-  public static BlocksWithLocations convert(BlocksWithLocationsProto blocks) {
-    List<BlockWithLocationsProto> b = blocks.getBlocksList();
-    BlockWithLocations[] ret = new BlockWithLocations[b.size()];
-    int i = 0;
-    for (BlockWithLocationsProto entry : b) {
-      ret[i++] = convert(entry);
-    }
-    return new BlocksWithLocations(ret);
   }
 
   public static CheckpointSignatureProto convert(CheckpointSignature s) {

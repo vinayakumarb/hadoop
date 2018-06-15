@@ -43,8 +43,6 @@ import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.BlockProto;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.ExtendedBlockProto;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.LocatedBlockProto;
-import org.apache.hadoop.hdfs.protocol.proto.HdfsServerProtos.BlockWithLocationsProto;
-import org.apache.hadoop.hdfs.protocol.proto.HdfsServerProtos.BlocksWithLocationsProto;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsServerProtos.CheckpointSignatureProto;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsServerProtos.NamenodeRegistrationProto;
 import org.apache.hadoop.hdfs.protocol.proto.HdfsServerProtos.NamenodeRegistrationProto.NamenodeRoleProto;
@@ -58,8 +56,6 @@ import org.apache.hadoop.hdfs.server.common.HdfsServerConstants.NamenodeRole;
 import org.apache.hadoop.hdfs.server.common.HdfsServerConstants.NodeType;
 import org.apache.hadoop.hdfs.server.common.StorageInfo;
 import org.apache.hadoop.hdfs.server.namenode.CheckpointSignature;
-import org.apache.hadoop.hdfs.server.protocol.BlocksWithLocations;
-import org.apache.hadoop.hdfs.server.protocol.BlocksWithLocations.BlockWithLocations;
 import org.apache.hadoop.hdfs.server.protocol.NamenodeRegistration;
 import org.apache.hadoop.hdfs.server.protocol.NamespaceInfo;
 import org.apache.hadoop.hdfs.server.protocol.RemoteEditLog;
@@ -137,55 +133,6 @@ public class TestPBHelper {
     BlockProto bProto = PBHelperClient.convert(b);
     Block b2 = PBHelperClient.convert(bProto);
     assertEquals(b, b2);
-  }
-
-  private static BlockWithLocations getBlockWithLocations(
-      int bid, boolean isStriped) {
-    final String[] datanodeUuids = {"dn1", "dn2", "dn3"};
-    final String[] storageIDs = {"s1", "s2", "s3"};
-    final StorageType[] storageTypes = {
-        StorageType.DISK, StorageType.DISK, StorageType.DISK};
-    final byte[] indices = {0, 1, 2};
-    final short dataBlkNum = 6;
-    BlockWithLocations blkLocs = new BlockWithLocations(
-        new Block(Block.generateBlockId(bid), 0), datanodeUuids, storageIDs,
-        storageTypes);
-    return blkLocs;
-  }
-
-  private void compare(BlockWithLocations locs1, BlockWithLocations locs2) {
-    assertEquals(locs1.getBlock(), locs2.getBlock());
-    assertTrue(Arrays.equals(locs1.getStorageIDs(), locs2.getStorageIDs()));
-  }
-
-  @Test
-  public void testConvertBlockWithLocations() {
-    boolean[] testSuite = new boolean[]{false, true};
-    for (int i = 0; i < testSuite.length; i++) {
-      BlockWithLocations locs = getBlockWithLocations(1, testSuite[i]);
-      BlockWithLocationsProto locsProto = PBHelper.convert(locs);
-      BlockWithLocations locs2 = PBHelper.convert(locsProto);
-      compare(locs, locs2);
-    }
-  }
-
-  @Test
-  public void testConvertBlocksWithLocations() {
-    boolean[] testSuite = new boolean[]{false, true};
-    for (int i = 0; i < testSuite.length; i++) {
-      BlockWithLocations[] list = new BlockWithLocations[]{
-          getBlockWithLocations(1, testSuite[i]),
-          getBlockWithLocations(2, testSuite[i])};
-      BlocksWithLocations locs = new BlocksWithLocations(list);
-      BlocksWithLocationsProto locsProto = PBHelper.convert(locs);
-      BlocksWithLocations locs2 = PBHelper.convert(locsProto);
-      BlockWithLocations[] blocks = locs.getBlocks();
-      BlockWithLocations[] blocks2 = locs2.getBlocks();
-      assertEquals(blocks.length, blocks2.length);
-      for (int j = 0; j < blocks.length; j++) {
-        compare(blocks[j], blocks2[j]);
-      }
-    }
   }
 
   @Test
