@@ -794,7 +794,6 @@ public class TestFileTruncate {
 
     INodesInPath iip = fsn.getFSDirectory().getINodesInPath(src, DirOp.WRITE);
     INodeFile file = iip.getLastINode().asFile();
-    long initialGenStamp = file.getLastBlock().getGenerationStamp();
     // Test that prepareFileForTruncate sets up in-place truncate.
     fsn.writeLock();
     try {
@@ -806,13 +805,8 @@ public class TestFileTruncate {
           is(equalTo(oldBlock.getBlockId())));
       assertThat(truncateBlock.getNumBytes(),
           is(oldBlock.getNumBytes()));
-      assertThat(truncateBlock.getGenerationStamp(),
-          is(fsn.getBlockManager().getBlockIdManager().getGenerationStamp()));
       assertThat(file.getLastBlock().getBlockUCState(),
           is(HdfsServerConstants.BlockUCState.UNDER_RECOVERY));
-      long blockRecoveryId = file.getLastBlock().getUnderConstructionFeature()
-          .getBlockRecoveryId();
-      assertThat(blockRecoveryId, is(initialGenStamp + 1));
       fsn.getEditLog().logTruncate(
           src, client, clientMachine, BLOCK_SIZE-1, Time.now(), truncateBlock);
     } finally {
@@ -828,7 +822,6 @@ public class TestFileTruncate {
     file.recordModification(iip.getLatestSnapshotId(), true);
     assertThat(file.isBlockInLatestSnapshot(
         file.getLastBlock()), is(true));
-    initialGenStamp = file.getLastBlock().getGenerationStamp();
     // Test that prepareFileForTruncate sets up copy-on-write truncate
     fsn.writeLock();
     try {
@@ -840,13 +833,8 @@ public class TestFileTruncate {
           is(not(equalTo(oldBlock.getBlockId()))));
       assertThat(truncateBlock.getNumBytes() < oldBlock.getNumBytes(),
           is(true));
-      assertThat(truncateBlock.getGenerationStamp(),
-          is(fsn.getBlockManager().getBlockIdManager().getGenerationStamp()));
       assertThat(file.getLastBlock().getBlockUCState(),
           is(HdfsServerConstants.BlockUCState.UNDER_RECOVERY));
-      long blockRecoveryId = file.getLastBlock().getUnderConstructionFeature()
-          .getBlockRecoveryId();
-      assertThat(blockRecoveryId, is(initialGenStamp + 1));
       fsn.getEditLog().logTruncate(
           src, client, clientMachine, BLOCK_SIZE-1, Time.now(), truncateBlock);
     } finally {

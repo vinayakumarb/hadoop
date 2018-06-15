@@ -27,7 +27,6 @@ import org.apache.hadoop.hdfs.client.HdfsClientConfigKeys;
 import org.apache.hadoop.hdfs.client.HdfsDataInputStream;
 import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
 import org.apache.hadoop.io.IOUtils;
-import org.apache.hadoop.net.NetUtils;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -80,7 +79,7 @@ public class TestExternalBlockReader {
   public static class SyntheticReplicaAccessorBuilder
       extends ReplicaAccessorBuilder {
     String fileName;
-    long blockId;
+    byte[] blockId;
     String blockPoolId;
     long genstamp;
     boolean verifyChecksum;
@@ -96,15 +95,9 @@ public class TestExternalBlockReader {
     }
 
     @Override
-    public ReplicaAccessorBuilder setBlock(long blockId, String blockPoolId) {
+    public ReplicaAccessorBuilder setBlock(byte[] blockId, String blockPoolId) {
       this.blockId = blockId;
       this.blockPoolId = blockPoolId;
-      return this;
-    }
-
-    @Override
-    public ReplicaAccessorBuilder setGenerationStamp(long genstamp) {
-      this.genstamp = genstamp;
       return this;
     }
 
@@ -117,12 +110,6 @@ public class TestExternalBlockReader {
     @Override
     public ReplicaAccessorBuilder setClientName(String clientName) {
       this.clientName = clientName;
-      return this;
-    }
-
-    @Override
-    public ReplicaAccessorBuilder setAllowShortCircuitReads(boolean allowShortCircuit) {
-      this.allowShortCircuit = allowShortCircuit;
       return this;
     }
 
@@ -306,13 +293,11 @@ public class TestExternalBlockReader {
       Assert.assertTrue(accessor.builder.allowShortCircuit);
       Assert.assertEquals(block.getBlockPoolId(),
           accessor.builder.blockPoolId);
-      Assert.assertEquals(block.getBlockId(),
+      Assert.assertArrayEquals(block.getBlockId(),
           accessor.builder.blockId);
       Assert.assertEquals(dfs.getClient().clientName,
           accessor.builder.clientName);
       Assert.assertEquals("/a", accessor.builder.fileName);
-      Assert.assertEquals(block.getGenerationStamp(),
-          accessor.getGenerationStamp());
       Assert.assertTrue(accessor.builder.verifyChecksum);
       Assert.assertEquals(1024L, accessor.builder.visibleLength);
       Assert.assertEquals(24L, accessor.totalRead);

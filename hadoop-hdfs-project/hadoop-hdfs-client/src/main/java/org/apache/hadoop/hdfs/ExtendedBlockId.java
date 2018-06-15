@@ -30,7 +30,7 @@ final public class ExtendedBlockId {
   /**
    * The block ID for this block.
    */
-  private final long blockId;
+  private final byte[] blockId;
 
   /**
    * The block pool ID for this block.
@@ -41,12 +41,12 @@ final public class ExtendedBlockId {
     return new ExtendedBlockId(block.getBlockId(), block.getBlockPoolId());
   }
 
-  public ExtendedBlockId(long blockId, String bpId) {
+  public ExtendedBlockId(byte[] blockId, String bpId) {
     this.blockId = blockId;
     this.bpId = bpId;
   }
 
-  public long getBlockId() {
+  public byte[] getBlockId() {
     return this.blockId;
   }
 

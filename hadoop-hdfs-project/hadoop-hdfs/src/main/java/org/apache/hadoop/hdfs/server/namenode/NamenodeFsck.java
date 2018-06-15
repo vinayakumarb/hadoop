@@ -185,7 +185,8 @@ public class NamenodeFsck implements DataEncryptionKeyFactory {
 
     try {
       //get blockInfo
-      Block block = new Block(Block.getBlockId(blockId));
+      Block block = new Block(
+          Block.generateBlockId(Block.filename2id(blockId)));
       //find which file this block belongs to
       BlockInfo blockInfo = blockManager.getStoredBlock(block);
       if(blockInfo == null) {

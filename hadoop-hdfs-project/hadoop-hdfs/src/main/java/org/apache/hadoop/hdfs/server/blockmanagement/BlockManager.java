@@ -255,10 +255,6 @@ public class BlockManager implements BlockStatsMXBean {
     assert block.getNumBytes() <= commitBlock.getNumBytes() :
         "commitBlock length is less than the stored one "
             + commitBlock.getNumBytes() + " vs. " + block.getNumBytes();
-    if(block.getGenerationStamp() != commitBlock.getGenerationStamp()) {
-      throw new IOException("Commit block with mismatching GS. NN has " +
-          block + ", client submits " + commitBlock);
-    }
     block.commitBlock(commitBlock);
     return true;
   }
@@ -686,20 +682,8 @@ public class BlockManager implements BlockStatsMXBean {
     return blockIdManager;
   }
 
-  public long nextGenerationStamp(boolean legacyBlock) throws IOException {
-    return blockIdManager.nextGenerationStamp(legacyBlock);
-  }
-
-  public boolean isLegacyBlock(Block block) {
-    return blockIdManager.isLegacyBlock(block);
-  }
-
-  public long nextBlockId() {
+  public byte[] nextBlockId() {
     return blockIdManager.nextBlockId();
-  }
-
-  boolean isGenStampInFuture(Block block) {
-    return blockIdManager.isGenStampInFuture(block);
   }
 
   private static long getBlockRecoveryTimeout(long heartbeatIntervalSecs) {

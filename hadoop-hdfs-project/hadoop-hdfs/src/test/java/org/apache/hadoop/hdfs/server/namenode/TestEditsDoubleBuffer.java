@@ -24,6 +24,7 @@ import static org.junit.Assert.fail;
 
 import java.io.IOException;
 
+import org.apache.hadoop.hdfs.protocol.Block;
 import org.apache.hadoop.io.DataOutputBuffer;
 import org.apache.hadoop.test.GenericTestUtils;
 import org.junit.Assert;
@@ -111,7 +112,7 @@ public class TestEditsDoubleBuffer {
 
     FSEditLogOp.AllocateBlockIdOp op3 =
         FSEditLogOp.AllocateBlockIdOp.getInstance(cache.get())
-            .setBlockId(0);
+            .setBlockId(Block.EMPTY_BLOCK_ID);
     op3.setTransactionId(3);
     buffer.writeOp(op3);
 

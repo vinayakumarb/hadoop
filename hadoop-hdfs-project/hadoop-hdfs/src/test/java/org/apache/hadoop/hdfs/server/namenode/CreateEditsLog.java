@@ -68,9 +68,9 @@ public class CreateEditsLog {
     editLog.logMkDir(BASE_PATH, dirInode);
     BlockInfo[] blocks = new BlockInfo[blocksPerFile];
     for (int iB = 0; iB < blocksPerFile; ++iB) {
-      blocks[iB] = 
-       new BlockInfo(new Block(0, blockSize, BLOCK_GENERATION_STAMP),
-           replication);
+      blocks[iB] = new BlockInfo(
+          new Block(Block.EMPTY_BLOCK_ID, blockSize, BLOCK_GENERATION_STAMP),
+          replication);
     }
     
     long currentBlockId = startingBlockId;
@@ -78,7 +78,7 @@ public class CreateEditsLog {
 
     for (int iF = 0; iF < numFiles; iF++) {
       for (int iB = 0; iB < blocksPerFile; ++iB) {
-         blocks[iB].setBlockId(currentBlockId++);
+        blocks[iB].setBlockId(Block.generateBlockId(currentBlockId++));
       }
 
       final INodeFile inode = new INodeFile(inodeId.nextValue(), null,

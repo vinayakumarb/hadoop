@@ -208,10 +208,9 @@ public class TestBlockUnderConstruction {
     final Block b = lastLB.getBlock().getLocalBlock();
 
     // fake a block recovery
-    long blockRecoveryId = bm.nextGenerationStamp(false);
     BlockUnderConstructionFeature uc = bm.getStoredBlock(b).
         getUnderConstructionFeature();
-    uc.initializeBlockRecovery(null, blockRecoveryId, false);
+    uc.initializeBlockRecovery(null, false);
     // Invalid storage should not trigger an exception.
     lbs = namenode.getBlockLocations(src, 0, 256);
   }

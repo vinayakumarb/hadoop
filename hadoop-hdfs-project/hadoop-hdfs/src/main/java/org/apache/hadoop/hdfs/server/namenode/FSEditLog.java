@@ -1023,8 +1023,9 @@ public class FSEditLog implements LogsPurgeable {
 
   /**
    * Record a newly allocated block ID in the edit log
+   * @param blockId
    */
-  void logAllocateBlockId(long blockId) {
+  void logAllocateBlockId(byte[] blockId) {
     AllocateBlockIdOp op = AllocateBlockIdOp.getInstance(cache.get())
       .setBlockId(blockId);
     logEdit(op);

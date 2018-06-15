@@ -134,7 +134,7 @@ public class TestPBHelper {
 
   @Test
   public void testConvertBlock() {
-    Block b = new Block(1, 100, 3);
+    Block b = new Block(Block.generateBlockId(1), 100, 3);
     BlockProto bProto = PBHelperClient.convert(b);
     Block b2 = PBHelperClient.convert(bProto);
     assertEquals(b, b2);
@@ -148,18 +148,15 @@ public class TestPBHelper {
         StorageType.DISK, StorageType.DISK, StorageType.DISK};
     final byte[] indices = {0, 1, 2};
     final short dataBlkNum = 6;
-    BlockWithLocations blkLocs = new BlockWithLocations(new Block(bid, 0, 1),
-        datanodeUuids, storageIDs, storageTypes);
+    BlockWithLocations blkLocs = new BlockWithLocations(
+        new Block(Block.generateBlockId(bid), 0, 1), datanodeUuids, storageIDs,
+        storageTypes);
     return blkLocs;
   }
 
   private void compare(BlockWithLocations locs1, BlockWithLocations locs2) {
     assertEquals(locs1.getBlock(), locs2.getBlock());
     assertTrue(Arrays.equals(locs1.getStorageIDs(), locs2.getStorageIDs()));
-    if (locs1 instanceof StripedBlockWithLocations) {
-      assertTrue(Arrays.equals(((StripedBlockWithLocations) locs1).getIndices(),
-          ((StripedBlockWithLocations) locs2).getIndices()));
-    }
   }
 
   @Test
@@ -248,11 +245,11 @@ public class TestPBHelper {
   }
 
   public ExtendedBlock getExtendedBlock() {
-    return getExtendedBlock(1);
+    return getExtendedBlock(Block.generateBlockId(1));
   }
 
-  public ExtendedBlock getExtendedBlock(long blkid) {
-    return new ExtendedBlock("bpid", blkid, 100, 2);
+  public ExtendedBlock getExtendedBlock(byte[] blkid) {
+    return new ExtendedBlock("bpid", blkid, 100);
   }
   
   private void compare(DatanodeInfo dn1, DatanodeInfo dn2) {
@@ -280,7 +277,7 @@ public class TestPBHelper {
     ExtendedBlock b1 = PBHelperClient.convert(bProto);
     assertEquals(b, b1);
     
-    b.setBlockId(-1);
+    b.setBlockId(Block.generateBlockId(-1));
     bProto = PBHelperClient.convert(b);
     b1 = PBHelperClient.convert(bProto);
     assertEquals(b, b1);
@@ -335,8 +332,8 @@ public class TestPBHelper {
   }
 
   private LocatedBlock createLocatedBlock() {
-    LocatedBlock lb = new LocatedBlock(new ExtendedBlock("bp12", 12345, 10, 53),
-        5);
+    LocatedBlock lb = new LocatedBlock(
+        new ExtendedBlock("bp12", Block.generateBlockId(12345), 10), 5);
     return lb;
   }
 

@@ -297,11 +297,6 @@ public final class FSImageFormatProtobuf {
 
     private void loadNameSystemSection(InputStream in) throws IOException {
       NameSystemSection s = NameSystemSection.parseDelimitedFrom(in);
-      BlockIdManager blockIdManager = fsn.getBlockManager().getBlockIdManager();
-      blockIdManager.setLegacyGenerationStamp(s.getGenstampV1());
-      blockIdManager.setGenerationStamp(s.getGenstampV2());
-      blockIdManager.setLegacyGenerationStampLimit(s.getGenstampV1Limit());
-      blockIdManager.setLastAllocatedContiguousBlockId(s.getLastAllocatedBlockId());
       imgTxId = s.getTransactionId();
       if (s.hasRollingUpgradeStartTime()
           && fsn.getFSImage().hasRollbackFSImage()) {
@@ -532,12 +527,7 @@ public final class FSImageFormatProtobuf {
         throws IOException {
       final FSNamesystem fsn = context.getSourceNamesystem();
       OutputStream out = sectionOutputStream;
-      BlockIdManager blockIdManager = fsn.getBlockManager().getBlockIdManager();
       NameSystemSection.Builder b = NameSystemSection.newBuilder()
-          .setGenstampV1(blockIdManager.getLegacyGenerationStamp())
-          .setGenstampV1Limit(blockIdManager.getLegacyGenerationStampLimit())
-          .setGenstampV2(blockIdManager.getGenerationStamp())
-          .setLastAllocatedBlockId(blockIdManager.getLastAllocatedContiguousBlockId())
           .setTransactionId(context.getTxId());
 
       // We use the non-locked version of getNamespaceInfo here since

@@ -62,7 +62,7 @@ import org.apache.hadoop.fs.CommonConfigurationKeys;
 import org.apache.hadoop.fs.CommonConfigurationKeysPublic;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.client.HdfsClientConfigKeys;
-import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
+import org.apache.hadoop.hdfs.protocol.Block;
 import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
@@ -100,11 +100,11 @@ public class TestDFSUtil {
    */
   @Test
   public void testLocatedBlocks2Locations() {
-    ExtendedBlock b1 = new ExtendedBlock("bpid", 1, 1, 1);
+    ExtendedBlock b1 = new ExtendedBlock("bpid", Block.generateBlockId(1), 1);
     LocatedBlock l1 = new LocatedBlock(b1, 0);
     l1.setStartOffset(0);
     // corrupt
-    ExtendedBlock b2 = new ExtendedBlock("bpid", 2, 1, 1);
+    ExtendedBlock b2 = new ExtendedBlock("bpid", Block.generateBlockId(2), 1);
     LocatedBlock l2 = new LocatedBlock(b2, 0);
     l2.setStartOffset(0);
     List<LocatedBlock> ls = Arrays.asList(l1, l2);

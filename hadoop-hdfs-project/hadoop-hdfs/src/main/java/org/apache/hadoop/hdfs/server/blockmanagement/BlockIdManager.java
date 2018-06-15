@@ -20,7 +20,6 @@ package org.apache.hadoop.hdfs.server.blockmanagement;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import org.apache.hadoop.hdfs.protocol.Block;
-import org.apache.hadoop.hdfs.protocol.BlockType;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants;
 import org.apache.hadoop.hdfs.server.common.GenerationStamp;
 import org.apache.hadoop.hdfs.server.common.HdfsServerConstants;
@@ -28,8 +27,6 @@ import org.apache.hadoop.hdfs.server.namenode.FSNamesystem;
 import org.apache.hadoop.hdfs.server.namenode.FSEditLog;
 
 import java.io.IOException;
-
-import static org.apache.hadoop.hdfs.protocol.BlockType.STRIPED;
 
 /**
  * BlockIdManager allocates the generation stamps and the block ID. The
@@ -110,16 +107,17 @@ public class BlockIdManager {
   /**
    * Sets the maximum allocated contiguous block ID for this filesystem. This is
    * the basis for allocating new block IDs.
+   * @param blockId
    */
-  public void setLastAllocatedContiguousBlockId(long blockId) {
-    blockIdGenerator.skipTo(blockId);
+  public void setLastAllocatedBlockId(byte[] blockId) {
+    blockIdGenerator.skipTo(0L);//TODO : Fix skipping
   }
 
   /**
    * Gets the maximum sequentially allocated contiguous block ID for this
    * filesystem
    */
-  public long getLastAllocatedContiguousBlockId() {
+  public long getLastAllocatedBlockId() {
     return blockIdGenerator.getCurrentValue();
   }
 
@@ -148,62 +146,16 @@ public class BlockIdManager {
     return generationStamp.getCurrentValue();
   }
 
-  /**
-   * Increments, logs and then returns the stamp
-   */
-  long nextGenerationStamp(boolean legacyBlock) throws IOException {
-    return legacyBlock ? getNextLegacyGenerationStamp() :
-        getNextGenerationStamp();
-  }
-
-  @VisibleForTesting
-  long getNextLegacyGenerationStamp() throws IOException {
-    long legacyGenStamp = legacyGenerationStamp.nextValue();
-
-    if (legacyGenStamp >= legacyGenerationStampLimit) {
-      // We ran out of generation stamps for legacy blocks. In practice, it
-      // is extremely unlikely as we reserved 1T legacy generation stamps. The
-      // result is that we can no longer append to the legacy blocks that
-      // were created before the upgrade to sequential block IDs.
-      throw new OutOfLegacyGenerationStampsException();
-    }
-
-    return legacyGenStamp;
-  }
-
-  @VisibleForTesting
-  long getNextGenerationStamp() {
-    return generationStamp.nextValue();
-  }
-
   public long getLegacyGenerationStampLimit() {
     return legacyGenerationStampLimit;
   }
 
   /**
-   * Determine whether the block ID was randomly generated (legacy) or
-   * sequentially generated. The generation stamp value is used to
-   * make the distinction.
-   *
-   * @return true if the block ID was randomly generated, false otherwise.
-   */
-  boolean isLegacyBlock(Block block) {
-    return block.getGenerationStamp() < getLegacyGenerationStampLimit();
-  }
-
-  /**
    * Increments, logs and then returns the block ID
    */
-  long nextBlockId() {
-    return blockIdGenerator.nextValue();
-  }
-
-  boolean isGenStampInFuture(Block block) {
-    if (isLegacyBlock(block)) {
-      return block.getGenerationStamp() > getLegacyGenerationStamp();
-    } else {
-      return block.getGenerationStamp() > getGenerationStamp();
-    }
+  byte[] nextBlockId() {
+    //Convert long to byte[]
+    return Block.generateBlockId(blockIdGenerator.nextValue());
   }
 
   void clear() {
@@ -212,10 +164,5 @@ public class BlockIdManager {
     getBlockIdGenerator().setCurrentValue(SequentialBlockIdGenerator
       .LAST_RESERVED_BLOCK_ID);
     legacyGenerationStampLimit = HdfsConstants.GRANDFATHER_GENERATION_STAMP;
-  }
-
-  public static byte getBlockIndex(Block reportedBlock) {
-    return (byte) (reportedBlock.getBlockId() &
-        HdfsServerConstants.BLOCK_GROUP_INDEX_MASK);
   }
 }

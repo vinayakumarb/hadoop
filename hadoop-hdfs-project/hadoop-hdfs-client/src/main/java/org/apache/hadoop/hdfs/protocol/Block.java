@@ -18,14 +18,19 @@
 package org.apache.hadoop.hdfs.protocol;
 
 import java.io.*;
+import java.util.Arrays;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.io.*;
+import org.apache.hadoop.util.StringUtils;
 
 import javax.annotation.Nonnull;
+
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Preconditions;
 
 /**************************************************
  * A Block is a Hadoop FS primitive, identified by a
@@ -35,6 +40,8 @@ import javax.annotation.Nonnull;
 @InterfaceAudience.Private
 @InterfaceStability.Evolving
 public class Block implements Writable, Comparable<Block> {
+  public static final int BLOCK_ID_LENGTH = 24;
+  public static final byte[] EMPTY_BLOCK_ID = new byte[BLOCK_ID_LENGTH];
   public static final String BLOCK_FILE_PREFIX = "blk_";
   public static final String METADATA_EXTENSION = ".meta";
   static {                                      // register a ctor
@@ -59,15 +66,6 @@ public class Block implements Writable, Comparable<Block> {
   }
 
   /**
-   * Get generation stamp from the name of the metafile name
-   */
-  public static long getGenerationStamp(String metaFile) {
-    Matcher m = metaFilePattern.matcher(metaFile);
-    return m.matches() ? Long.parseLong(m.group(2))
-        : HdfsConstants.GRANDFATHER_GENERATION_STAMP;
-  }
-
-  /**
    * Get the blockId from the name of the meta or block file
    */
   public static long getBlockId(String metaOrBlockFile) {
@@ -75,36 +73,35 @@ public class Block implements Writable, Comparable<Block> {
     return m.matches() ? Long.parseLong(m.group(1)) : 0;
   }
 
-  private long blockId;
+  private byte[] blockId;
   private long numBytes;
-  private long generationStamp;
 
-  public Block() {this(0, 0, 0);}
+  public Block() {this(EMPTY_BLOCK_ID, 0, 0);}
 
-  public Block(final long blkid, final long len, final long generationStamp) {
+  public Block(final byte[] blkid, final long len, final long generationStamp) {
     set(blkid, len, generationStamp);
   }
 
-  public Block(final long blkid) {
+  public Block(final byte[] blkid) {
     this(blkid, 0, HdfsConstants.GRANDFATHER_GENERATION_STAMP);
   }
 
   public Block(Block blk) {
-    this(blk.blockId, blk.numBytes, blk.generationStamp);
+    this(blk.blockId, blk.numBytes, 0L);
   }
 
-  public void set(long blkid, long len, long genStamp) {
+  public void set(byte[] blkid, long len, long genStamp) {
     this.blockId = blkid;
     this.numBytes = len;
-    this.generationStamp = genStamp;
   }
   /**
    */
-  public long getBlockId() {
+  public byte[] getBlockId() {
     return blockId;
   }
 
-  public void setBlockId(long bid) {
+  public void setBlockId(byte[] bid) {
+    Preconditions.checkArgument(bid != null && bid.length == BLOCK_ID_LENGTH);
     blockId = bid;
   }
 
@@ -125,12 +122,10 @@ public class Block implements Writable, Comparable<Block> {
   }
 
   public long getGenerationStamp() {
-    return generationStamp;
+    return 0L;
   }
 
-  public void setGenerationStamp(long stamp) {
-    generationStamp = stamp;
-  }
+  public void setGenerationStamp(long stamp) {}
 
   /**
    * A helper method to output the string representation of the Block portion of
@@ -143,7 +138,7 @@ public class Block implements Writable, Comparable<Block> {
     StringBuilder sb = new StringBuilder();
     sb.append(BLOCK_FILE_PREFIX).
        append(b.blockId).append("_").
-       append(b.generationStamp);
+       append(0);
     return sb.toString();
   }
 
@@ -156,9 +151,7 @@ public class Block implements Writable, Comparable<Block> {
 
   public void appendStringTo(StringBuilder sb) {
     sb.append(BLOCK_FILE_PREFIX)
-      .append(blockId)
-      .append("_")
-      .append(getGenerationStamp());
+      .append(StringUtils.byteToHexString(blockId));
   }
 
 
@@ -176,36 +169,29 @@ public class Block implements Writable, Comparable<Block> {
   }
 
   final void writeHelper(DataOutput out) throws IOException {
-    out.writeLong(blockId);
+    out.write(blockId);
     out.writeLong(numBytes);
-    out.writeLong(generationStamp);
   }
 
   final void readHelper(DataInput in) throws IOException {
-    this.blockId = in.readLong();
+    byte[] id = new byte[BLOCK_ID_LENGTH];
+    in.readFully(id);
+    this.blockId = id;
     this.numBytes = in.readLong();
-    this.generationStamp = in.readLong();
     if (numBytes < 0) {
       throw new IOException("Unexpected block size: " + numBytes);
     }
   }
 
-  // write only the identifier part of the block
-  public void writeId(DataOutput out) throws IOException {
-    out.writeLong(blockId);
-    out.writeLong(generationStamp);
-  }
-
-  // Read only the identifier part of the block
-  public void readId(DataInput in) throws IOException {
-    this.blockId = in.readLong();
-    this.generationStamp = in.readLong();
-  }
-
   @Override // Comparable
   public int compareTo(@Nonnull Block b) {
-    return blockId < b.blockId ? -1 :
-        blockId > b.blockId ? 1 : 0;
+    for (int i = 0; i < blockId.length; i++) {
+      if (blockId[i] == b.blockId[i]) {
+        continue;
+      }
+      return blockId[i] < b.blockId[i] ? -1 : 1;
+    }
+    return 0;
   }
 
   @Override // Object
@@ -220,14 +206,20 @@ public class Block implements Writable, Comparable<Block> {
   public static boolean matchingIdAndGenStamp(Block a, Block b) {
     if (a == b) return true; // same block, or both null
     // only one null
-    return !(a == null || b == null) &&
-        a.blockId == b.blockId &&
-        a.generationStamp == b.generationStamp;
+    return !(a == null || b == null) && Arrays.equals(a.blockId, b.blockId);
   }
 
   @Override // Object
   public int hashCode() {
-    //GenerationStamp is IRRELEVANT and should not be used here
-    return (int)(blockId^(blockId>>>32));
+    return Arrays.hashCode(blockId);
+  }
+
+  @VisibleForTesting
+  public static byte[] generateBlockId(long id) {
+    byte[] b = new byte[BLOCK_ID_LENGTH];
+    for (int i = 0; i < Long.BYTES; i++) {
+      b[i] = (byte) (id >>> 8 * (Long.BYTES - (i + 1)));
+    }
+    return b;
   }
 }

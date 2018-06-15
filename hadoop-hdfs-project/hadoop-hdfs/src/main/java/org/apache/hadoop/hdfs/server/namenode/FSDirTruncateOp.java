@@ -228,9 +228,7 @@ final class FSDirTruncateOp {
     if (newBlock == null) {
       newBlock = (shouldCopyOnTruncate) ?
           fsn.createNewBlock()
-          : new Block(oldBlock.getBlockId(), oldBlock.getNumBytes(),
-          fsn.nextGenerationStamp(fsn.getBlockManager().isLegacyBlock(
-              oldBlock)));
+          : new Block(oldBlock.getBlockId(), oldBlock.getNumBytes(), 0L);
     }
 
     final BlockInfo truncatedBlockUC;
@@ -260,7 +258,6 @@ final class FSDirTruncateOp {
       uc.setTruncateBlock(new BlockInfo(oldBlock,
           oldBlock.getReplication()));
       uc.getTruncateBlock().setNumBytes(oldBlock.getNumBytes() - lastBlockDelta);
-      uc.getTruncateBlock().setGenerationStamp(newBlock.getGenerationStamp());
       truncatedBlockUC = oldBlock;
 
       NameNode.stateChangeLog.debug("BLOCK* prepareFileForTruncate: " +
@@ -269,7 +266,7 @@ final class FSDirTruncateOp {
     }
     if (shouldRecoverNow) {
       truncatedBlockUC.getUnderConstructionFeature().initializeBlockRecovery(
-          truncatedBlockUC, newBlock.getGenerationStamp(), true);
+          truncatedBlockUC, true);
     }
 
     return newBlock;
@@ -339,7 +336,9 @@ final class FSDirTruncateOp {
     if (fsn.isRollingUpgrade()) {
       return true;
     }
-    return file.isBlockInLatestSnapshot(blk);
+    //return file.isBlockInLatestSnapshot(blk);
+    //Need to always copy for truncate
+    return true;
   }
 
   /**

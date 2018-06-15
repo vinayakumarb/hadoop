@@ -31,15 +31,15 @@ public class ExtendedBlock {
   private Block block;
 
   public ExtendedBlock() {
-    this(null, 0, 0, 0);
+    this(null, Block.EMPTY_BLOCK_ID, 0);
   }
 
   public ExtendedBlock(final ExtendedBlock b) {
     this(b.poolId, new Block(b.block));
   }
 
-  public ExtendedBlock(final String poolId, final long blockId) {
-    this(poolId, blockId, 0, 0);
+  public ExtendedBlock(final String poolId, final byte[] blockId) {
+    this(poolId, blockId, 0);
   }
 
   public ExtendedBlock(String poolId, Block b) {
@@ -47,39 +47,25 @@ public class ExtendedBlock {
     this.block = b;
   }
 
-  public ExtendedBlock(final String poolId, final long blkid, final long len,
-      final long genstamp) {
+  public ExtendedBlock(final String poolId, final byte[] blkid, final long len) {
     this.poolId = poolId != null ? poolId.intern() : null;
-    block = new Block(blkid, len, genstamp);
+    block = new Block(blkid, len, 0);
   }
 
   public String getBlockPoolId() {
     return poolId;
   }
 
-  /** Returns the block file name for the block */
-  public String getBlockName() {
-    return block.getBlockName();
-  }
-
   public long getNumBytes() {
     return block.getNumBytes();
   }
 
-  public long getBlockId() {
+  public byte[] getBlockId() {
     return block.getBlockId();
   }
 
-  public long getGenerationStamp() {
-    return block.getGenerationStamp();
-  }
-
-  public void setBlockId(final long bid) {
+  public void setBlockId(final byte[] bid) {
     block.setBlockId(bid);
-  }
-
-  public void setGenerationStamp(final long genStamp) {
-    block.setGenerationStamp(genStamp);
   }
 
   public void setNumBytes(final long len) {

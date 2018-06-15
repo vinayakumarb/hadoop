@@ -20,7 +20,6 @@ package org.apache.hadoop.hdfs.server.blockmanagement;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-import org.apache.hadoop.hdfs.DFSTestUtil;
 import org.apache.hadoop.hdfs.protocol.Block;
 import org.apache.hadoop.hdfs.server.common.GenerationStamp;
 import org.apache.hadoop.hdfs.server.common.HdfsServerConstants.BlockUCState;
@@ -33,11 +32,13 @@ public class TestBlockUnderConstructionFeature {
   @Test
   public void testInitializeBlockRecovery() throws Exception {
     BlockInfo blockInfo = new BlockInfo(
-        new Block(0, 0, GenerationStamp.LAST_RESERVED_STAMP), (short) 3);
+        new Block(Block.EMPTY_BLOCK_ID, 0, GenerationStamp.LAST_RESERVED_STAMP),
+        (short) 3);
     blockInfo.convertToBlockUnderConstruction(BlockUCState.UNDER_CONSTRUCTION);
 
     // Recovery attempt #1.
-    blockInfo.getUnderConstructionFeature().initializeBlockRecovery(blockInfo, 1, true);
+    blockInfo.getUnderConstructionFeature().initializeBlockRecovery(blockInfo,
+        true);
     fail("TODO: Assertion not implemented yet!!");
   }
 }

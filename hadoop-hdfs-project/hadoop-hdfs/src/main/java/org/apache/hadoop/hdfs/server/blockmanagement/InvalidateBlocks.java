@@ -96,18 +96,6 @@ class InvalidateBlocks {
   }
 
   /**
-   * @return true if the given storage has the given block listed for
-   * invalidation. Blocks are compared including their generation stamps:
-   * if a block is pending invalidation but with a different generation stamp,
-   * returns false.
-   */
-  synchronized boolean contains(final Block block) {
-    Block blockInSet = blocks.getElement(block);
-    return blockInSet != null &&
-        block.getGenerationStamp() == blockInSet.getGenerationStamp();
-  }
-
-  /**
    * Add a block to the block collection which will be
    * invalidated on the specified datanode.
    */

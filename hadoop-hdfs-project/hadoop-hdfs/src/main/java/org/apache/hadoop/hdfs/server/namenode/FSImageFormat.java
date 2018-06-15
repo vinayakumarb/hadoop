@@ -45,6 +45,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.permission.PermissionStatus;
 import org.apache.hadoop.hdfs.DFSUtil;
+import org.apache.hadoop.hdfs.protocol.Block;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants;
 import org.apache.hadoop.hdfs.protocol.LayoutFlags;
 import org.apache.hadoop.hdfs.protocol.LayoutVersion;
@@ -358,7 +359,8 @@ public class FSImageFormat {
 
           // read the max sequential block ID.
           long maxSequentialBlockId = in.readLong();
-          blockIdManager.setLastAllocatedContiguousBlockId(maxSequentialBlockId);
+          blockIdManager.setLastAllocatedBlockId(
+              Block.generateBlockId(maxSequentialBlockId));
         } else {
           long startingGenStamp = blockIdManager.upgradeLegacyGenerationStamp();
           // This is an upgrade.
@@ -1256,10 +1258,10 @@ public class FSImageFormat {
         out.writeLong(numINodes);
         final BlockIdManager blockIdManager = sourceNamesystem.getBlockManager()
             .getBlockIdManager();
-        out.writeLong(blockIdManager.getLegacyGenerationStamp());
-        out.writeLong(blockIdManager.getGenerationStamp());
+        out.writeLong(0L);
+        out.writeLong(0L);
         out.writeLong(blockIdManager.getGenerationStampAtblockIdSwitch());
-        out.writeLong(blockIdManager.getLastAllocatedContiguousBlockId());
+        out.writeLong(blockIdManager.getLastAllocatedBlockId());
         out.writeLong(context.getTxId());
         out.writeLong(sourceNamesystem.dir.getLastInodeId());
 

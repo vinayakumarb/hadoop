@@ -51,7 +51,8 @@ public class TestFileWithSnapshotFeature {
     BlockStoragePolicySuite bsps = mock(BlockStoragePolicySuite.class);
     BlockStoragePolicy bsp = mock(BlockStoragePolicy.class);
     BlockInfo[] blocks = new BlockInfo[] {
-        new BlockInfo(new Block(1, BLOCK_SIZE, 1), REPL_1)
+        new BlockInfo(new Block(Block.generateBlockId(1), BLOCK_SIZE, 1),
+            REPL_1)
     };
     BlockManager bm = mock(BlockManager.class);
 

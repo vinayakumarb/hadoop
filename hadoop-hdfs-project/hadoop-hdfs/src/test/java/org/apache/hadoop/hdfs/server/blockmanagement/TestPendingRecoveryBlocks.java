@@ -44,7 +44,7 @@ public class TestPendingRecoveryBlocks {
   }
 
   BlockInfo getBlock(long blockId) {
-    return new BlockInfo(new Block(blockId), (short) 0);
+    return new BlockInfo(new Block(Block.generateBlockId(blockId)), (short) 0);
   }
 
   @Test

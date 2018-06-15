@@ -2603,8 +2603,6 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
   Block createNewBlock() throws IOException {
     assert hasWriteLock();
     Block b = new Block(nextBlockId(), 0, 0);
-    // Increment the generation stamp for every new block.
-    b.setGenerationStamp(nextGenerationStamp(false));
     return b;
   }
 
@@ -3103,22 +3101,14 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
       boolean copyOnTruncate = truncateRecovery &&
           recoveryBlock.getBlockId() != lastBlock.getBlockId();
       assert !copyOnTruncate ||
-          recoveryBlock.getBlockId() < lastBlock.getBlockId() &&
-          recoveryBlock.getGenerationStamp() < lastBlock.getGenerationStamp() &&
+          recoveryBlock.compareTo(lastBlock)< 0 &&
           recoveryBlock.getNumBytes() > lastBlock.getNumBytes() :
             "wrong recoveryBlock";
       // Start recovery of the last block for this file
       // Only do so if there is no ongoing recovery for this block,
       // or the previous recovery for this block timed out.
       if (blockManager.addBlockRecoveryAttempt(lastBlock)) {
-        long blockRecoveryId = nextGenerationStamp(
-            blockManager.isLegacyBlock(lastBlock));
-        if(copyOnTruncate) {
-          lastBlock.setGenerationStamp(blockRecoveryId);
-        } else if(truncateRecovery) {
-          recoveryBlock.setGenerationStamp(blockRecoveryId);
-        }
-        uc.initializeBlockRecovery(lastBlock, blockRecoveryId, true);
+        uc.initializeBlockRecovery(lastBlock, true);
 
         // Cannot close file right now, since the last block requires recovery.
         // This may potentially cause infinite loop in lease recovery
@@ -3126,8 +3116,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
         NameNode.stateChangeLog.warn(
             "DIR* NameSystem.internalReleaseLease: " +
                 "File " + src + " has not been closed." +
-                " Lease recovery is in progress. " +
-                "RecoveryId = " + blockRecoveryId + " for block " + lastBlock);
+                " Lease recovery is in progress" +
+                " for block " + lastBlock);
       }
       lease = reassignLease(lease, src, recoveryLeaseHolder, pendingFile);
       leaseManager.renewLease(lease);
@@ -4042,31 +4032,12 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
   }
 
   /**
-   * Increments, logs and then returns the stamp
-   */
-  long nextGenerationStamp(boolean legacyBlock)
-      throws IOException {
-    assert hasWriteLock();
-    checkNameNodeSafeMode("Cannot get next generation stamp");
-
-    long gs = blockManager.nextGenerationStamp(legacyBlock);
-    if (legacyBlock) {
-      getEditLog().logLegacyGenerationStamp(gs);
-    } else {
-      getEditLog().logGenerationStamp(gs);
-    }
-
-    // NB: callers sync the log
-    return gs;
-  }
-
-  /**
    * Increments, logs and then returns the block ID
    */
-  private long nextBlockId() throws IOException {
+  private byte[] nextBlockId() throws IOException {
     assert hasWriteLock();
     checkNameNodeSafeMode("Cannot get next block ID");
-    final long blockId = blockManager.nextBlockId();
+    final byte[] blockId = blockManager.nextBlockId();
     getEditLog().logAllocateBlockId(blockId);
     // NB: callers sync the log
     return blockId;

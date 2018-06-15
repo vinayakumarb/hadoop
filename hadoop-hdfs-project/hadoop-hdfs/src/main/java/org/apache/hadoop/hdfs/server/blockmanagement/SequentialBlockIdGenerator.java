@@ -44,30 +44,4 @@ public class SequentialBlockIdGenerator extends SequentialNumber {
     super(LAST_RESERVED_BLOCK_ID);
     this.blockManager = blockManagerRef;
   }
-
-  @Override // NumberGenerator
-  public long nextValue() {
-    Block b = new Block(super.nextValue());
-
-    // There may be an occasional conflict with randomly generated
-    // block IDs. Skip over the conflicts.
-    while(isValidBlock(b)) {
-      b.setBlockId(super.nextValue());
-    }
-    if (b.getBlockId() < 0) {
-      throw new IllegalStateException("All positive block IDs are used, " +
-          "wrapping to negative IDs, " +
-          "which might conflict with erasure coded block groups.");
-    }
-    return b.getBlockId();
-  }
-
-  /**
-   * Returns whether the given block is one pointed-to by a file.
-   */
-  private boolean isValidBlock(Block b) {
-    BlockInfo bi = blockManager.getStoredBlock(b);
-    return bi != null && bi.getBlockCollectionId() !=
-        INodeId.INVALID_INODE_ID;
-  }
 }

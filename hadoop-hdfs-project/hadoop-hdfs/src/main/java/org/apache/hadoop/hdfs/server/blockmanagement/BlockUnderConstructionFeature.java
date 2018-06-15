@@ -59,10 +59,6 @@ public class BlockUnderConstructionFeature {
     blockUCState = s;
   }
 
-  public long getBlockRecoveryId() {
-    return blockRecoveryId;
-  }
-
   /** Get recover block */
   public BlockInfo getTruncateBlock() {
     return truncateBlock;
@@ -84,13 +80,10 @@ public class BlockUnderConstructionFeature {
    * Find the first alive data-node starting from the previous primary and
    * make it primary.
    * @param blockInfo Block to be recovered
-   * @param recoveryId Recovery ID (new gen stamp)
    * @param startRecovery Issue recovery command to datanode if true.
    */
-  public void initializeBlockRecovery(BlockInfo blockInfo, long recoveryId,
-      boolean startRecovery) {
+  public void initializeBlockRecovery(BlockInfo blockInfo, boolean startRecovery) {
     setBlockUCState(BlockUCState.UNDER_RECOVERY);
-    blockRecoveryId = recoveryId;
     if (!startRecovery) {
       return;
     }

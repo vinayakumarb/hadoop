@@ -69,9 +69,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumMap;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.zip.CheckedInputStream;
 import java.util.zip.Checksum;
 
@@ -124,7 +122,6 @@ import org.xml.sax.SAXException;
 import org.xml.sax.helpers.AttributesImpl;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
@@ -1868,7 +1865,7 @@ public abstract class FSEditLogOp {
 
   /** {@literal @Idempotent} for {@link ClientProtocol#addBlock} */
   static class AllocateBlockIdOp extends FSEditLogOp {
-    long blockId;
+    byte[] blockId;
 
     AllocateBlockIdOp() {
       super(OP_ALLOCATE_BLOCK_ID);
@@ -1880,10 +1877,10 @@ public abstract class FSEditLogOp {
 
     @Override
     void resetSubFields() {
-      blockId = 0L;
+      blockId = Block.EMPTY_BLOCK_ID;
     }
 
-    AllocateBlockIdOp setBlockId(long blockId) {
+    AllocateBlockIdOp setBlockId(byte[] blockId) {
       this.blockId = blockId;
       return this;
     }
@@ -1891,13 +1888,13 @@ public abstract class FSEditLogOp {
     @Override
     public
     void writeFields(DataOutputStream out) throws IOException {
-      FSImageSerialization.writeLong(blockId, out);
+      FSImageSerialization.writeBytes(blockId, out);
     }
 
     @Override
     void readFields(DataInputStream in, int logVersion)
         throws IOException {
-      this.blockId = FSImageSerialization.readLong(in);
+      this.blockId = FSImageSerialization.readBytes(in);
     }
 
     @Override
@@ -1916,11 +1913,11 @@ public abstract class FSEditLogOp {
     @Override
     protected void toXml(ContentHandler contentHandler) throws SAXException {
       XMLUtils.addSaxString(contentHandler, "BLOCK_ID",
-                            Long.toString(blockId));
+                            StringUtils.byteToHexString(blockId));
     }
 
     @Override void fromXml(Stanza st) throws InvalidXmlException {
-      this.blockId = Long.parseLong(st.getValue("BLOCK_ID"));
+      this.blockId = StringUtils.hexStringToByte(st.getValue("BLOCK_ID"));
     }
   }
 
@@ -4561,20 +4558,17 @@ public abstract class FSEditLogOp {
       throws SAXException {
     contentHandler.startElement("", "", "BLOCK", new AttributesImpl());
     XMLUtils.addSaxString(contentHandler, "BLOCK_ID",
-        Long.toString(block.getBlockId()));
+        StringUtils.byteToHexString(block.getBlockId()));
     XMLUtils.addSaxString(contentHandler, "NUM_BYTES",
         Long.toString(block.getNumBytes()));
-    XMLUtils.addSaxString(contentHandler, "GENSTAMP",
-        Long.toString(block.getGenerationStamp()));
     contentHandler.endElement("", "", "BLOCK");
   }
 
   public static Block blockFromXml(Stanza st)
       throws InvalidXmlException {
-    long blockId = Long.parseLong(st.getValue("BLOCK_ID"));
+    byte[] blockId = StringUtils.hexStringToByte(st.getValue("BLOCK_ID"));
     long numBytes = Long.parseLong(st.getValue("NUM_BYTES"));
-    long generationStamp = Long.parseLong(st.getValue("GENSTAMP"));
-    return new Block(blockId, numBytes, generationStamp);
+    return new Block(blockId, numBytes, 0);
   }
 
   public static void delegationTokenToXml(ContentHandler contentHandler,

@@ -166,9 +166,8 @@ public class JsonUtil {
 
     final Map<String, Object> m = new TreeMap<String, Object>();
     m.put("blockPoolId", extendedblock.getBlockPoolId());
-    m.put("blockId", extendedblock.getBlockId());
+    m.put("blockId", StringUtils.byteToHexString(extendedblock.getBlockId()));
     m.put("numBytes", extendedblock.getNumBytes());
-    m.put("generationStamp", extendedblock.getGenerationStamp());
     return m;
   }
   

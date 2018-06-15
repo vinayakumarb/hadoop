@@ -34,10 +34,7 @@ public abstract class ReplicaAccessorBuilder {
 
   /** Set the block ID and block pool ID which are being opened. */
   public abstract ReplicaAccessorBuilder
-      setBlock(long blockId, String blockPoolId);
-
-  /** Set the genstamp of the block which is being opened. */
-  public abstract ReplicaAccessorBuilder setGenerationStamp(long genstamp);
+      setBlock(byte[] blockId, String blockPoolId);
 
   /**
    * Set whether checksums must be verified.  Checksums should be skipped if
@@ -50,17 +47,6 @@ public abstract class ReplicaAccessorBuilder {
 
   /** Set the name of the HDFS client.  Provided for debugging purposes. */
   public abstract ReplicaAccessorBuilder setClientName(String clientName);
-
-  /**
-   * Set whether short-circuit is enabled.  Short-circuit may be disabled if
-   * the user has set dfs.client.read.shortcircuit to false, or if the block
-   * being read is under construction.  The fact that this bit is enabled does
-   * not mean that the user has permission to do short-circuit reads or to
-   * access the replica-- that must be checked separately by the
-   * ReplicaAccessorBuilder implementation.
-   */
-  public abstract ReplicaAccessorBuilder
-      setAllowShortCircuitReads(boolean allowShortCircuit);
 
   /**
    * Set the length of the replica which is visible to this client.  If bytes

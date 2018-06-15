@@ -48,7 +48,6 @@ import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
 import org.apache.hadoop.hdfs.security.token.block.BlockTokenIdentifier;
 import org.apache.hadoop.hdfs.security.token.delegation.DelegationTokenIdentifier;
-import org.apache.hadoop.io.erasurecode.ECSchema;
 import org.apache.hadoop.ipc.RemoteException;
 import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.security.token.TokenIdentifier;
@@ -213,11 +212,9 @@ class JsonUtilClient {
     }
 
     final String blockPoolId = (String)m.get("blockPoolId");
-    final long blockId = ((Number) m.get("blockId")).longValue();
+    final byte[] blockId = StringUtils.hexStringToByte((String) m.get("blockId"));
     final long numBytes = ((Number) m.get("numBytes")).longValue();
-    final long generationStamp =
-        ((Number) m.get("generationStamp")).longValue();
-    return new ExtendedBlock(blockPoolId, blockId, numBytes, generationStamp);
+    return new ExtendedBlock(blockPoolId, blockId, numBytes);
   }
 
   static int getInt(Map<?, ?> m, String key, final int defaultValue) {

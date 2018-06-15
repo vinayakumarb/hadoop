@@ -151,11 +151,6 @@ class DataStreamer extends Daemon {
       currentBlock.setNumBytes(numBytes);
     }
 
-    synchronized void setGenerationStamp(long generationStamp) {
-      assert currentBlock != null;
-      currentBlock.setGenerationStamp(generationStamp);
-    }
-
     @Override
     public synchronized String toString() {
       return currentBlock == null ? "null" : currentBlock.toString();
@@ -968,10 +963,6 @@ class DataStreamer extends Daemon {
       } catch (InterruptedException ignored) {
       }
     }
-  }
-
-  void updateBlockGS(final long newGS) {
-    block.setGenerationStamp(newGS);
   }
 
   /**

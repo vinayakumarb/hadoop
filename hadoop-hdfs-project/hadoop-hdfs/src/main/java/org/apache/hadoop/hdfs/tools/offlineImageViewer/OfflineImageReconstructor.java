@@ -442,23 +442,7 @@ class OfflineImageReconstructor {
         throw new IOException("<NameSection> is missing <namespaceId>");
       }
       b.setNamespaceId(namespaceId);
-      Long lval = node.removeChildLong(NAME_SECTION_GENSTAMPV1);
-      if (lval != null)  {
-        b.setGenstampV1(lval);
-      }
-      lval = node.removeChildLong(NAME_SECTION_GENSTAMPV2);
-      if (lval != null)  {
-        b.setGenstampV2(lval);
-      }
-      lval = node.removeChildLong(NAME_SECTION_GENSTAMPV1_LIMIT);
-      if (lval != null)  {
-        b.setGenstampV1Limit(lval);
-      }
-      lval = node.removeChildLong(NAME_SECTION_LAST_ALLOCATED_BLOCK_ID);
-      if (lval != null)  {
-        b.setLastAllocatedBlockId(lval);
-      }
-      lval = node.removeChildLong(NAME_SECTION_TXID);
+      Long lval = node.removeChildLong(NAME_SECTION_TXID);
       if (lval != null)  {
         b.setTransactionId(lval);
       }
@@ -634,11 +618,11 @@ class OfflineImageReconstructor {
       throws IOException {
     HdfsProtos.BlockProto.Builder blockBld =
         HdfsProtos.BlockProto.newBuilder();
-    Long id = block.removeChildLong(SECTION_ID);
+    byte[] id = StringUtils.hexStringToByte(block.removeChildStr(SECTION_ID));
     if (id == null) {
       throw new IOException("<block> found without <id>");
     }
-    blockBld.setBlockId(id);
+    blockBld.setBlockId(ByteString.copyFrom(id));
     Long genstamp = block.removeChildLong(INODE_SECTION_GENSTAMP);
     if (genstamp == null) {
       throw new IOException("<block> found without <genstamp>");

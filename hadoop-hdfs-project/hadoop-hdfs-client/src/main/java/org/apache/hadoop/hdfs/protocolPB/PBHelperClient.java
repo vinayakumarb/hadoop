@@ -245,9 +245,9 @@ public class PBHelperClient {
     if (b == null) return null;
     return ExtendedBlockProto.newBuilder().
         setPoolIdBytes(getFixedByteString(b.getBlockPoolId())).
-        setBlockId(b.getBlockId()).
+        setBlockId(ByteString.copyFrom(b.getBlockId())).
         setNumBytes(b.getNumBytes()).
-        setGenerationStamp(b.getGenerationStamp()).
+        setGenerationStamp(0L). // for backward compatibility
         build();
   }
 
@@ -362,8 +362,8 @@ public class PBHelperClient {
 
   public static ExtendedBlock convert(ExtendedBlockProto eb) {
     if (eb == null) return null;
-    return new ExtendedBlock( eb.getPoolId(), eb.getBlockId(), eb.getNumBytes(),
-        eb.getGenerationStamp());
+    return new ExtendedBlock(eb.getPoolId(), eb.getBlockId().toByteArray(),
+        eb.getNumBytes());
   }
 
   public static DatanodeLocalInfo convert(DatanodeLocalInfoProto proto) {
@@ -545,11 +545,6 @@ public class PBHelperClient {
 
   public static LocatedBlock convertLocatedBlockProto(LocatedBlockProto proto) {
     if (proto == null) return null;
-    List<DatanodeInfoProto> locs = proto.getLocsList();
-    DatanodeInfo[] targets = new DatanodeInfo[locs.size()];
-    for (int i = 0; i < locs.size(); i++) {
-      targets[i] = convert(locs.get(i));
-    }
     final LocatedBlock lb;
     lb = new LocatedBlock(PBHelperClient.convert(proto.getB()),
         proto.getOffset());
@@ -856,9 +851,6 @@ public class PBHelperClient {
     Builder builder = LocatedBlockProto.newBuilder();
     return builder.setB(PBHelperClient.convert(b.getBlock()))
         .setOffset(b.getStartOffset())
-        //For bw-compat
-        .setBlockToken(PBHelperClient.convert(DUMMY_BLOCK_TOKEN))
-        .setCorrupt(false)
         .build();
   }
 
@@ -1705,13 +1697,15 @@ public class PBHelperClient {
 
   // Block
   public static BlockProto convert(Block b) {
-    return BlockProto.newBuilder().setBlockId(b.getBlockId())
-        .setGenStamp(b.getGenerationStamp()).setNumBytes(b.getNumBytes())
+    return BlockProto.newBuilder()
+        .setBlockId(ByteString.copyFrom(b.getBlockId()))
+        .setGenStamp(0).setNumBytes(b.getNumBytes())
         .build();
   }
 
   public static Block convert(BlockProto b) {
-    return new Block(b.getBlockId(), b.getNumBytes(), b.getGenStamp());
+    return new Block(b.getBlockId().toByteArray(), b.getNumBytes(),
+        b.getGenStamp());
   }
 
   static public DatanodeInfo[] convert(DatanodeInfoProto di[]) {

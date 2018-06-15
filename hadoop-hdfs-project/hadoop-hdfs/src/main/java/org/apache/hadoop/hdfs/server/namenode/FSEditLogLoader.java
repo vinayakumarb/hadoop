@@ -36,7 +36,6 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.XAttrSetFlag;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
-import org.apache.hadoop.hdfs.server.blockmanagement.BlockIdManager;
 import org.apache.hadoop.hdfs.server.blockmanagement.BlockInfo;
 import org.apache.hadoop.hdfs.protocol.Block;
 import org.apache.hadoop.hdfs.protocol.HdfsFileStatus;
@@ -813,7 +812,7 @@ public class FSEditLogLoader {
     }
     case OP_ALLOCATE_BLOCK_ID: {
       AllocateBlockIdOp allocateBlockIdOp = (AllocateBlockIdOp) op;
-      blockManager.getBlockIdManager().setLastAllocatedContiguousBlockId(
+      blockManager.getBlockIdManager().setLastAllocatedBlockId(
           allocateBlockIdOp.blockId);
       break;
     }
@@ -958,10 +957,9 @@ public class FSEditLogLoader {
       assert oldBlocks != null && oldBlocks.length > 0;
       // compare pBlock with the last block of oldBlocks
       BlockInfo oldLastBlock = oldBlocks[oldBlocks.length - 1];
-      if (oldLastBlock.getBlockId() != pBlock.getBlockId()
-          || oldLastBlock.getGenerationStamp() != pBlock.getGenerationStamp()) {
+      if (!Arrays.equals(oldLastBlock.getBlockId(), pBlock.getBlockId())) {
         throw new IOException(
-            "Mismatched block IDs or generation stamps for the old last block of file "
+            "Mismatched block IDs for the old last block of file "
                 + op.getPath() + ", the old last block is " + oldLastBlock
                 + ", and the block read from editlog is " + pBlock);
       }
@@ -1003,23 +1001,17 @@ public class FSEditLogLoader {
       Block newBlock = newBlocks[i];
       
       boolean isLastBlock = i == newBlocks.length - 1;
-      if (oldBlock.getBlockId() != newBlock.getBlockId() ||
-          (oldBlock.getGenerationStamp() != newBlock.getGenerationStamp() && 
-              !(isGenStampUpdate && isLastBlock))) {
-        throw new IOException("Mismatched block IDs or generation stamps, " +
+      if (!Arrays.equals(oldBlock.getBlockId(), newBlock.getBlockId())) {
+        throw new IOException("Mismatched block IDs, " +
             "attempting to replace block " + oldBlock + " with " + newBlock +
             " as block # " + i + "/" + newBlocks.length + " of " +
             path);
       }
       
       oldBlock.setNumBytes(newBlock.getNumBytes());
-      boolean changeMade =
-        oldBlock.getGenerationStamp() != newBlock.getGenerationStamp();
-      oldBlock.setGenerationStamp(newBlock.getGenerationStamp());
-      
+
       if (!oldBlock.isComplete() &&
           (!isLastBlock || op.shouldCompleteLastBlock())) {
-        changeMade = true;
         fsNamesys.getBlockManager().forceCompleteBlock(oldBlock);
       }
     }

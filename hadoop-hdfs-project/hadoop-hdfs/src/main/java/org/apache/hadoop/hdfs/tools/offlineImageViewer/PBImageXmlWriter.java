@@ -517,12 +517,7 @@ public final class PBImageXmlWriter {
     NameSystemSection s = NameSystemSection.parseDelimitedFrom(in);
     out.print("<" + NAME_SECTION_NAME + ">");
     o(NAME_SECTION_NAMESPACE_ID, s.getNamespaceId());
-    o(NAME_SECTION_GENSTAMPV1, s.getGenstampV1())
-        .o(NAME_SECTION_GENSTAMPV2, s.getGenstampV2())
-        .o(NAME_SECTION_GENSTAMPV1_LIMIT, s.getGenstampV1Limit())
-        .o(NAME_SECTION_LAST_ALLOCATED_BLOCK_ID,
-            s.getLastAllocatedBlockId())
-        .o(NAME_SECTION_TXID, s.getTransactionId());
+    o(NAME_SECTION_TXID, s.getTransactionId());
     out.print("</" + NAME_SECTION_NAME + ">\n");
   }
 

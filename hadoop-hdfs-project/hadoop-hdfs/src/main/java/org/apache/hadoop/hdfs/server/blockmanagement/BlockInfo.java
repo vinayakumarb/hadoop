@@ -179,7 +179,5 @@ public class BlockInfo extends Block
     Preconditions.checkState(!isComplete());
     uc.commit();
     this.setNumBytes(block.getNumBytes());
-    // Sort out invalid replicas.
-    setGenerationStamp(block.getGenerationStamp());
   }
 }

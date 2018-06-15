@@ -149,7 +149,8 @@ public class TestTruncateQuotaUpdate {
   }
 
   private BlockInfo newBlock(long size, short replication) {
-    Block b = new Block(++nextMockBlockId, size, ++nextMockGenstamp);
+    Block b = new Block(Block.generateBlockId(++nextMockBlockId), size,
+        ++nextMockGenstamp);
     return new BlockInfo(b, replication);
   }
 

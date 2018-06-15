@@ -481,13 +481,10 @@ public class FSImageSerialization {
     WritableUtils.writeVInt(out, blocks.length);
     Block prev = null;
     for (Block b : blocks) {
+      writeBytes(b.getBlockId(), out);
       long szDelta = b.getNumBytes() -
           (prev != null ? prev.getNumBytes() : 0);
-      long gsDelta = b.getGenerationStamp() -
-          (prev != null ? prev.getGenerationStamp() : 0);
-      out.writeLong(b.getBlockId()); // blockid is random
       WritableUtils.writeVLong(out, szDelta);
-      WritableUtils.writeVLong(out, gsDelta);
       prev = b;
     }
   }
@@ -501,12 +498,10 @@ public class FSImageSerialization {
     Block prev = null;
     Block[] ret = new Block[num];
     for (int i = 0; i < num; i++) {
-      long id = in.readLong();
+      byte[] id = readBytes(in);
       long sz = WritableUtils.readVLong(in) +
           ((prev != null) ? prev.getNumBytes() : 0);
-      long gs = WritableUtils.readVLong(in) +
-          ((prev != null) ? prev.getGenerationStamp() : 0);
-      ret[i] = new Block(id, sz, gs);
+      ret[i] = new Block(id, sz, 0);
       prev = ret[i];
     }
     return ret;

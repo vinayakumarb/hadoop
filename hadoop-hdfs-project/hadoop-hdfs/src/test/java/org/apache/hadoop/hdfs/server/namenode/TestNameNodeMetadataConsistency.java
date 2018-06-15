@@ -110,7 +110,6 @@ public class TestNameNodeMetadataConsistency {
     ostream.close();
 
     ExtendedBlock block = DFSTestUtil.getFirstBlock(fs, filePath2);
-    long genStamp = block.getGenerationStamp();
 
     // Simulate  Namenode forgetting a Block
     cluster.restartNameNode(true);

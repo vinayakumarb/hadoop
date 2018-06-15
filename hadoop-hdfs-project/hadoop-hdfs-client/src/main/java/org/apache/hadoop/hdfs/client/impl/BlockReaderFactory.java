@@ -349,9 +349,7 @@ public class BlockReaderFactory {
         ReplicaAccessorBuilder builder = ctor.newInstance();
         long visibleLength = startOffset + length;
         ReplicaAccessor accessor = builder.
-            setAllowShortCircuitReads(allowShortCircuitLocalReads).
             setBlock(block.getBlockId(), block.getBlockPoolId()).
-            setGenerationStamp(block.getGenerationStamp()).
             setBlockAccessToken(tokenBytes).
             setClientName(clientName).
             setConfiguration(configuration).
