@@ -2240,6 +2240,17 @@
         </plugins>
       </build>
     </profile>
+    <profile>
+      <id>os.aarch64.linux</id>
+      <activation>
+        <activeByDefault>false</activeByDefault>
+        <os>
+          <family>linux</family>
+          <arch>aarch_64</arch>
+        </os>
+      </activation>
+      <build/>
+    </profile>
   </profiles>
 
   <repositories>
